@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>APEX — ONE2ONE Coaching</title>
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    body { opacity: 0; transition: opacity 0.3s; }
+    body.loaded { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;">
+      <div class="spinner"></div>
+      <div class="loading-text" style="margin-top:1rem;">Chargement…</div>
+    </div>
+  </div>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Config -->
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/tdee.js"></script>
+  <script src="js/snap-calories.js"></script>
+  <script src="js/router.js"></script>
+
+  <!-- Pages -->
+  <script src="pages/login.js"></script>
+  <script src="pages/client/dashboard.js"></script>
+  <script src="pages/client/plan.js"></script>
+  <script src="pages/client/snap.js"></script>
+  <script src="pages/client/historique.js"></script>
+  <script src="pages/coach/clients.js"></script>
+  <script src="pages/coach/client-edit.js"></script>
+  <script src="pages/coach/plan-edit.js"></script>
+  <script src="pages/coach/journal-view.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+      document.body.classList.add('loaded');
+      await Router.init();
+    });
+  </script>
+</body>
+</html>

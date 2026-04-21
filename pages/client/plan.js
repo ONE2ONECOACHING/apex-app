@@ -1,0 +1,93 @@
+// APEX APP — Plan Alimentaire Client (lecture)
+
+const PlanPage = {
+  plan: null,
+  repas: [],
+  creneaux: ['petit_dejeuner_sale', 'petit_dejeuner_sucre', 'collation_matin', 'dejeuner', 'collation_apres_midi', 'diner', 'collation_soir'],
+
+  render() {
+    return `
+      <div class="app-header">
+        <div>
+          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-title">Mon plan alimentaire</div>
+        </div>
+        <button class="header-btn" onclick="Router.logout()">⏻</button>
+      </div>
+      <div id="planContent"><div class="spinner" style="margin-top:3rem;"></div></div>
+      <nav class="nav-bottom"><div class="nav-inner">
+        <a class="nav-item" href="#dashboard"><span class="nav-icon">📊</span><span class="nav-label">Suivi</span></a>
+        <a class="nav-item active" href="#plan"><span class="nav-icon">📋</span><span class="nav-label">Plan</span></a>
+        <a class="nav-item" href="#snap"><span class="nav-icon">📷</span><span class="nav-label">Snap</span></a>
+        <a class="nav-item" href="#historique"><span class="nav-icon">📈</span><span class="nav-label">Historique</span></a>
+      </div></nav>`;
+  },
+
+  async init() {
+    const profile = Router.userProfile;
+    if (!profile) return;
+
+    try {
+      this.plan = await db.getActivePlan(profile.id);
+      if (this.plan) this.repas = await db.getPlanRepas(this.plan.id);
+      this.renderContent();
+    } catch (e) {
+      document.getElementById('planContent').innerHTML = '<div class="alert alert-error">Erreur de chargement.</div>';
+    }
+  },
+
+  renderContent() {
+    const el = document.getElementById('planContent');
+    if (!this.plan) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Ton coach n'a pas encore créé ton plan alimentaire.<br>Il sera visible ici dès qu'il sera prêt.</div></div>`;
+      return;
+    }
+
+    let html = '';
+
+    // Objectifs
+    html += `<div class="card card-dark">
+      <div class="card-title">Objectifs — Semaine ${this.plan.semaine} · ${this.plan.phase}</div>
+      <div class="macros-big">
+        <span class="macros-big-val">${this.plan.calories_cible.toLocaleString('fr-FR')}</span>
+        <span class="macros-big-unit">kcal / jour</span>
+      </div>
+      <div class="macros-grid" style="margin-top:12px;">
+        <div class="macro-item"><div class="macro-val">${this.plan.proteines_cible}g</div><div class="macro-label">Protéines</div></div>
+        <div class="macro-item"><div class="macro-val">${this.plan.glucides_cible}g</div><div class="macro-label">Glucides</div></div>
+        <div class="macro-item"><div class="macro-val">${this.plan.lipides_cible}g</div><div class="macro-label">Lipides</div></div>
+      </div>
+    </div>`;
+
+    if (this.plan.notes) {
+      html += `<div class="card card-accent"><div style="font-size:13px;color:var(--gray);line-height:1.6;">💡 ${this.plan.notes}</div></div>`;
+    }
+
+    // Repas par créneau
+    this.creneaux.forEach(cr => {
+      const items = this.repas.filter(r => r.creneau === cr);
+      if (items.length === 0) return;
+
+      const crKcal = Math.round(items.reduce((s, r) => s + parseFloat(r.calories), 0));
+
+      html += `<div class="creneau-section">
+        <div class="creneau-header">
+          <div class="creneau-title">${creneauLabel(cr)}</div>
+          <div class="creneau-kcal">${crKcal} kcal</div>
+        </div>`;
+
+      items.forEach(r => {
+        html += `<div class="entry-row">
+          <div class="entry-info">
+            <div class="entry-name">${r.aliment_nom}</div>
+            <div class="entry-macros">${r.quantite}${r.unite === 'g' ? 'g' : ' unité(s)'} · P:${Math.round(r.proteines)}g · G:${Math.round(r.glucides)}g · L:${Math.round(r.lipides)}g</div>
+          </div>
+          <div class="entry-kcal">${Math.round(r.calories)}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+
+    el.innerHTML = html;
+  }
+};

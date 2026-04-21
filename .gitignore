@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs / tmp
+*.log
+.tmp/
+.cache/
+
+# Netlify local
+.netlify/
+
+# Claude Code local
+.claude/
