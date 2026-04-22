@@ -59,7 +59,7 @@ const SnapPage = {
               <span id="baseQtyUnit" style="font-size:13px;color:var(--gray-light);"></span>
             </div>
             <div id="basePreview" style="font-size:13px;color:var(--gray);margin-bottom:10px;"></div>
-            <button class="btn btn-primary btn-small" onclick="SnapPage.addToCart()">+ Ajouter un aliment</button>
+            <button class="btn btn-primary" onclick="SnapPage.addToCart()">Valider</button>
           </div>
         </div>
 
@@ -70,8 +70,8 @@ const SnapPage = {
             <div id="baseCartItems"></div>
             <div id="baseCartTotal" style="font-size:13px;font-weight:600;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"></div>
           </div>
-          <button class="btn btn-primary" onclick="SnapPage.submitCart(false)">Ajouter au journal →</button>
-          <button class="btn btn-secondary" style="margin-top:0.5rem;" onclick="SnapPage.submitCart(true)">💾 Ajouter + enregistrer ce repas</button>
+          <button class="btn btn-secondary" onclick="SnapPage.submitCart(true)">💾 Sauvegarder ce repas</button>
+          <button class="btn btn-primary" style="margin-top:0.5rem;" onclick="SnapPage.submitCart(false)">Ajouter au journal →</button>
         </div>
       </div>
 
