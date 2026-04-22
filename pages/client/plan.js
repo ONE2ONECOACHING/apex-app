@@ -70,6 +70,11 @@ const PlanPage = {
 
       const crKcal = Math.round(items.reduce((s, r) => s + parseFloat(r.calories), 0));
 
+      // Séparateur "OU" entre les 2 options petit-déj
+      if (cr === 'petit_dejeuner_sucre' && this.repas.some(r => r.creneau === 'petit_dejeuner_sale')) {
+        html += `<div style="text-align:center;font-size:12px;font-weight:700;color:var(--gray-muted);letter-spacing:0.1em;margin:4px 0;">— OU —</div>`;
+      }
+
       html += `<div class="creneau-section">
         <div class="creneau-header">
           <div class="creneau-title">${creneauLabel(cr)}</div>

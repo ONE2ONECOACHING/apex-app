@@ -8,6 +8,7 @@ const CoachPlanEditPage = {
   repas: [],
   semaine: 1,
   creneaux: ['petit_dejeuner_sale', 'petit_dejeuner_sucre', 'collation_matin', 'dejeuner', 'collation_apres_midi', 'diner', 'collation_soir'],
+  _searchCache: {},
 
   render() {
     return `
@@ -100,9 +101,15 @@ const CoachPlanEditPage = {
       const items = this.repas.filter(r => r.creneau === cr);
       const crKcal = Math.round(items.reduce((s, r) => s + parseFloat(r.calories), 0));
 
-      html += `<div class="card">
+      // Séparateur visuel "OU" entre les 2 options petit-déj
+      if (cr === 'petit_dejeuner_sucre') {
+        html += `<div style="text-align:center;font-size:12px;font-weight:700;color:var(--gray-muted);letter-spacing:0.1em;margin:4px 0;">— OU —</div>`;
+      }
+
+      const isAlt = cr === 'petit_dejeuner_sale' || cr === 'petit_dejeuner_sucre';
+      html += `<div class="card" ${isAlt ? 'style="border-style:dashed;"' : ''}>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div class="card-title" style="margin:0;">${creneauLabel(cr)}</div>
+          <div class="card-title" style="margin:0;">${creneauLabel(cr)}${isAlt ? ' <span style="font-size:10px;color:var(--gray-muted);font-weight:400;">(option)</span>' : ''}</div>
           <div style="font-size:13px;color:var(--gold);font-weight:600;">${crKcal} kcal</div>
         </div>`;
 
@@ -125,11 +132,20 @@ const CoachPlanEditPage = {
       html += `</div>`;
     });
 
-    // Totaux
-    const totalKcal = Math.round(this.repas.reduce((s, r) => s + parseFloat(r.calories), 0));
-    const totalProt = Math.round(this.repas.reduce((s, r) => s + parseFloat(r.proteines), 0));
-    const totalGluc = Math.round(this.repas.reduce((s, r) => s + parseFloat(r.glucides), 0));
-    const totalLip = Math.round(this.repas.reduce((s, r) => s + parseFloat(r.lipides), 0));
+    // Totaux — petit-déj salé/sucré sont des alternatives : on compte seulement le max des deux
+    const altCreneaux = ['petit_dejeuner_sale', 'petit_dejeuner_sucre'];
+    const altTotals = altCreneaux.map(cr => ({
+      kcal: this.repas.filter(r => r.creneau === cr).reduce((s, r) => s + parseFloat(r.calories), 0),
+      prot: this.repas.filter(r => r.creneau === cr).reduce((s, r) => s + parseFloat(r.proteines), 0),
+      gluc: this.repas.filter(r => r.creneau === cr).reduce((s, r) => s + parseFloat(r.glucides), 0),
+      lip:  this.repas.filter(r => r.creneau === cr).reduce((s, r) => s + parseFloat(r.lipides), 0),
+    }));
+    const bestAlt = altTotals[0].kcal >= altTotals[1].kcal ? altTotals[0] : altTotals[1];
+    const autres = this.repas.filter(r => !altCreneaux.includes(r.creneau));
+    const totalKcal = Math.round(autres.reduce((s, r) => s + parseFloat(r.calories), 0) + bestAlt.kcal);
+    const totalProt = Math.round(autres.reduce((s, r) => s + parseFloat(r.proteines), 0) + bestAlt.prot);
+    const totalGluc = Math.round(autres.reduce((s, r) => s + parseFloat(r.glucides), 0) + bestAlt.gluc);
+    const totalLip  = Math.round(autres.reduce((s, r) => s + parseFloat(r.lipides), 0) + bestAlt.lip);
 
     html += `<div class="card card-accent">
       <div class="card-title">Total du plan</div>
@@ -159,9 +175,10 @@ const CoachPlanEditPage = {
     const aliments = await db.searchAliments(q);
     if (aliments.length === 0) { resultsEl.classList.remove('show'); return; }
 
-    resultsEl.innerHTML = aliments.map(a => {
+    this._searchCache[creneau] = aliments;
+    resultsEl.innerHTML = aliments.map((a, i) => {
       const per = a.mode === 'unit' ? '/unité' : '/100g';
-      return `<div class="search-item" onclick="CoachPlanEditPage.addItem('${creneau}', ${JSON.stringify(a).replace(/'/g, "\\'")})">
+      return `<div class="search-item" onclick="CoachPlanEditPage.pickFromCache('${creneau}', ${i})">
         <div class="search-item-name">${a.nom}</div>
         <div class="search-item-macros">${a.calories} kcal ${per} · P:${a.proteines}g G:${a.glucides}g L:${a.lipides}g</div>
       </div>`;
@@ -177,6 +194,11 @@ const CoachPlanEditPage = {
         }
       });
     }, 100);
+  },
+
+  pickFromCache(creneau, index) {
+    const aliment = (this._searchCache[creneau] || [])[index];
+    if (aliment) this.addItem(creneau, aliment);
   },
 
   addItem(creneau, aliment) {
