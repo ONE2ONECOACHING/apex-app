@@ -4,6 +4,8 @@ const DashboardPage = {
   currentDate: todayStr(),
   plan: null,
   entries: [],
+  habitudes: [],
+  habitudesJournal: [],
   creneaux: ['petit_dejeuner', 'collation_matin', 'dejeuner', 'collation_apres_midi', 'diner', 'collation_soir'],
 
   render() {
@@ -61,8 +63,12 @@ const DashboardPage = {
   async loadData() {
     const profile = Router.userProfile;
     try {
-      this.plan = await db.getActivePlan(profile.id);
-      this.entries = await db.getJournalEntries(profile.id, this.currentDate);
+      [this.plan, this.entries, this.habitudes, this.habitudesJournal] = await Promise.all([
+        db.getActivePlan(profile.id),
+        db.getJournalEntries(profile.id, this.currentDate),
+        db.getHabitudes(profile.id),
+        db.getHabitudesJournal(profile.id, this.currentDate)
+      ]);
       this.renderContent();
     } catch (e) {
       document.getElementById('dashContent').innerHTML = '<div class="alert alert-error">Erreur de chargement. Réessaie.</div>';
@@ -160,6 +166,42 @@ const DashboardPage = {
       html += `<button class="btn btn-secondary" style="margin-top:0.5rem;" onclick="DashboardPage.generateRecap()">📊 Récap de la journée</button>`;
     }
 
+    // Habitudes
+    if (this.habitudes.length > 0) {
+      html += `<div class="card" style="margin-top:1rem;">
+        <div class="card-title">Mes habitudes</div>`;
+      this.habitudes.forEach(h => {
+        const journal = this.habitudesJournal.find(j => j.habitude_id === h.id);
+        if (h.mode === 'progress') {
+          const val = journal ? (journal.valeur || 0) : 0;
+          const pct = h.valeur_cible > 0 ? Math.min(100, Math.round(val / h.valeur_cible * 100)) : 0;
+          html += `<div style="margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div style="font-weight:500;font-size:14px;">${h.label}</div>
+              <div style="font-size:13px;color:var(--gray);">${val} / ${h.valeur_cible} ${h.unite || ''}</div>
+            </div>
+            <div class="pct-bar"><div class="pct-fill${pct >= 100 ? ' over' : ''}" style="width:${pct}%;background:var(--gold);"></div></div>
+            <input type="number" class="input" style="margin-top:6px;height:36px;" value="${val || ''}" placeholder="Entrer la valeur…" min="0"
+              onchange="DashboardPage.saveHabitude('${h.id}', this.value, null)">
+            ${h.tips ? `<div style="font-size:12px;color:var(--gray-muted);margin-top:4px;font-style:italic;">💡 ${h.tips}</div>` : ''}
+          </div>`;
+        } else {
+          const checked = journal ? journal.checked : false;
+          html += `<div style="margin-bottom:0.75rem;">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" style="width:20px;height:20px;accent-color:var(--gold);cursor:pointer;" ${checked ? 'checked' : ''}
+                onchange="DashboardPage.saveHabitude('${h.id}', null, this.checked)">
+              <div>
+                <div style="font-weight:500;font-size:14px;">${h.label}</div>
+                ${h.tips ? `<div style="font-size:12px;color:var(--gray-muted);font-style:italic;">💡 ${h.tips}</div>` : ''}
+              </div>
+            </label>
+          </div>`;
+        }
+      });
+      html += `</div>`;
+    }
+
     document.getElementById('dashContent').innerHTML = html;
   },
 
@@ -174,6 +216,23 @@ const DashboardPage = {
       this.entries = this.entries.filter(e => e.id !== id);
       this.renderContent();
     } catch (e) { alert('Erreur : ' + e.message); }
+  },
+
+  async saveHabitude(habitudeId, valeur, checked) {
+    const profile = Router.userProfile;
+    try {
+      const entry = {
+        profile_id: profile.id,
+        habitude_id: habitudeId,
+        date_entree: this.currentDate,
+        valeur: valeur !== null ? (parseFloat(valeur) || 0) : null,
+        checked: checked !== null ? checked : null
+      };
+      const saved = await db.upsertHabitudeJournal(entry);
+      const idx = this.habitudesJournal.findIndex(j => j.habitude_id === habitudeId);
+      if (idx >= 0) this.habitudesJournal[idx] = saved;
+      else this.habitudesJournal.push(saved);
+    } catch (e) { console.error('Erreur habitude :', e); }
   },
 
   async generateRecap() {

@@ -258,5 +258,55 @@ const db = {
       .order('semaine');
     if (error) throw error;
     return data;
+  },
+
+  // Habitudes
+  async getHabitudes(profileId) {
+    const { data, error } = await getSupabase()
+      .from('habitudes_config')
+      .select('*')
+      .eq('profile_id', profileId)
+      .eq('actif', true)
+      .order('position');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async upsertHabitudeConfig(habitude) {
+    const { data, error } = await getSupabase()
+      .from('habitudes_config')
+      .upsert(habitude)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteHabitudeConfig(id) {
+    const { error } = await getSupabase()
+      .from('habitudes_config')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async getHabitudesJournal(profileId, date) {
+    const { data, error } = await getSupabase()
+      .from('habitudes_journal')
+      .select('*')
+      .eq('profile_id', profileId)
+      .eq('date_entree', date);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async upsertHabitudeJournal(entry) {
+    const { data, error } = await getSupabase()
+      .from('habitudes_journal')
+      .upsert(entry, { onConflict: 'habitude_id,date_entree' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 };

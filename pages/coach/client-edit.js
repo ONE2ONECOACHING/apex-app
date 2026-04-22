@@ -46,6 +46,7 @@ const CoachClientEditPage = {
       <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
         <button class="btn btn-primary btn-small" onclick="Router.navigate('coach-plan-edit',{clientId:'${c.id}'})">📋 Plan alimentaire</button>
         <button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-journal',{clientId:'${c.id}'})">📊 Journal</button>
+        <button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-habits-edit',{clientId:'${c.id}'})">✅ Habitudes</button>
       </div>
 
       <div class="card">
