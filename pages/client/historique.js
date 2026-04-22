@@ -21,7 +21,6 @@ const HistoriquePage = {
       <nav class="nav-bottom"><div class="nav-inner">
         <a class="nav-item" href="#dashboard"><span class="nav-icon">📊</span><span class="nav-label">Suivi</span></a>
         <a class="nav-item" href="#plan"><span class="nav-icon">📋</span><span class="nav-label">Plan</span></a>
-        <a class="nav-item" href="#snap"><span class="nav-icon">➕</span><span class="nav-label">Ajouter</span></a>
         <a class="nav-item active" href="#historique"><span class="nav-icon">📈</span><span class="nav-label">Historique</span></a>
       </div></nav>`;
   },
