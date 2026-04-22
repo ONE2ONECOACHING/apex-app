@@ -63,12 +63,16 @@ const DashboardPage = {
   async loadData() {
     const profile = Router.userProfile;
     try {
-      [this.plan, this.entries, this.habitudes, this.habitudesJournal] = await Promise.all([
+      [this.plan, this.entries] = await Promise.all([
         db.getActivePlan(profile.id),
-        db.getJournalEntries(profile.id, this.currentDate),
-        db.getHabitudes(profile.id),
-        db.getHabitudesJournal(profile.id, this.currentDate)
+        db.getJournalEntries(profile.id, this.currentDate)
       ]);
+      try {
+        [this.habitudes, this.habitudesJournal] = await Promise.all([
+          db.getHabitudes(profile.id),
+          db.getHabitudesJournal(profile.id, this.currentDate)
+        ]);
+      } catch (_) { this.habitudes = []; this.habitudesJournal = []; }
       this.renderContent();
     } catch (e) {
       document.getElementById('dashContent').innerHTML = '<div class="alert alert-error">Erreur de chargement. Réessaie.</div>';
