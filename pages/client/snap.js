@@ -21,6 +21,7 @@ const SnapPage = {
           <div class="app-logo">ONE2ONE — APEX</div>
           <div class="app-title">Ajouter un repas</div>
         </div>
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:13px;" onclick="history.back()">← Retour</button>
       </div>
 
       <div class="field">
