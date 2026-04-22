@@ -47,7 +47,7 @@ const PlanPage = {
 
     // Objectifs
     html += `<div class="card card-dark">
-      <div class="card-title">Objectifs — Semaine ${this.plan.semaine} · ${this.plan.phase}</div>
+      <div class="card-title">Objectifs — ${this.plan.phase ? this.plan.phase.charAt(0).toUpperCase() + this.plan.phase.slice(1) : ''}</div>
       <div class="macros-big">
         <span class="macros-big-val">${this.plan.calories_cible.toLocaleString('fr-FR')}</span>
         <span class="macros-big-unit">kcal / jour</span>
