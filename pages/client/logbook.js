@@ -96,17 +96,17 @@ const LogbookPage = {
         <div class="macro-item">
           <div class="macro-val">${Math.round(c.proteines)}g<span style="font-size:12px;color:var(--gray-light);font-weight:400;"> / ${p.proteines_cible}g</span></div>
           <div class="macro-label">Protéines</div>
-          ${pctBar(c.proteines, p.proteines_cible)}
+          ${pctBar(c.proteines, p.proteines_cible, 'var(--macro-p)')}
         </div>
         <div class="macro-item">
           <div class="macro-val">${Math.round(c.glucides)}g<span style="font-size:12px;color:var(--gray-light);font-weight:400;"> / ${p.glucides_cible}g</span></div>
           <div class="macro-label">Glucides</div>
-          ${pctBar(c.glucides, p.glucides_cible)}
+          ${pctBar(c.glucides, p.glucides_cible, 'var(--macro-g)')}
         </div>
         <div class="macro-item">
           <div class="macro-val">${Math.round(c.lipides)}g<span style="font-size:12px;color:var(--gray-light);font-weight:400;"> / ${p.lipides_cible}g</span></div>
           <div class="macro-label">Lipides</div>
-          ${pctBar(c.lipides, p.lipides_cible)}
+          ${pctBar(c.lipides, p.lipides_cible, 'var(--macro-l)')}
         </div>
       </div>
     </div>`;

@@ -131,10 +131,11 @@ function creneauIcon(code) {
   return icons[code] || '🍴';
 }
 
-function pctBar(current, target) {
+function pctBar(current, target, color) {
   const pct = target > 0 ? Math.min(100, Math.round(current / target * 100)) : 0;
   const over = current > target;
-  return `<div class="pct-bar"><div class="pct-fill ${over ? 'over' : ''}" style="width:${pct}%"></div></div>`;
+  const style = color ? `width:${pct}%;background:${color}` : `width:${pct}%`;
+  return `<div class="pct-bar"><div class="pct-fill ${over ? 'over' : ''}" style="${style}"></div></div>`;
 }
 
 function noteEmoji(note) {
