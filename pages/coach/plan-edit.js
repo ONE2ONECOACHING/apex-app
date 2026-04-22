@@ -17,7 +17,7 @@ const CoachPlanEditPage = {
           <div class="app-logo">ONE2ONE — APEX · COACH</div>
           <div class="app-title" id="peTitle">Plan alimentaire</div>
         </div>
-        <button class="header-btn" onclick="history.back()">←</button>
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:13px;" onclick="history.back()">← Retour</button>
       </div>
       <div id="peContent"><div class="spinner" style="margin-top:2rem;"></div></div>`;
   },
