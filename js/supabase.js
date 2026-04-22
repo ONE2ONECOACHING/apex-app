@@ -300,6 +300,18 @@ const db = {
     return data || [];
   },
 
+  async getHabitudesJournalRange(profileId, dateFrom, dateTo) {
+    const { data, error } = await getSupabase()
+      .from('habitudes_journal')
+      .select('*')
+      .eq('profile_id', profileId)
+      .gte('date_entree', dateFrom)
+      .lte('date_entree', dateTo)
+      .eq('checked', true);
+    if (error) throw error;
+    return data || [];
+  },
+
   async upsertHabitudeJournal(entry) {
     const { data, error } = await getSupabase()
       .from('habitudes_journal')

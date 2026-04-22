@@ -1,4 +1,4 @@
-// APEX APP — Coach : Habitudes client
+// APEX APP — Coach : Habitudes client (cases à cocher uniquement)
 
 const CoachHabitsEditPage = {
   clientId: null,
@@ -35,10 +35,7 @@ const CoachHabitsEditPage = {
 
   renderList() {
     const el = document.getElementById('habContent');
-    const typeLabels = {
-      eau: '💧 Hydratation', pas: '👟 Pas', sommeil: '😴 Sommeil',
-      digestion: '🥗 Digestion', stress: '🧘 Stress', custom: '⭐ Personnalisé'
-    };
+    const typeIcons = { eau: '💧', pas: '👟', sommeil: '😴', digestion: '🥗', stress: '🧘', custom: '⭐' };
 
     let html = `<button class="btn btn-primary" style="margin-bottom:1rem;" onclick="CoachHabitsEditPage.openForm()">+ Ajouter une habitude</button>`;
 
@@ -49,9 +46,7 @@ const CoachHabitsEditPage = {
         <div class="card" style="margin-bottom:0.75rem;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div style="flex:1;min-width:0;">
-              <div style="font-size:12px;color:var(--gray-muted);margin-bottom:2px;">${typeLabels[h.type] || h.type}</div>
-              <div style="font-weight:600;">${h.label}</div>
-              ${h.mode === 'progress' ? `<div style="font-size:13px;color:var(--gray);">Objectif : ${h.valeur_cible} ${h.unite}</div>` : '<div style="font-size:13px;color:var(--gray);">Case à cocher</div>'}
+              <div style="font-weight:600;">${typeIcons[h.type] || '✅'} ${h.label}</div>
               ${h.tips ? `<div style="font-size:12px;color:var(--gray-muted);margin-top:4px;font-style:italic;">${h.tips}</div>` : ''}
             </div>
             <div style="display:flex;gap:6px;margin-left:8px;">
@@ -69,39 +64,26 @@ const CoachHabitsEditPage = {
     this._editIdx = idx !== undefined ? idx : null;
     const h = idx !== undefined ? this.habitudes[idx] : null;
     const types = [
-      { v: 'eau', l: '💧 Hydratation' }, { v: 'pas', l: '👟 Pas' },
+      { v: 'eau', l: '💧 Hydratation' }, { v: 'pas', l: '👟 Marche / Pas' },
       { v: 'sommeil', l: '😴 Sommeil' }, { v: 'digestion', l: '🥗 Digestion' },
       { v: 'stress', l: '🧘 Stress' }, { v: 'custom', l: '⭐ Personnalisé' }
     ];
+    const defaultLabels = { eau: 'Boire 2L d\'eau', pas: '8000 pas aujourd\'hui', sommeil: 'Routine sommeil respectée', digestion: 'Repas pris sans stress', stress: 'Moment de relaxation', custom: 'Mon objectif du jour' };
     const currentType = h ? h.type : 'eau';
-    const currentMode = h ? h.mode : 'progress';
 
     document.getElementById('habModal').innerHTML = `
       <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('habModal').innerHTML=''">
         <div class="modal">
           <div class="modal-title">${h ? 'Modifier' : 'Nouvelle habitude'} <button class="modal-close" onclick="document.getElementById('habModal').innerHTML=''">×</button></div>
           <div class="field">
-            <label class="field-label">Type</label>
-            <select class="input" id="habType" onchange="CoachHabitsEditPage.onTypeChange()">
+            <label class="field-label">Catégorie</label>
+            <select class="input" id="habType" onchange="document.getElementById('habLabel').value=({'eau':'Boire 2L d\\'eau','pas':'8000 pas aujourd\\'hui','sommeil':'Routine sommeil respectée','digestion':'Repas pris sans stress','stress':'Moment de relaxation','custom':'Mon objectif du jour'})[this.value]||''">
               ${types.map(t => `<option value="${t.v}" ${currentType === t.v ? 'selected' : ''}>${t.l}</option>`).join('')}
             </select>
           </div>
           <div class="field">
-            <label class="field-label">Label (visible par le client)</label>
-            <input class="input" id="habLabel" value="${h ? h.label : 'Boire de l\'eau'}">
-          </div>
-          <div class="field">
-            <label class="field-label">Mode</label>
-            <select class="input" id="habMode" onchange="CoachHabitsEditPage.onModeChange()">
-              <option value="progress" ${currentMode === 'progress' ? 'selected' : ''}>Barre de progression (numérique)</option>
-              <option value="check" ${currentMode === 'check' ? 'selected' : ''}>Case à cocher</option>
-            </select>
-          </div>
-          <div id="habProgressFields" style="${currentMode === 'progress' ? '' : 'display:none;'}">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div class="field"><label class="field-label">Objectif</label><input class="input" type="number" id="habTarget" value="${h && h.valeur_cible ? h.valeur_cible : ''}"></div>
-              <div class="field"><label class="field-label">Unité</label><input class="input" id="habUnite" value="${h && h.unite ? h.unite : ''}"></div>
-            </div>
+            <label class="field-label">Libellé (visible par le client)</label>
+            <input class="input" id="habLabel" value="${h ? h.label : defaultLabels[currentType]}">
           </div>
           <div class="field">
             <label class="field-label">Conseil affiché au client (optionnel)</label>
@@ -113,38 +95,14 @@ const CoachHabitsEditPage = {
       </div>`;
   },
 
-  onTypeChange() {
-    const type = document.getElementById('habType').value;
-    const defaults = {
-      eau: { label: 'Boire de l\'eau', mode: 'progress', target: 2, unite: 'L' },
-      pas: { label: 'Nombre de pas', mode: 'progress', target: 8000, unite: 'pas' },
-      sommeil: { label: 'Routine sommeil', mode: 'check' },
-      digestion: { label: 'Santé digestive', mode: 'check' },
-      stress: { label: 'Gestion du stress', mode: 'check' },
-      custom: { label: 'Mon objectif', mode: 'check' }
-    };
-    const d = defaults[type] || defaults.custom;
-    document.getElementById('habLabel').value = d.label;
-    document.getElementById('habMode').value = d.mode;
-    if (d.target) document.getElementById('habTarget').value = d.target;
-    if (d.unite) document.getElementById('habUnite').value = d.unite;
-    this.onModeChange();
-  },
-
-  onModeChange() {
-    const mode = document.getElementById('habMode').value;
-    document.getElementById('habProgressFields').style.display = mode === 'progress' ? '' : 'none';
-  },
-
   async saveHabitude() {
-    const mode = document.getElementById('habMode').value;
     const habitude = {
       profile_id: this.clientId,
       type: document.getElementById('habType').value,
       label: document.getElementById('habLabel').value.trim(),
-      mode,
-      valeur_cible: mode === 'progress' ? (parseFloat(document.getElementById('habTarget').value) || null) : null,
-      unite: mode === 'progress' ? (document.getElementById('habUnite').value.trim() || null) : null,
+      mode: 'check',
+      valeur_cible: null,
+      unite: null,
       tips: document.getElementById('habTips').value.trim() || null,
       actif: true,
       position: this._editIdx !== null ? this.habitudes[this._editIdx].position : this.habitudes.length
@@ -152,7 +110,7 @@ const CoachHabitsEditPage = {
     if (this._editIdx !== null) habitude.id = this.habitudes[this._editIdx].id;
 
     if (!habitude.label) {
-      document.getElementById('habSaveMsg').innerHTML = '<div class="alert alert-error">Label obligatoire.</div>';
+      document.getElementById('habSaveMsg').innerHTML = '<div class="alert alert-error">Libellé obligatoire.</div>';
       return;
     }
 

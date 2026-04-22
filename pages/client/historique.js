@@ -4,6 +4,8 @@ const HistoriquePage = {
   range: 7,
   data: [],
   plan: null,
+  habitudes: [],
+  habitudesJournal: [],
 
   render() {
     return `
@@ -44,9 +46,15 @@ const HistoriquePage = {
     const today = new Date();
     const from = new Date(today);
     from.setDate(from.getDate() - this.range + 1);
+    const dateFrom = formatDate(from);
+    const dateTo = formatDate(today);
 
     try {
-      this.data = await db.getJournalRange(profile.id, formatDate(from), formatDate(today));
+      [this.data, this.habitudes, this.habitudesJournal] = await Promise.all([
+        db.getJournalRange(profile.id, dateFrom, dateTo),
+        db.getHabitudes(profile.id).catch(() => []),
+        db.getHabitudesJournalRange(profile.id, dateFrom, dateTo).catch(() => [])
+      ]);
       this.renderContent();
     } catch (e) {
       document.getElementById('histContent').innerHTML = '<div class="alert alert-error">Erreur de chargement.</div>';
@@ -106,6 +114,16 @@ const HistoriquePage = {
           <span style="margin-left:auto;font-size:12px;">${entries.length} repas</span>
         </div>
         ${target.calories_cible ? pctBar(cal, target.calories_cible) : ''}
+        ${(() => {
+          const checked = this.habitudesJournal.filter(j => j.date_entree === date);
+          if (checked.length === 0) return '';
+          return `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
+            ${checked.map(j => {
+              const h = this.habitudes.find(hh => hh.id === j.habitude_id);
+              return h ? `<span style="font-size:11px;background:var(--gold-light);color:var(--gold);padding:2px 8px;border-radius:20px;">✅ ${h.label}</span>` : '';
+            }).join('')}
+          </div>`;
+        })()}
       </div>`;
     });
 

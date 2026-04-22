@@ -176,32 +176,17 @@ const DashboardPage = {
         <div class="card-title">Mes habitudes</div>`;
       this.habitudes.forEach(h => {
         const journal = this.habitudesJournal.find(j => j.habitude_id === h.id);
-        if (h.mode === 'progress') {
-          const val = journal ? (journal.valeur || 0) : 0;
-          const pct = h.valeur_cible > 0 ? Math.min(100, Math.round(val / h.valeur_cible * 100)) : 0;
-          html += `<div style="margin-bottom:1rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        const checked = journal ? journal.checked : false;
+        html += `<div style="margin-bottom:0.75rem;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" style="width:20px;height:20px;accent-color:var(--gold);cursor:pointer;" ${checked ? 'checked' : ''}
+              onchange="DashboardPage.saveHabitude('${h.id}', this.checked)">
+            <div>
               <div style="font-weight:500;font-size:14px;">${h.label}</div>
-              <div style="font-size:13px;color:var(--gray);">${val} / ${h.valeur_cible} ${h.unite || ''}</div>
+              ${h.tips ? `<div style="font-size:12px;color:var(--gray-muted);font-style:italic;">💡 ${h.tips}</div>` : ''}
             </div>
-            <div class="pct-bar"><div class="pct-fill${pct >= 100 ? ' over' : ''}" style="width:${pct}%;background:var(--gold);"></div></div>
-            <input type="number" class="input" style="margin-top:6px;height:36px;" value="${val || ''}" placeholder="Entrer la valeur…" min="0"
-              onchange="DashboardPage.saveHabitude('${h.id}', this.value, null)">
-            ${h.tips ? `<div style="font-size:12px;color:var(--gray-muted);margin-top:4px;font-style:italic;">💡 ${h.tips}</div>` : ''}
-          </div>`;
-        } else {
-          const checked = journal ? journal.checked : false;
-          html += `<div style="margin-bottom:0.75rem;">
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-              <input type="checkbox" style="width:20px;height:20px;accent-color:var(--gold);cursor:pointer;" ${checked ? 'checked' : ''}
-                onchange="DashboardPage.saveHabitude('${h.id}', null, this.checked)">
-              <div>
-                <div style="font-weight:500;font-size:14px;">${h.label}</div>
-                ${h.tips ? `<div style="font-size:12px;color:var(--gray-muted);font-style:italic;">💡 ${h.tips}</div>` : ''}
-              </div>
-            </label>
-          </div>`;
-        }
+          </label>
+        </div>`;
       });
       html += `</div>`;
     }
@@ -222,17 +207,15 @@ const DashboardPage = {
     } catch (e) { alert('Erreur : ' + e.message); }
   },
 
-  async saveHabitude(habitudeId, valeur, checked) {
+  async saveHabitude(habitudeId, checked) {
     const profile = Router.userProfile;
     try {
-      const entry = {
+      const saved = await db.upsertHabitudeJournal({
         profile_id: profile.id,
         habitude_id: habitudeId,
         date_entree: this.currentDate,
-        valeur: valeur !== null ? (parseFloat(valeur) || 0) : null,
-        checked: checked !== null ? checked : null
-      };
-      const saved = await db.upsertHabitudeJournal(entry);
+        checked
+      });
       const idx = this.habitudesJournal.findIndex(j => j.habitude_id === habitudeId);
       if (idx >= 0) this.habitudesJournal[idx] = saved;
       else this.habitudesJournal.push(saved);
@@ -247,9 +230,16 @@ const DashboardPage = {
     try {
       const consumed = this.getConsumed();
       const recap = await SnapCalories.generateDailyRecap(this.plan, consumed, this.entries);
+      const checkedHabits = this.habitudes.filter(h => this.habitudesJournal.find(j => j.habitude_id === h.id && j.checked));
+      const habitsHtml = checkedHabits.length > 0
+        ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);">
+            <div style="font-size:12px;color:var(--gray-muted);margin-bottom:6px;">Habitudes cochées</div>
+            ${checkedHabits.map(h => `<div style="font-size:13px;margin-bottom:3px;">✅ ${h.label}</div>`).join('')}
+           </div>` : '';
       recapEl.innerHTML = `<div class="recap-card">
         <div class="recap-title">${recap.emoji || '📊'} ${recap.titre || 'Récap du jour'} <span class="recap-note">${recap.note}/10</span></div>
         <div class="recap-text">${recap.resume}</div>
+        ${habitsHtml}
       </div>`;
     } catch (e) {
       recapEl.innerHTML = '<div class="alert alert-error">Impossible de générer le récap pour le moment.</div>';
