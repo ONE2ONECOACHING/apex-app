@@ -21,7 +21,8 @@ const HistoriquePage = {
       </div>
       <div id="histContent"><div class="spinner" style="margin-top:2rem;"></div></div>
       <nav class="nav-bottom"><div class="nav-inner">
-        <a class="nav-item" href="#dashboard"><span class="nav-icon">📊</span><span class="nav-label">Suivi</span></a>
+        <a class="nav-item" href="#dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
+        <a class="nav-item" href="#logbook"><span class="nav-icon">📖</span><span class="nav-label">Logbook</span></a>
         <a class="nav-item" href="#plan"><span class="nav-icon">📋</span><span class="nav-label">Plan</span></a>
         <a class="nav-item active" href="#historique"><span class="nav-icon">📈</span><span class="nav-label">Historique</span></a>
       </div></nav>`;
@@ -103,7 +104,7 @@ const HistoriquePage = {
       const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
       const diffColor = Math.abs(diff) < 100 ? 'var(--success)' : diff > 0 ? 'var(--error)' : 'var(--gold)';
 
-      html += `<div class="card" style="cursor:pointer;" onclick="DashboardPage.currentDate='${date}';window.location.hash='#dashboard';">
+      html += `<div class="card" style="cursor:pointer;" onclick="LogbookPage.currentDate='${date}';window.location.hash='#logbook';">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <div style="font-size:14px;font-weight:600;">${formatDateFR(date)}</div>
           ${target.calories_cible ? `<div style="font-size:12px;font-weight:600;color:${diffColor};">${diffLabel} kcal</div>` : ''}

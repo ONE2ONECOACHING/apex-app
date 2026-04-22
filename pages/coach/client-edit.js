@@ -58,8 +58,12 @@ const CoachClientEditPage = {
           <div class="field"><label class="field-label">Âge</label><input class="input" type="number" id="ceAge" value="${c.age || ''}"></div>
         </div>
         <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Poids (kg)</label><input class="input" type="number" id="cePoids" value="${c.poids || ''}" step="0.1"></div>
+          <div class="field"><label class="field-label">Poids actuel (kg)</label><input class="input" type="number" id="cePoids" value="${c.poids || ''}" step="0.1"></div>
           <div class="field"><label class="field-label">Taille (cm)</label><input class="input" type="number" id="ceTaille" value="${c.taille || ''}"></div>
+        </div>
+        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field"><label class="field-label">Poids de départ (kg)</label><input class="input" type="number" id="cePoidsDepart" value="${c.poids_depart || ''}" step="0.1"></div>
+          <div class="field"><label class="field-label">Poids objectif (kg)</label><input class="input" type="number" id="cePoidsObjectif" value="${c.poids_objectif || ''}" step="0.1"></div>
         </div>
       </div>
 
@@ -169,6 +173,8 @@ const CoachClientEditPage = {
       age: +document.getElementById('ceAge').value || null,
       poids: +document.getElementById('cePoids').value || null,
       taille: +document.getElementById('ceTaille').value || null,
+      poids_depart: +document.getElementById('cePoidsDepart').value || null,
+      poids_objectif: +document.getElementById('cePoidsObjectif').value || null,
       type_metier: document.getElementById('ceMetier').value,
       pas_par_jour: +document.getElementById('cePas').value || 5000,
       objectif: document.getElementById('ceObjectif').value,

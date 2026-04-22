@@ -260,6 +260,28 @@ const db = {
     return data;
   },
 
+  // Poids journal
+  async getPoidsHistory(profileId, limit = 12) {
+    const { data, error } = await getSupabase()
+      .from('poids_journal')
+      .select('*')
+      .eq('profile_id', profileId)
+      .order('date_entree', { ascending: true })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async logPoids(profileId, date, poids) {
+    const { data, error } = await getSupabase()
+      .from('poids_journal')
+      .upsert({ profile_id: profileId, date_entree: date, poids }, { onConflict: 'profile_id,date_entree' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   // Habitudes
   async getHabitudes(profileId) {
     const { data, error } = await getSupabase()

@@ -16,7 +16,8 @@ const PlanPage = {
       </div>
       <div id="planContent"><div class="spinner" style="margin-top:3rem;"></div></div>
       <nav class="nav-bottom"><div class="nav-inner">
-        <a class="nav-item" href="#dashboard"><span class="nav-icon">📊</span><span class="nav-label">Suivi</span></a>
+        <a class="nav-item" href="#dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
+        <a class="nav-item" href="#logbook"><span class="nav-icon">📖</span><span class="nav-label">Logbook</span></a>
         <a class="nav-item active" href="#plan"><span class="nav-icon">📋</span><span class="nav-label">Plan</span></a>
         <a class="nav-item" href="#historique"><span class="nav-icon">📈</span><span class="nav-label">Historique</span></a>
       </div></nav>`;

@@ -39,7 +39,7 @@ const Router = {
     }
 
     // Cloisonnement role ↔ route
-    const clientRoutes = ['dashboard', 'plan', 'snap', 'historique'];
+    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique'];
     const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
@@ -60,6 +60,7 @@ const Router = {
       case 'login': app.innerHTML = LoginPage.render(); LoginPage.init(); break;
       case 'dashboard': app.innerHTML = DashboardPage.render(); DashboardPage.init(); break;
       case 'plan': app.innerHTML = PlanPage.render(); PlanPage.init(); break;
+      case 'logbook': app.innerHTML = LogbookPage.render(); LogbookPage.init(); break;
       case 'snap': app.innerHTML = SnapPage.render(); SnapPage.init(); break;
       case 'historique': app.innerHTML = HistoriquePage.render(); HistoriquePage.init(); break;
       case 'coach-clients': app.innerHTML = CoachClientsPage.render(); CoachClientsPage.init(); break;
