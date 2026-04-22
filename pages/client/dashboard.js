@@ -147,9 +147,6 @@ const DashboardPage = {
           <div class="entry-kcal">${e.calories} ${e.note ? '<span class="entry-note">' + noteEmoji(e.note) + '</span>' : ''}</div>
           <button class="entry-delete" onclick="DashboardPage.deleteEntry('${e.id}')" title="Supprimer">×</button>
         </div>`;
-        if (e.feedback) {
-          html += `<div class="entry-feedback">💡 ${e.feedback}</div>`;
-        }
       });
 
       if (this.creneaux.includes(cr)) {
