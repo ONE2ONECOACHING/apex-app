@@ -319,7 +319,7 @@ const CoachPlanEditPage = {
 
       const msg = document.getElementById('peSaveMsg');
       if (msg) {
-        msg.innerHTML = '<div class="alert alert-success">✅ Plan semaine ' + this.semaine + ' enregistré</div>';
+        msg.innerHTML = '<div class="alert alert-success">✅ Plan enregistré</div>';
         setTimeout(() => { msg.innerHTML = ''; }, 3000);
       }
     } catch (e) {
