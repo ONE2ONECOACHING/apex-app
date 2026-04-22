@@ -221,6 +221,35 @@ const db = {
     return data;
   },
 
+  // Repas enregistrés
+  async getSavedMeals(profileId) {
+    const { data, error } = await getSupabase()
+      .from('repas_enregistres')
+      .select('*')
+      .eq('profile_id', profileId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async saveMeal(meal) {
+    const { data, error } = await getSupabase()
+      .from('repas_enregistres')
+      .insert(meal)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteSavedMeal(id) {
+    const { error } = await getSupabase()
+      .from('repas_enregistres')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   async getBilans(profileId) {
     const { data, error } = await getSupabase()
       .from('bilans_hebdo')
