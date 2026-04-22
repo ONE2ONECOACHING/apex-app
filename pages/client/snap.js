@@ -10,6 +10,7 @@ const SnapPage = {
   mode: 'base',
   _baseCache: [],
   _baseSelected: null,
+  _cart: [],
   _savedMeals: [],
   contexts: ['Restaurant', 'Maison', 'Travail / Traiteur', 'Fast-food', 'Sport'],
 
@@ -42,24 +43,35 @@ const SnapPage = {
 
       <!-- MODE BASE -->
       <div id="snapModeBase">
-        <div class="search-wrap" style="margin-bottom:1rem;">
+        <div class="search-wrap" style="margin-bottom:0.75rem;">
           <span class="search-icon">🔍</span>
           <input class="input search-input" id="baseSearchInput" placeholder="Chercher un aliment…"
             oninput="SnapPage.baseSearch(this)" autocomplete="off">
           <div class="search-results" id="baseResults"></div>
         </div>
+
         <div id="baseSelected" style="display:none;">
-          <div class="card">
+          <div class="card" style="margin-bottom:0.5rem;">
             <div id="baseSelectedName" style="font-size:14px;font-weight:700;margin-bottom:8px;"></div>
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
               <label class="field-label" style="margin:0;white-space:nowrap;">Quantité</label>
               <input class="input" type="number" id="baseQty" style="width:90px;" oninput="SnapPage.updateBasePreview()">
               <span id="baseQtyUnit" style="font-size:13px;color:var(--gray-light);"></span>
             </div>
             <div id="basePreview" style="font-size:13px;color:var(--gray);margin-bottom:10px;"></div>
+            <button class="btn btn-primary btn-small" onclick="SnapPage.addToCart()">+ Ajouter un aliment</button>
           </div>
-          <button class="btn btn-primary" onclick="SnapPage.addFromBase(false)">Ajouter au journal →</button>
-          <button class="btn btn-secondary" style="margin-top:0.5rem;" onclick="SnapPage.addFromBase(true)">💾 Ajouter + enregistrer ce repas</button>
+        </div>
+
+        <!-- Panier -->
+        <div id="baseCart" style="display:none;">
+          <div class="card">
+            <div class="card-title">Repas en cours</div>
+            <div id="baseCartItems"></div>
+            <div id="baseCartTotal" style="font-size:13px;font-weight:600;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"></div>
+          </div>
+          <button class="btn btn-primary" onclick="SnapPage.submitCart(false)">Ajouter au journal →</button>
+          <button class="btn btn-secondary" style="margin-top:0.5rem;" onclick="SnapPage.submitCart(true)">💾 Ajouter + enregistrer ce repas</button>
         </div>
       </div>
 
@@ -133,6 +145,7 @@ const SnapPage = {
     if (params.date) this.date = params.date;
     this.mode = 'base';
     this._baseSelected = null;
+    this._cart = [];
 
     const select = document.getElementById('snapCreneau');
     if (select) select.value = this.creneau;
@@ -213,30 +226,85 @@ const SnapPage = {
       `<strong>${kcal} kcal</strong> · <span style="color:#3B82F6;">P ${p}g</span> · <span style="color:#C4820A;">G ${g}g</span> · <span style="color:#E05252;">L ${l}g</span>`;
   },
 
-  async addFromBase(andSave) {
+  addToCart() {
     const a = this._baseSelected;
-    const profile = Router.userProfile;
-    if (!a || !profile) return;
+    if (!a) return;
     const qty = +document.getElementById('baseQty').value || 0;
     if (qty <= 0) { alert('Quantité invalide.'); return; }
     const factor = a.mode === 'unit' ? qty : qty / 100;
-    const entry = {
-      profile_id: profile.id,
-      date_entree: this.date,
-      creneau: this.creneau,
+    this._cart.push({
       nom: a.nom,
+      quantite: qty,
+      unite: a.mode === 'unit' ? 'u' : 'g',
       calories: Math.round(a.calories * factor),
       proteines: Math.round(a.proteines * factor),
       glucides: Math.round(a.glucides * factor),
-      lipides: Math.round(a.lipides * factor),
-      source: 'base'
-    };
+      lipides: Math.round(a.lipides * factor)
+    });
+    // Reset sélection
+    this._baseSelected = null;
+    document.getElementById('baseSelected').style.display = 'none';
+    document.getElementById('baseSearchInput').value = '';
+    this.renderCart();
+  },
+
+  renderCart() {
+    const cart = this._cart;
+    if (cart.length === 0) {
+      document.getElementById('baseCart').style.display = 'none';
+      return;
+    }
+    document.getElementById('baseCart').style.display = 'block';
+
+    document.getElementById('baseCartItems').innerHTML = cart.map((item, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:13px;font-weight:600;">${item.nom} <span style="color:var(--gray-muted);font-weight:400;">${item.quantite}${item.unite}</span></div>
+          <div style="font-size:11px;color:var(--gray-muted);">${item.calories} kcal · <span style="color:#3B82F6;">P${item.proteines}g</span> · <span style="color:#C4820A;">G${item.glucides}g</span> · <span style="color:#E05252;">L${item.lipides}g</span></div>
+        </div>
+        <button onclick="SnapPage.removeFromCart(${i})" style="background:none;border:none;font-size:18px;color:var(--gray-muted);cursor:pointer;padding:4px;">×</button>
+      </div>
+    `).join('');
+
+    const total = cart.reduce((acc, item) => ({
+      kcal: acc.kcal + item.calories,
+      p: acc.p + item.proteines,
+      g: acc.g + item.glucides,
+      l: acc.l + item.lipides
+    }), { kcal: 0, p: 0, g: 0, l: 0 });
+
+    document.getElementById('baseCartTotal').innerHTML =
+      `<strong>${total.kcal} kcal</strong> · <span style="color:#3B82F6;">P ${total.p}g</span> · <span style="color:#C4820A;">G ${total.g}g</span> · <span style="color:#E05252;">L ${total.l}g</span>`;
+  },
+
+  removeFromCart(index) {
+    this._cart.splice(index, 1);
+    this.renderCart();
+  },
+
+  async submitCart(andSave) {
+    const profile = Router.userProfile;
+    if (!profile || this._cart.length === 0) return;
     try {
-      await db.addJournalEntry(entry);
+      for (const item of this._cart) {
+        await db.addJournalEntry({
+          profile_id: profile.id,
+          date_entree: this.date,
+          creneau: this.creneau,
+          nom: item.nom,
+          calories: item.calories,
+          proteines: item.proteines,
+          glucides: item.glucides,
+          lipides: item.lipides,
+          source: 'base'
+        });
+      }
       if (andSave) {
-        this._pendingSave = { nom: a.nom, calories: entry.calories, proteines: entry.proteines, glucides: entry.glucides, lipides: entry.lipides };
-        this.openSaveModal(a.nom);
+        const total = this._cart.reduce((acc, i) => ({ calories: acc.calories + i.calories, proteines: acc.proteines + i.proteines, glucides: acc.glucides + i.glucides, lipides: acc.lipides + i.lipides }), { calories: 0, proteines: 0, glucides: 0, lipides: 0 });
+        this._pendingSave = total;
+        this.openSaveModal(this._cart.map(i => i.nom).join(' + '));
       } else {
+        this._cart = [];
         Router.navigate('dashboard');
       }
     } catch (e) { alert('Erreur : ' + e.message); }
