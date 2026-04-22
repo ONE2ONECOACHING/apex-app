@@ -10,6 +10,7 @@ const SnapPage = {
   mode: 'base',
   _baseCache: [],
   _baseSelected: null,
+  _pendingSave: null,
   _cart: [],
   _savedMeals: [],
   contexts: ['Restaurant', 'Maison', 'Travail / Traiteur', 'Fast-food', 'Sport'],
@@ -306,7 +307,7 @@ const SnapPage = {
         this.openSaveModal(this._cart.map(i => i.nom).join(' + '));
       } else {
         this._cart = [];
-        Router.navigate('dashboard');
+        Router.navigate('logbook');
       }
     } catch (e) { alert('Erreur : ' + e.message); }
   },
@@ -444,7 +445,7 @@ const SnapPage = {
         this._pendingSave = { nom: r.dish_name || 'Plat', calories: entry.calories, proteines: entry.proteines, glucides: entry.glucides, lipides: entry.lipides };
         this.openSaveModal(r.dish_name || 'Plat');
       } else {
-        Router.navigate('dashboard');
+        Router.navigate('logbook');
       }
     } catch (e) { alert('Erreur : ' + e.message); }
   },
@@ -505,7 +506,7 @@ const SnapPage = {
         lipides: m.lipides,
         source: 'saved'
       });
-      Router.navigate('dashboard');
+      Router.navigate('logbook');
     } catch (e) { alert('Erreur : ' + e.message); }
   },
 
@@ -528,7 +529,7 @@ const SnapPage = {
 
   closeSaveModal() {
     document.getElementById('saveModal').style.display = 'none';
-    Router.navigate('dashboard');
+    Router.navigate('logbook');
   },
 
   async confirmSave() {
@@ -536,11 +537,11 @@ const SnapPage = {
     if (!nom) { alert('Donne un nom au repas.'); return; }
     const profile = Router.userProfile;
     const data = this._pendingSave;
-    if (!data || !profile) { Router.navigate('dashboard'); return; }
+    if (!data || !profile) { Router.navigate('logbook'); return; }
     try {
       await db.saveMeal({ profile_id: profile.id, nom, calories: data.calories, proteines: data.proteines, glucides: data.glucides, lipides: data.lipides });
       document.getElementById('saveModal').style.display = 'none';
-      Router.navigate('dashboard');
+      Router.navigate('logbook');
     } catch (e) {
       alert('Erreur : ' + e.message);
     }
