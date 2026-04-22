@@ -1,4 +1,4 @@
-// APEX APP — Snap Calories (photo → ajout au journal)
+// APEX APP — Snap Calories (photo / manuel / base d'aliments)
 
 const SnapPage = {
   base64: null,
@@ -7,6 +7,9 @@ const SnapPage = {
   creneau: 'dejeuner',
   date: todayStr(),
   result: null,
+  mode: 'photo',
+  _baseCache: [],
+  _baseSelected: null,
   contexts: ['Restaurant', 'Maison', 'Travail / Traiteur', 'Fast-food', 'Sport'],
 
   render() {
@@ -14,24 +17,30 @@ const SnapPage = {
       <div class="app-header">
         <div>
           <div class="app-logo">ONE2ONE — APEX</div>
-          <div class="app-title">Snap Calories</div>
-          <div class="app-subtitle">Prends ton repas en photo pour l'ajouter au journal</div>
+          <div class="app-title">Ajouter un repas</div>
         </div>
       </div>
 
-      <div id="snapMain">
-        <div class="field">
-          <label class="field-label">Créneau du repas</label>
-          <select class="input" id="snapCreneau" onchange="SnapPage.creneau=this.value">
-            <option value="petit_dejeuner">Petit-déjeuner</option>
-            <option value="collation_matin">Collation matin</option>
-            <option value="dejeuner" selected>Déjeuner</option>
-            <option value="collation_apres_midi">Collation après-midi</option>
-            <option value="diner">Dîner</option>
-            <option value="collation_soir">Collation soir</option>
-          </select>
-        </div>
+      <div class="field">
+        <label class="field-label">Créneau</label>
+        <select class="input" id="snapCreneau" onchange="SnapPage.creneau=this.value">
+          <option value="petit_dejeuner">Petit-déjeuner</option>
+          <option value="collation_matin">Collation matin</option>
+          <option value="dejeuner" selected>Déjeuner</option>
+          <option value="collation_apres_midi">Collation après-midi</option>
+          <option value="diner">Dîner</option>
+          <option value="collation_soir">Collation soir</option>
+        </select>
+      </div>
 
+      <div class="tabs" id="snapTabs">
+        <button class="tab active" onclick="SnapPage.setMode('photo', this)">📷 Photo IA</button>
+        <button class="tab" onclick="SnapPage.setMode('manuel', this)">✏️ Manuel</button>
+        <button class="tab" onclick="SnapPage.setMode('base', this)">🔍 Base</button>
+      </div>
+
+      <!-- MODE PHOTO -->
+      <div id="snapModePhoto">
         <div id="snapUploadZone" class="upload-zone">
           <input type="file" id="snapFile" accept="image/*" capture="environment" onchange="SnapPage.onFile(event)">
           <div class="upload-icon">📷</div>
@@ -62,6 +71,60 @@ const SnapPage = {
         </div>
       </div>
 
+      <!-- MODE MANUEL -->
+      <div id="snapModeManuel" style="display:none;">
+        <div class="card">
+          <div class="field">
+            <label class="field-label">Nom du plat / aliment</label>
+            <input class="input" id="manNom" placeholder="Ex : Riz + poulet grillé">
+          </div>
+          <div class="field">
+            <label class="field-label">Calories (kcal)</label>
+            <input class="input" type="number" id="manKcal" placeholder="500">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div class="field">
+              <label class="field-label" style="color:#3B82F6;">Protéines (g)</label>
+              <input class="input" type="number" id="manProt" placeholder="30">
+            </div>
+            <div class="field">
+              <label class="field-label" style="color:#C4820A;">Glucides (g)</label>
+              <input class="input" type="number" id="manGluc" placeholder="60">
+            </div>
+            <div class="field">
+              <label class="field-label" style="color:#E05252;">Lipides (g)</label>
+              <input class="input" type="number" id="manLip" placeholder="15">
+            </div>
+          </div>
+        </div>
+        <div id="manError"></div>
+        <button class="btn btn-primary" onclick="SnapPage.addManual()">Ajouter au journal →</button>
+      </div>
+
+      <!-- MODE BASE -->
+      <div id="snapModeBase" style="display:none;">
+        <div class="search-wrap" style="margin-bottom:1rem;">
+          <span class="search-icon">🔍</span>
+          <input class="input search-input" id="baseSearchInput" placeholder="Chercher un aliment…"
+            oninput="SnapPage.baseSearch(this)" autocomplete="off">
+          <div class="search-results" id="baseResults"></div>
+        </div>
+        <div id="baseSelected" style="display:none;">
+          <div class="card">
+            <div id="baseSelectedName" style="font-size:14px;font-weight:700;margin-bottom:8px;"></div>
+            <div id="baseSelectedMacros" style="font-size:12px;color:var(--gray-light);margin-bottom:12px;"></div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <label class="field-label" style="margin:0;white-space:nowrap;">Quantité</label>
+              <input class="input" type="number" id="baseQty" style="width:90px;" oninput="SnapPage.updateBasePreview()">
+              <span id="baseQtyUnit" style="font-size:13px;color:var(--gray-light);"></span>
+            </div>
+            <div id="basePreview" style="margin-top:10px;font-size:13px;color:var(--gray);"></div>
+          </div>
+          <button class="btn btn-primary" onclick="SnapPage.addFromBase()">Ajouter au journal →</button>
+        </div>
+      </div>
+
+      <!-- LOADING + RÉSULTAT (partagés) -->
       <div id="snapLoading" style="display:none;text-align:center;padding:3rem 1rem;">
         <div class="spinner"></div>
         <div class="loading-text" id="snapStep">Identification du plat…</div>
@@ -81,11 +144,12 @@ const SnapPage = {
     const params = Router.getParams();
     if (params.creneau) this.creneau = params.creneau;
     if (params.date) this.date = params.date;
+    this.mode = 'photo';
+    this._baseSelected = null;
 
     const select = document.getElementById('snapCreneau');
     if (select) select.value = this.creneau;
 
-    // Context buttons
     const ctxContainer = document.getElementById('snapContextBtns');
     if (ctxContainer) {
       ctxContainer.innerHTML = this.contexts.map(c =>
@@ -93,6 +157,18 @@ const SnapPage = {
       ).join('');
     }
   },
+
+  setMode(mode, btn) {
+    this.mode = mode;
+    document.querySelectorAll('#snapTabs .tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('snapModePhoto').style.display = mode === 'photo' ? 'block' : 'none';
+    document.getElementById('snapModeManuel').style.display = mode === 'manuel' ? 'block' : 'none';
+    document.getElementById('snapModeBase').style.display = mode === 'base' ? 'block' : 'none';
+    document.getElementById('snapResult').style.display = 'none';
+  },
+
+  // ── MODE PHOTO ──────────────────────────────────────────────────────────────
 
   onFile(e) {
     const file = e.target.files[0];
@@ -130,7 +206,7 @@ const SnapPage = {
     const btn = document.getElementById('snapBtn');
     btn.disabled = true;
 
-    document.getElementById('snapMain').style.display = 'none';
+    document.getElementById('snapModePhoto').style.display = 'none';
     document.getElementById('snapLoading').style.display = 'block';
 
     const steps = ['Identification du plat…', 'Estimation des portions…', 'Calcul des macros…', 'Analyse nutritionnelle…'];
@@ -139,7 +215,6 @@ const SnapPage = {
     const timer = setInterval(() => { si = (si + 1) % steps.length; stepEl.textContent = steps[si]; }, 1800);
 
     try {
-      // Charger le plan pour le feedback contextuel
       const profile = Router.userProfile;
       let planMacros = null;
       if (profile) {
@@ -152,7 +227,6 @@ const SnapPage = {
             glucides: acc.glucides + (parseFloat(e.glucides) || 0),
             lipides: acc.lipides + (parseFloat(e.lipides) || 0)
           }), { calories: 0, proteines: 0, glucides: 0, lipides: 0 });
-
           planMacros = { ...plan, consumed };
         }
       }
@@ -165,7 +239,7 @@ const SnapPage = {
     } catch (err) {
       clearInterval(timer);
       document.getElementById('snapLoading').style.display = 'none';
-      document.getElementById('snapMain').style.display = 'block';
+      document.getElementById('snapModePhoto').style.display = 'block';
       btn.disabled = false;
       document.getElementById('snapError').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     }
@@ -189,13 +263,13 @@ const SnapPage = {
 
       <div class="macros-grid" style="margin-bottom:1rem;">
         <div class="card" style="text-align:center;margin:0;">
-          <div class="macro-val">${p}g</div><div class="macro-label">Protéines</div><div class="macro-kcal">${p * 4} kcal</div>
+          <div class="macro-val" style="color:#3B82F6;">${p}g</div><div class="macro-label">Protéines</div><div class="macro-kcal">${p * 4} kcal</div>
         </div>
         <div class="card" style="text-align:center;margin:0;">
-          <div class="macro-val">${g}g</div><div class="macro-label">Glucides</div><div class="macro-kcal">${g * 4} kcal</div>
+          <div class="macro-val" style="color:#C4820A;">${g}g</div><div class="macro-label">Glucides</div><div class="macro-kcal">${g * 4} kcal</div>
         </div>
         <div class="card" style="text-align:center;margin:0;">
-          <div class="macro-val">${l}g</div><div class="macro-label">Lipides</div><div class="macro-kcal">${l * 9} kcal</div>
+          <div class="macro-val" style="color:#E05252;">${l}g</div><div class="macro-label">Lipides</div><div class="macro-kcal">${l * 9} kcal</div>
         </div>
       </div>
 
@@ -232,7 +306,6 @@ const SnapPage = {
         feedback: r.feedback || r.tip || null,
         confidence: r.confidence || null
       });
-
       Router.navigate('dashboard');
     } catch (e) {
       alert('Erreur : ' + e.message);
@@ -244,11 +317,130 @@ const SnapPage = {
     this.result = null;
     this.portions = 1;
     document.getElementById('snapResult').style.display = 'none';
-    document.getElementById('snapMain').style.display = 'block';
+    document.getElementById('snapModePhoto').style.display = 'block';
     document.getElementById('snapPreview').style.display = 'none';
     document.getElementById('snapUploadZone').style.display = 'block';
     document.getElementById('snapFile').value = '';
     document.getElementById('snapBtn').disabled = false;
     document.getElementById('snapPortVal').textContent = '1';
+  },
+
+  // ── MODE MANUEL ─────────────────────────────────────────────────────────────
+
+  async addManual() {
+    const nom = document.getElementById('manNom').value.trim();
+    const kcal = +document.getElementById('manKcal').value;
+    const prot = +document.getElementById('manProt').value || 0;
+    const gluc = +document.getElementById('manGluc').value || 0;
+    const lip  = +document.getElementById('manLip').value  || 0;
+
+    if (!nom || !kcal) {
+      document.getElementById('manError').innerHTML = '<div class="alert alert-error">Nom et calories requis.</div>';
+      return;
+    }
+
+    const profile = Router.userProfile;
+    try {
+      await db.addJournalEntry({
+        profile_id: profile.id,
+        date_entree: this.date,
+        creneau: this.creneau,
+        nom,
+        calories: kcal,
+        proteines: prot,
+        glucides: gluc,
+        lipides: lip,
+        source: 'manuel'
+      });
+      Router.navigate('dashboard');
+    } catch (e) {
+      document.getElementById('manError').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  },
+
+  // ── MODE BASE ────────────────────────────────────────────────────────────────
+
+  async baseSearch(input) {
+    const q = input.value.trim();
+    const resultsEl = document.getElementById('baseResults');
+    if (q.length < 2) { resultsEl.classList.remove('show'); return; }
+
+    const aliments = await db.searchAliments(q);
+    this._baseCache = aliments;
+    if (aliments.length === 0) { resultsEl.classList.remove('show'); return; }
+
+    resultsEl.innerHTML = aliments.map((a, i) => {
+      const per = a.mode === 'unit' ? '/unité' : '/100g';
+      return `<div class="search-item" onclick="SnapPage.selectBase(${i})">
+        <div class="search-item-name">${a.nom}</div>
+        <div class="search-item-macros">${a.calories} kcal ${per} · <span style="color:#3B82F6;">P${a.proteines}g</span> <span style="color:#C4820A;">G${a.glucides}g</span> <span style="color:#E05252;">L${a.lipides}g</span></div>
+      </div>`;
+    }).join('');
+    resultsEl.classList.add('show');
+
+    setTimeout(() => {
+      document.addEventListener('click', function handler(e) {
+        if (!resultsEl.contains(e.target) && e.target !== input) {
+          resultsEl.classList.remove('show');
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 100);
+  },
+
+  selectBase(index) {
+    const a = this._baseCache[index];
+    if (!a) return;
+    this._baseSelected = a;
+    document.getElementById('baseResults').classList.remove('show');
+    document.getElementById('baseSearchInput').value = a.nom;
+
+    const defaultQty = a.mode === 'unit' ? 1 : 100;
+    document.getElementById('baseQty').value = defaultQty;
+    document.getElementById('baseQtyUnit').textContent = a.mode === 'unit' ? 'unité(s)' : 'g';
+    document.getElementById('baseSelectedName').textContent = a.nom;
+    document.getElementById('baseSelected').style.display = 'block';
+    this.updateBasePreview();
+  },
+
+  updateBasePreview() {
+    const a = this._baseSelected;
+    if (!a) return;
+    const qty = +document.getElementById('baseQty').value || 0;
+    const factor = a.mode === 'unit' ? qty : qty / 100;
+    const kcal = Math.round(a.calories * factor);
+    const p = Math.round(a.proteines * factor);
+    const g = Math.round(a.glucides * factor);
+    const l = Math.round(a.lipides * factor);
+    document.getElementById('basePreview').innerHTML =
+      `<strong>${kcal} kcal</strong> · <span style="color:#3B82F6;">P ${p}g</span> · <span style="color:#C4820A;">G ${g}g</span> · <span style="color:#E05252;">L ${l}g</span>`;
+  },
+
+  async addFromBase() {
+    const a = this._baseSelected;
+    const profile = Router.userProfile;
+    if (!a || !profile) return;
+
+    const qty = +document.getElementById('baseQty').value || 0;
+    if (qty <= 0) { alert('Quantité invalide.'); return; }
+
+    const factor = a.mode === 'unit' ? qty : qty / 100;
+
+    try {
+      await db.addJournalEntry({
+        profile_id: profile.id,
+        date_entree: this.date,
+        creneau: this.creneau,
+        nom: a.nom,
+        calories: Math.round(a.calories * factor),
+        proteines: Math.round(a.proteines * factor),
+        glucides: Math.round(a.glucides * factor),
+        lipides: Math.round(a.lipides * factor),
+        source: 'base'
+      });
+      Router.navigate('dashboard');
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+    }
   }
 };
