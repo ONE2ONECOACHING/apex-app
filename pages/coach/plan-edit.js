@@ -115,10 +115,15 @@ const CoachPlanEditPage = {
 
       items.forEach((r, i) => {
         const idx = this.repas.indexOf(r);
-        html += `<div style="display:grid;grid-template-columns:1fr 70px 36px;gap:6px;margin-bottom:6px;align-items:center;">
-          <div style="font-size:13px;font-weight:600;">${r.aliment_nom} <span style="font-size:11px;color:var(--gray-light);">${r.quantite}${r.unite === 'g' ? 'g' : 'u'} · ${Math.round(r.calories)} kcal</span></div>
-          <input class="input" type="number" value="${r.quantite}" style="height:32px;font-size:12px;text-align:center;" onchange="CoachPlanEditPage.updateQty(${idx}, this.value)">
-          <button style="width:36px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;font-size:16px;color:var(--gray-muted);" onclick="CoachPlanEditPage.removeItem(${idx})">×</button>
+        html += `<div style="display:grid;grid-template-columns:1fr 70px 36px;gap:6px;margin-bottom:6px;align-items:start;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">${r.aliment_nom} <span style="font-size:11px;color:var(--gray-light);">${r.quantite}${r.unite === 'g' ? 'g' : 'u'} · ${Math.round(r.calories)} kcal</span></div>
+            <div style="font-size:11px;color:var(--gray-muted);margin-top:2px;">
+              <span style="color:#3B82F6;">P ${Math.round(r.proteines)}g</span> · <span style="color:#C4820A;">G ${Math.round(r.glucides)}g</span> · <span style="color:#E05252;">L ${Math.round(r.lipides)}g</span>
+            </div>
+          </div>
+          <input class="input" type="number" value="${r.quantite}" style="height:32px;font-size:12px;text-align:center;margin-top:2px;" onchange="CoachPlanEditPage.updateQty(${idx}, this.value)">
+          <button style="width:36px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;font-size:16px;color:var(--gray-muted);margin-top:2px;" onclick="CoachPlanEditPage.removeItem(${idx})">×</button>
         </div>`;
       });
 
@@ -147,13 +152,44 @@ const CoachPlanEditPage = {
     const totalGluc = Math.round(autres.reduce((s, r) => s + parseFloat(r.glucides), 0) + bestAlt.gluc);
     const totalLip  = Math.round(autres.reduce((s, r) => s + parseFloat(r.lipides), 0) + bestAlt.lip);
 
+    // Objectifs (depuis les inputs ou valeurs courantes)
+    const objKcal = +document.getElementById('peKcal')?.value || cal;
+    const objProt = +document.getElementById('peProt')?.value || prot;
+    const objGluc = +document.getElementById('peGluc')?.value || gluc;
+    const objLip  = +document.getElementById('peLip')?.value  || lip;
+
+    function diffTag(val, obj) {
+      if (obj === 0) return '';
+      const d = val - obj;
+      const pct = Math.abs(d) / obj;
+      const color = pct <= 0.05 ? '#639922' : pct <= 0.12 ? '#C4820A' : '#E05252';
+      const sign = d > 0 ? '+' : '';
+      return `<span style="font-size:11px;font-weight:600;color:${color};">${sign}${d}</span>`;
+    }
+
     html += `<div class="card card-accent">
       <div class="card-title">Total du plan</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;text-align:center;">
-        <div><div style="font-size:18px;font-weight:700;">${totalKcal}</div><div style="font-size:11px;color:var(--gray-light);">kcal</div></div>
-        <div><div style="font-size:18px;font-weight:700;">${totalProt}g</div><div style="font-size:11px;color:var(--gray-light);">Prot</div></div>
-        <div><div style="font-size:18px;font-weight:700;">${totalGluc}g</div><div style="font-size:11px;color:var(--gray-light);">Gluc</div></div>
-        <div><div style="font-size:18px;font-weight:700;">${totalLip}g</div><div style="font-size:11px;color:var(--gray-light);">Lip</div></div>
+        <div>
+          <div style="font-size:18px;font-weight:700;">${totalKcal}</div>
+          <div style="font-size:10px;color:var(--gray-light);">/ ${objKcal} kcal</div>
+          <div style="margin-top:2px;">${diffTag(totalKcal, objKcal)}</div>
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#3B82F6;">${totalProt}g</div>
+          <div style="font-size:10px;color:var(--gray-light);">/ ${objProt}g Prot</div>
+          <div style="margin-top:2px;">${diffTag(totalProt, objProt)}</div>
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#C4820A;">${totalGluc}g</div>
+          <div style="font-size:10px;color:var(--gray-light);">/ ${objGluc}g Gluc</div>
+          <div style="margin-top:2px;">${diffTag(totalGluc, objGluc)}</div>
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#E05252;">${totalLip}g</div>
+          <div style="font-size:10px;color:var(--gray-light);">/ ${objLip}g Lip</div>
+          <div style="margin-top:2px;">${diffTag(totalLip, objLip)}</div>
+        </div>
       </div>
     </div>`;
 
