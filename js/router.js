@@ -5,6 +5,13 @@ const Router = {
   userProfile: null,
 
   async init() {
+    // Detect Supabase password recovery redirect
+    if (window.location.hash.includes('type=recovery')) {
+      history.replaceState(null, '', window.location.pathname + '#reset-password');
+      document.getElementById('app').innerHTML = ResetPasswordPage.render();
+      ResetPasswordPage.init();
+      return;
+    }
     window.addEventListener('hashchange', () => this.route());
     await this.route();
   },

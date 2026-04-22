@@ -19,6 +19,18 @@ const LoginPage = {
           <input type="password" class="input" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
         </div>
         <button class="btn btn-primary" id="loginBtn" onclick="LoginPage.submit()">Se connecter</button>
+        <div style="text-align:center;margin-top:1rem;">
+          <button class="btn btn-ghost btn-small" onclick="LoginPage.toggleReset()" style="font-size:13px;color:var(--gray);">Mot de passe oublié ?</button>
+        </div>
+        <div id="resetForm" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:600;margin-bottom:0.75rem;">Réinitialiser le mot de passe</div>
+          <div id="resetAlert"></div>
+          <div class="field">
+            <label class="field-label">Ton email</label>
+            <input type="email" class="input" id="resetEmail" placeholder="ton@email.com">
+          </div>
+          <button class="btn btn-secondary" onclick="LoginPage.sendReset()">Envoyer le lien</button>
+        </div>
       </div>`;
   },
 
@@ -26,6 +38,23 @@ const LoginPage = {
     document.getElementById('loginPassword').addEventListener('keydown', e => {
       if (e.key === 'Enter') LoginPage.submit();
     });
+  },
+
+  toggleReset() {
+    const f = document.getElementById('resetForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  },
+
+  async sendReset() {
+    const email = document.getElementById('resetEmail').value.trim();
+    const alertEl = document.getElementById('resetAlert');
+    if (!email) { alertEl.innerHTML = '<div class="alert alert-error">Entre ton email.</div>'; return; }
+    try {
+      await db.resetPassword(email);
+      alertEl.innerHTML = '<div class="alert alert-success">✅ Lien envoyé ! Vérifie ta boîte mail.</div>';
+    } catch (e) {
+      alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
   },
 
   async submit() {

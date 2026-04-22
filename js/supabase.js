@@ -20,6 +20,18 @@ const db = {
     await getSupabase().auth.signOut();
   },
 
+  async resetPassword(email) {
+    const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
+    });
+    if (error) throw error;
+  },
+
+  async updatePassword(newPassword) {
+    const { error } = await getSupabase().auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  },
+
   async getUser() {
     const { data: { user } } = await getSupabase().auth.getUser();
     return user;
