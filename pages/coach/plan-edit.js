@@ -32,33 +32,28 @@ const CoachPlanEditPage = {
       this.plans = await db.getPlansForClient(this.clientId);
       document.getElementById('peTitle').textContent = 'Plan — ' + (this.client.prenom || 'Client');
 
-      // Charger le plan actif ou semaine 1
+      // Charger le plan actif
       const activePlan = this.plans.find(p => p.actif) || this.plans[0];
       if (activePlan) {
         this.semaine = activePlan.semaine;
         this.currentPlan = activePlan;
         this.repas = await db.getPlanRepas(activePlan.id);
       } else {
-        this.semaine = this.client.semaine_courante || 1;
+        this.semaine = 1;
       }
 
       this.renderEditor();
+      this.updatePhaseTitle();
     } catch (e) {
       document.getElementById('peContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
     }
   },
 
-  async loadSemaine(sem) {
-    this.semaine = sem;
-    const plan = this.plans.find(p => p.semaine === sem);
-    if (plan) {
-      this.currentPlan = plan;
-      this.repas = await db.getPlanRepas(plan.id);
-    } else {
-      this.currentPlan = null;
-      this.repas = [];
-    }
-    this.renderEditor();
+  updatePhaseTitle() {
+    const sel = document.getElementById('pePhase');
+    if (!sel) return;
+    const label = sel.value.charAt(0).toUpperCase() + sel.value.slice(1);
+    document.getElementById('peTitle').textContent = label + ' — ' + (this.client?.prenom || '');
   },
 
   renderEditor() {
@@ -68,13 +63,10 @@ const CoachPlanEditPage = {
 
     let html = '';
 
-    // Sélecteur semaine
-    html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
-      <label class="field-label" style="margin:0;">Semaine</label>
-      <select class="input" style="width:80px;" onchange="CoachPlanEditPage.loadSemaine(+this.value)">
-        ${Array.from({ length: 16 }, (_, i) => `<option value="${i + 1}" ${this.semaine === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}
-      </select>
-      <select class="input" style="width:150px;" id="pePhase">
+    // Sélecteur de phase (sans semaine)
+    html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
+      <label class="field-label" style="margin:0;">Phase</label>
+      <select class="input" style="width:180px;" id="pePhase" onchange="CoachPlanEditPage.updatePhaseTitle()">
         ${phases.map(ph => `<option value="${ph}" ${(p && p.phase === ph) || (!p && c.phase === ph) ? 'selected' : ''}>${ph.charAt(0).toUpperCase() + ph.slice(1)}</option>`).join('')}
       </select>
     </div>`;
@@ -197,11 +189,7 @@ const CoachPlanEditPage = {
       </div>
     </div>`;
 
-    // Dupliquer + Sauvegarder
-    html += `<div class="btn-row">
-      <button class="btn btn-secondary" onclick="CoachPlanEditPage.duplicate()">📋 Dupliquer S${this.semaine} → S${this.semaine + 1}</button>
-    </div>
-    <button class="btn btn-primary" style="margin-top:0.5rem;" onclick="CoachPlanEditPage.save()">💾 Enregistrer le plan</button>
+    html += `<button class="btn btn-primary" style="margin-top:0.5rem;" onclick="CoachPlanEditPage.save()">💾 Enregistrer le plan</button>
     <div id="peSaveMsg" style="margin-top:0.75rem;"></div>`;
 
     document.getElementById('peContent').innerHTML = html;
@@ -283,21 +271,6 @@ const CoachPlanEditPage = {
   removeItem(idx) {
     this.repas.splice(idx, 1);
     this.renderEditor();
-  },
-
-  async duplicate() {
-    if (this.repas.length === 0) { alert('Rien à dupliquer.'); return; }
-    const nextSem = this.semaine + 1;
-    if (nextSem > 16) { alert('Semaine max : 16'); return; }
-
-    // Sauvegarder la semaine courante d'abord
-    await this.save();
-    // Dupliquer vers la semaine suivante
-    this.semaine = nextSem;
-    this.currentPlan = null;
-    // Les repas restent (on les sauvegarde sur la nouvelle semaine)
-    await this.save();
-    await this.loadSemaine(nextSem);
   },
 
   async save() {
