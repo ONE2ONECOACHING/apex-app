@@ -106,11 +106,17 @@ const CoachPlanEditPage = {
         html += `<div style="text-align:center;font-size:12px;font-weight:700;color:var(--gray-muted);letter-spacing:0.1em;margin:4px 0;">— OU —</div>`;
       }
 
+      const crProt = Math.round(items.reduce((s, r) => s + parseFloat(r.proteines), 0));
+      const crGluc = Math.round(items.reduce((s, r) => s + parseFloat(r.glucides), 0));
+      const crLip  = Math.round(items.reduce((s, r) => s + parseFloat(r.lipides), 0));
       const isAlt = cr === 'petit_dejeuner_sale' || cr === 'petit_dejeuner_sucre';
       html += `<div class="card" ${isAlt ? 'style="border-style:dashed;"' : ''}>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
           <div class="card-title" style="margin:0;">${creneauLabel(cr)}${isAlt ? ' <span style="font-size:10px;color:var(--gray-muted);font-weight:400;">(option)</span>' : ''}</div>
-          <div style="font-size:13px;color:var(--gold);font-weight:600;">${crKcal} kcal</div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;color:var(--gold);font-weight:600;">${crKcal} kcal</div>
+            ${items.length > 0 ? `<div style="font-size:11px;margin-top:2px;"><span style="color:#3B82F6;">P ${crProt}g</span> · <span style="color:#C4820A;">G ${crGluc}g</span> · <span style="color:#E05252;">L ${crLip}g</span></div>` : ''}
+          </div>
         </div>`;
 
       items.forEach((r, i) => {
@@ -118,9 +124,7 @@ const CoachPlanEditPage = {
         html += `<div style="display:grid;grid-template-columns:1fr 70px 36px;gap:6px;margin-bottom:6px;align-items:start;">
           <div>
             <div style="font-size:13px;font-weight:600;">${r.aliment_nom} <span style="font-size:11px;color:var(--gray-light);">${r.quantite}${r.unite === 'g' ? 'g' : 'u'} · ${Math.round(r.calories)} kcal</span></div>
-            <div style="font-size:11px;color:var(--gray-muted);margin-top:2px;">
-              <span style="color:#3B82F6;">P ${Math.round(r.proteines)}g</span> · <span style="color:#C4820A;">G ${Math.round(r.glucides)}g</span> · <span style="color:#E05252;">L ${Math.round(r.lipides)}g</span>
-            </div>
+            <div style="font-size:11px;color:var(--gray-muted);margin-top:2px;">P ${Math.round(r.proteines)}g · G ${Math.round(r.glucides)}g · L ${Math.round(r.lipides)}g</div>
           </div>
           <input class="input" type="number" value="${r.quantite}" style="height:32px;font-size:12px;text-align:center;margin-top:2px;" onchange="CoachPlanEditPage.updateQty(${idx}, this.value)">
           <button style="width:36px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;font-size:16px;color:var(--gray-muted);margin-top:2px;" onclick="CoachPlanEditPage.removeItem(${idx})">×</button>
