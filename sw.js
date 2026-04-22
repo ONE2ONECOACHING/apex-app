@@ -40,13 +40,17 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // API calls toujours réseau
-  if (url.hostname.includes('supabase.co') || url.hostname.includes('workers.dev')) return;
-  // Navigation → toujours index.html (SPA)
+  // API calls et requêtes cross-origin → réseau uniquement
+  if (url.origin !== self.location.origin) return;
+  // Navigation → réseau d'abord, fallback cache
   if (e.request.mode === 'navigate') {
-    e.respondWith(caches.match('/index.html').then(r => r || fetch(e.request)));
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match('/index.html'))
+    );
     return;
   }
-  // Statique → cache first
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  // Statique → cache first, fallback réseau
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).catch(() => new Response('', { status: 408 })))
+  );
 });
