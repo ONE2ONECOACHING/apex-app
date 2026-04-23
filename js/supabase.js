@@ -370,5 +370,16 @@ const db = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // Recettes
+  async getRecettes() {
+    const { data, error } = await getSupabase()
+      .from('recettes')
+      .select('*')
+      .eq('actif', true)
+      .order('position');
+    if (error) throw error;
+    return data || [];
   }
 };

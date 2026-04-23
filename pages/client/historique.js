@@ -23,6 +23,7 @@ const HistoriquePage = {
       <nav class="nav-bottom"><div class="nav-inner">
         <a class="nav-item" href="#dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
         <a class="nav-item" href="#logbook"><span class="nav-icon">📖</span><span class="nav-label">Logbook</span></a>
+        <a class="nav-item" href="#recettes"><span class="nav-icon">🍽️</span><span class="nav-label">Recettes</span></a>
         <a class="nav-item" href="#plan"><span class="nav-icon">📋</span><span class="nav-label">Plan</span></a>
         <a class="nav-item active" href="#historique"><span class="nav-icon">📈</span><span class="nav-label">Historique</span></a>
       </div></nav>`;
