@@ -1,6 +1,6 @@
 {
-  "name": "APEX — ONE2ONE Coaching",
-  "short_name": "APEX",
+  "name": "One2one App",
+  "short_name": "One2one App",
   "description": "Suivi nutritionnel ONE2ONE Coaching",
   "start_url": "/",
   "display": "standalone",
