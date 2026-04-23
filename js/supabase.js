@@ -136,12 +136,24 @@ const db = {
   },
 
   async createUser(email, password, prenom) {
+    // Sauvegarder la session coach avant signUp (qui connecte automatiquement le nouveau user)
+    const { data: { session: coachSession } } = await getSupabase().auth.getSession();
+
     const { data, error } = await getSupabase().auth.signUp({
       email,
       password,
       options: { data: { prenom, role: 'client' } }
     });
     if (error) throw error;
+
+    // Restaurer la session coach immédiatement
+    if (coachSession) {
+      await getSupabase().auth.setSession({
+        access_token: coachSession.access_token,
+        refresh_token: coachSession.refresh_token
+      });
+    }
+
     return data;
   },
 
