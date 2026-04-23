@@ -36,10 +36,13 @@ const CoachClientsPage = {
     el.innerHTML = this.clients.map(c => {
       const initials = (c.prenom || 'C')[0].toUpperCase();
       const phase = c.phase ? c.phase.charAt(0).toUpperCase() + c.phase.slice(1) : '—';
+      const tagHtml = c.coach_tag
+        ? `<span class="coach-tag coach-tag-${c.coach_tag}">${c.coach_tag === 'ben' ? 'Ben' : 'Chris'}</span>`
+        : '';
       return `<div class="client-row" onclick="CoachClientsPage.openClient('${c.id}')">
         <div class="client-avatar">${initials}</div>
         <div class="client-info">
-          <div class="client-name">${c.prenom || 'Client'}</div>
+          <div class="client-name" style="display:flex;align-items:center;gap:7px;">${c.prenom || 'Client'} ${tagHtml}</div>
           <div class="client-meta">${c.email} · S${c.semaine_courante || 1} · ${phase}</div>
         </div>
         <div class="client-arrow">›</div>

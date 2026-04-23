@@ -124,6 +124,14 @@ const db = {
     return data;
   },
 
+  async deleteClient(profileId) {
+    const { error } = await getSupabase()
+      .from('profiles')
+      .delete()
+      .eq('id', profileId);
+    if (error) throw error;
+  },
+
   async updateProfile(id, updates) {
     const { data, error } = await getSupabase()
       .from('profiles')

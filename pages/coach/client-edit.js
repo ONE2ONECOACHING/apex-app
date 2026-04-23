@@ -3,6 +3,7 @@
 const CoachClientEditPage = {
   client: null,
   activites: [],
+  selectedTag: null,
 
   render() {
     return `
@@ -23,6 +24,7 @@ const CoachClientEditPage = {
     try {
       this.client = await db.getProfile(params.clientId);
       this.activites = await db.getActivites(params.clientId);
+      this.selectedTag = this.client.coach_tag || null;
       document.getElementById('ceTitle').textContent = this.client.prenom || 'Client';
       this.renderForm();
     } catch (e) {
@@ -51,6 +53,13 @@ const CoachClientEditPage = {
 
       <div class="card">
         <div class="card-title">Informations</div>
+        <div class="field">
+          <label class="field-label">Coach référent</label>
+          <div style="display:flex;gap:8px;">
+            <button type="button" id="tagBtnBen" class="tag-pill-btn ${this.selectedTag === 'ben' ? 'active-ben' : ''}" onclick="CoachClientEditPage.setTag('ben')">Ben</button>
+            <button type="button" id="tagBtnChris" class="tag-pill-btn ${this.selectedTag === 'chris' ? 'active-chris' : ''}" onclick="CoachClientEditPage.setTag('chris')">Chris</button>
+          </div>
+        </div>
         <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="field"><label class="field-label">Sexe</label>
             <select class="input" id="ceSexe"><option value="homme" ${c.sexe === 'homme' ? 'selected' : ''}>Homme</option><option value="femme" ${c.sexe === 'femme' ? 'selected' : ''}>Femme</option></select>
@@ -105,7 +114,11 @@ const CoachClientEditPage = {
         <button class="btn btn-secondary" onclick="CoachClientEditPage.calcTDEE()">🔢 Calculer TDEE</button>
         <button class="btn btn-primary" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
       </div>
-      <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>`;
+      <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>
+
+      <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+        <button class="btn" style="background:var(--error-bg);color:var(--error);border:1.5px solid #FFCDD2;width:100%;" onclick="CoachClientEditPage.confirmDelete()">🗑️ Supprimer ce client</button>
+      </div>`;
 
     document.getElementById('ceContent').innerHTML = html;
     this.renderActivites();
@@ -124,6 +137,23 @@ const CoachClientEditPage = {
         </select>
         <button style="width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:18px;" onclick="CoachClientEditPage.activites.splice(${i},1);CoachClientEditPage.renderActivites()">×</button>
       </div>`).join('');
+  },
+
+  setTag(tag) {
+    this.selectedTag = (this.selectedTag === tag) ? null : tag;
+    document.getElementById('tagBtnBen').className = 'tag-pill-btn' + (this.selectedTag === 'ben' ? ' active-ben' : '');
+    document.getElementById('tagBtnChris').className = 'tag-pill-btn' + (this.selectedTag === 'chris' ? ' active-chris' : '');
+  },
+
+  async confirmDelete() {
+    const prenom = this.client.prenom || 'ce client';
+    if (!confirm(`Supprimer ${prenom} ? Cette action est irréversible.`)) return;
+    try {
+      await db.deleteClient(this.client.id);
+      window.location.hash = '#coach-clients';
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+    }
   },
 
   addActivite() {
@@ -180,7 +210,8 @@ const CoachClientEditPage = {
       objectif: document.getElementById('ceObjectif').value,
       phase: document.getElementById('cePhase').value,
       semaine_courante: +document.getElementById('ceSemaine').value || 1,
-      masse_grasse_pct: +document.getElementById('ceFat').value || null
+      masse_grasse_pct: +document.getElementById('ceFat').value || null,
+      coach_tag: this.selectedTag
     };
 
     // Calcul TDEE si possible
