@@ -2,6 +2,7 @@
 
 const CoachClientsPage = {
   clients: [],
+  activeFilter: 'all',
 
   render() {
     return `
@@ -12,7 +13,10 @@ const CoachClientsPage = {
         </div>
         <button class="header-btn" onclick="Router.logout()">⏻</button>
       </div>
-      <button class="btn btn-primary btn-small" style="margin-bottom:1rem;" onclick="CoachClientsPage.showCreateModal()">+ Nouveau client</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-small" onclick="CoachClientsPage.showCreateModal()">+ Nouveau client</button>
+        <div id="tagFilters" style="display:flex;gap:6px;margin-left:auto;"></div>
+      </div>
       <div id="coachClientsList"><div class="spinner" style="margin-top:2rem;"></div></div>
       <div id="coachModal"></div>`;
   },
@@ -20,20 +24,44 @@ const CoachClientsPage = {
   async init() {
     try {
       this.clients = await db.getAllClients();
+      this.renderFilters();
       this.renderList();
     } catch (e) {
       document.getElementById('coachClientsList').innerHTML = '<div class="alert alert-error">Erreur : ' + e.message + '</div>';
     }
   },
 
+  renderFilters() {
+    const hasBen   = this.clients.some(c => c.coach_tag === 'ben');
+    const hasChris = this.clients.some(c => c.coach_tag === 'chris');
+    if (!hasBen && !hasChris) { document.getElementById('tagFilters').innerHTML = ''; return; }
+
+    const f = this.activeFilter;
+    document.getElementById('tagFilters').innerHTML = `
+      <button class="tag-filter-btn ${f === 'all' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('all')">Tous</button>
+      ${hasBen   ? `<button class="tag-filter-btn tag-filter-ben   ${f === 'ben'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('ben')">Ben</button>`   : ''}
+      ${hasChris ? `<button class="tag-filter-btn tag-filter-chris ${f === 'chris' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('chris')">Chris</button>` : ''}
+    `;
+  },
+
+  setFilter(tag) {
+    this.activeFilter = tag;
+    this.renderFilters();
+    this.renderList();
+  },
+
   renderList() {
     const el = document.getElementById('coachClientsList');
-    if (this.clients.length === 0) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Aucun client pour le moment.<br>Crée ton premier client ci-dessus.</div></div>';
+    const filtered = this.activeFilter === 'all'
+      ? this.clients
+      : this.clients.filter(c => c.coach_tag === this.activeFilter);
+
+    if (filtered.length === 0) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Aucun client pour ce filtre.</div></div>';
       return;
     }
 
-    el.innerHTML = this.clients.map(c => {
+    el.innerHTML = filtered.map(c => {
       const initials = (c.prenom || 'C')[0].toUpperCase();
       const phase = c.phase ? c.phase.charAt(0).toUpperCase() + c.phase.slice(1) : '—';
       const tagHtml = c.coach_tag

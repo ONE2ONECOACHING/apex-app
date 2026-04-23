@@ -295,6 +295,16 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; min-height:
 .coach-tag-ben   { background: #EFF6FF; color: #3B82F6; border: 1.5px solid #BFDBFE; }
 .coach-tag-chris { background: #F5F3FF; color: #7C3AED; border: 1.5px solid #DDD6FE; }
 
+.tag-filter-btn {
+  padding: 5px 14px; border-radius: 99px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--white); color: var(--gray-light);
+  transition: all 0.15s;
+}
+.tag-filter-btn.active         { background: var(--black); color: var(--white); border-color: var(--black); }
+.tag-filter-btn.tag-filter-ben.active   { background: #3B82F6; color: #fff; border-color: #3B82F6; }
+.tag-filter-btn.tag-filter-chris.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+
 .tag-pill-btn {
   padding: 7px 18px; border-radius: 99px;
   font-size: 13px; font-weight: 700; cursor: pointer;
