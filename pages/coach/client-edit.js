@@ -45,10 +45,11 @@ const CoachClientEditPage = {
     const sports = Object.keys(TDEE.METS);
 
     let html = `
-      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-small" onclick="Router.navigate('coach-plan-edit',{clientId:'${c.id}'})">📋 Plan alimentaire</button>
-        <button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-journal',{clientId:'${c.id}'})">📊 Journal</button>
-        <button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-habits-edit',{clientId:'${c.id}'})">✅ Habitudes</button>
+      <div class="tabs" style="margin-bottom:1rem;">
+        <button class="tab active">👤 Infos</button>
+        <button class="tab" onclick="Router.navigate('coach-plan-edit',{clientId:'${c.id}'})">📋 Plan</button>
+        <button class="tab" onclick="Router.navigate('coach-habits-edit',{clientId:'${c.id}'})">✅ Habitudes</button>
+        <button class="tab" onclick="Router.navigate('coach-journal',{clientId:'${c.id}'})">📊 Journal</button>
       </div>
 
       <div class="card">
