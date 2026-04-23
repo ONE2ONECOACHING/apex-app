@@ -1,31 +1,6 @@
-const CACHE = 'apex-v5';
-const STATIC = [
-  '/',
-  '/index.html',
-  '/css/app.css',
-  '/js/config.js',
-  '/js/supabase.js',
-  '/js/tdee.js',
-  '/js/snap-calories.js',
-  '/js/router.js',
-  '/pages/login.js',
-  '/pages/reset-password.js',
-  '/pages/client/dashboard.js',
-  '/pages/client/logbook.js',
-  '/pages/client/plan.js',
-  '/pages/client/snap.js',
-  '/pages/client/historique.js',
-  '/pages/coach/clients.js',
-  '/pages/coach/client-edit.js',
-  '/pages/coach/plan-edit.js',
-  '/pages/coach/journal-view.js',
-  '/pages/coach/habits-edit.js',
-  '/icon.png',
-  '/manifest.json'
-];
+const CACHE = 'apex-v6';
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
   self.skipWaiting();
 });
 
@@ -40,17 +15,21 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // API calls et requêtes cross-origin → réseau uniquement
+  // Requêtes cross-origin → réseau uniquement (Supabase, CDN, etc.)
   if (url.origin !== self.location.origin) return;
-  // Navigation → réseau d'abord, fallback cache
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match('/index.html'))
-    );
-    return;
-  }
-  // Statique → cache first, fallback réseau
+
+  // Network-first : toujours la version fraîche, cache uniquement si offline
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).catch(() => new Response('', { status: 408 })))
+    fetch(e.request)
+      .then(response => {
+        // Mettre en cache la réponse fraîche
+        const clone = response.clone();
+        caches.open(CACHE).then(cache => cache.put(e.request, clone));
+        return response;
+      })
+      .catch(() =>
+        // Offline → fallback cache
+        caches.match(e.request).then(r => r || caches.match('/index.html'))
+      )
   );
 });
