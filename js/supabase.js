@@ -125,11 +125,11 @@ const db = {
   },
 
   async deleteClient(profileId) {
-    const { error } = await getSupabase()
-      .from('profiles')
-      .delete()
-      .eq('id', profileId);
-    if (error) throw error;
+    // Supprimer le compte Auth via Edge Function (nécessite clé admin)
+    const { error: fnError } = await getSupabase().functions.invoke('delete-user', {
+      body: { userId: profileId }
+    });
+    if (fnError) throw fnError;
   },
 
   async updateProfile(id, updates) {
