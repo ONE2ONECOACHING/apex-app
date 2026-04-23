@@ -41,7 +41,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-#app { max-width: 680px; margin: 0 auto; padding: 0 1rem calc(6.5rem + env(safe-area-inset-bottom, 12px)); min-height: 100vh; }
+#app { max-width: 680px; margin: 0 auto; padding: env(safe-area-inset-top, 0) 1rem calc(6.5rem + env(safe-area-inset-bottom, 12px)); min-height: 100vh; }
 
 /* ── HEADER ── */
 .app-header {
