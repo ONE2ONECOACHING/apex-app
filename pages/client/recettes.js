@@ -314,7 +314,7 @@ const RecettesPage = {
       proteines:    s.proteines,
       glucides:     s.glucides,
       lipides:      s.lipides,
-      source:       'manual'
+      source:       'manuel'
     };
 
     const btn = document.querySelector('#recModal .btn-primary');
