@@ -1,4 +1,4 @@
-const CACHE = 'apex-v2';
+const CACHE = 'apex-v3';
 const STATIC = [
   '/',
   '/index.html',
@@ -20,7 +20,7 @@ const STATIC = [
   '/pages/coach/plan-edit.js',
   '/pages/coach/journal-view.js',
   '/pages/coach/habits-edit.js',
-  '/icon.svg',
+  '/icon.png',
   '/manifest.json'
 ];
 
