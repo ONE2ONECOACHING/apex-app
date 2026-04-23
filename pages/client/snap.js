@@ -13,6 +13,7 @@ const SnapPage = {
   _pendingSave: null,
   _cart: [],
   _savedMeals: [],
+  _offDebounce: null,
   contexts: ['Restaurant', 'Maison', 'Travail / Traiteur', 'Fast-food', 'Sport'],
 
   render() {
@@ -176,20 +177,15 @@ const SnapPage = {
   async baseSearch(input) {
     const q = input.value.trim();
     const resultsEl = document.getElementById('baseResults');
-    if (q.length < 2) { resultsEl.classList.remove('show'); return; }
+    if (q.length < 2) { resultsEl.classList.remove('show'); clearTimeout(this._offDebounce); return; }
 
-    const aliments = await db.searchAliments(q);
-    this._baseCache = aliments;
-    if (aliments.length === 0) { resultsEl.classList.remove('show'); return; }
+    // Résultats locaux immédiats
+    const local = await db.searchAliments(q);
+    this._renderSearchResults(local, [], resultsEl);
 
-    resultsEl.innerHTML = aliments.map((a, i) => {
-      const per = a.mode === 'unit' ? '/unité' : '/100g';
-      return `<div class="search-item" onclick="SnapPage.selectBase(${i})">
-        <div class="search-item-name">${a.nom}</div>
-        <div class="search-item-macros">${a.calories} kcal ${per} · <span style="color:#3B82F6;">P${a.proteines}g</span> <span style="color:#C4820A;">G${a.glucides}g</span> <span style="color:#E05252;">L${a.lipides}g</span></div>
-      </div>`;
-    }).join('');
-    resultsEl.classList.add('show');
+    // Open Food Facts en parallèle (debounce 450ms)
+    clearTimeout(this._offDebounce);
+    this._offDebounce = setTimeout(() => this._searchOFF(q, local), 450);
 
     setTimeout(() => {
       document.addEventListener('click', function handler(e) {
@@ -199,6 +195,50 @@ const SnapPage = {
         }
       });
     }, 100);
+  },
+
+  async _searchOFF(q, localResults) {
+    const resultsEl = document.getElementById('baseResults');
+    try {
+      const resp = await fetch(
+        `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&json=1&page_size=15&fields=product_name,nutriments&action=process&lc=fr`,
+        { signal: AbortSignal.timeout(5000) }
+      );
+      const data = await resp.json();
+      const off = (data.products || [])
+        .filter(p => p.product_name && p.nutriments && p.nutriments['energy-kcal_100g'] != null)
+        .map(p => ({
+          nom: p.product_name,
+          calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
+          proteines: Math.round(p.nutriments['proteins_100g'] || 0),
+          glucides: Math.round(p.nutriments['carbohydrates_100g'] || 0),
+          lipides: Math.round(p.nutriments['fat_100g'] || 0),
+          mode: 'weight',
+          source: 'off'
+        }));
+      this._renderSearchResults(localResults, off, resultsEl);
+    } catch (e) { /* OFF indisponible, on garde les résultats locaux */ }
+  },
+
+  _renderSearchResults(local, off, resultsEl) {
+    const all = [
+      ...local.map(a => ({ ...a, source: 'local' })),
+      ...off
+    ];
+    this._baseCache = all;
+    if (all.length === 0) { resultsEl.classList.remove('show'); return; }
+
+    resultsEl.innerHTML = all.map((a, i) => {
+      const per = a.mode === 'unit' ? '/unité' : '/100g';
+      const badge = a.source === 'local'
+        ? `<span style="font-size:9px;background:#EFF6FF;color:#3B82F6;border-radius:3px;padding:1px 5px;font-weight:700;margin-left:4px;">PERSO</span>`
+        : '';
+      return `<div class="search-item" onclick="SnapPage.selectBase(${i})">
+        <div class="search-item-name">${a.nom}${badge}</div>
+        <div class="search-item-macros">${a.calories} kcal ${per} · <span style="color:#3B82F6;">P${a.proteines}g</span> <span style="color:#C4820A;">G${a.glucides}g</span> <span style="color:#E05252;">L${a.lipides}g</span></div>
+      </div>`;
+    }).join('');
+    resultsEl.classList.add('show');
   },
 
   selectBase(index) {
