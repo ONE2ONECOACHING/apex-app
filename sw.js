@@ -1,4 +1,4 @@
-const CACHE = 'apex-v4';
+const CACHE = 'apex-v5';
 const STATIC = [
   '/',
   '/index.html',
