@@ -136,25 +136,21 @@ const db = {
   },
 
   async createUser(email, password, prenom) {
-    // Sauvegarder la session coach avant signUp (qui connecte automatiquement le nouveau user)
-    const { data: { session: coachSession } } = await getSupabase().auth.getSession();
-
-    const { data, error } = await getSupabase().auth.signUp({
-      email,
-      password,
-      options: { data: { prenom, role: 'client' } }
+    // Client temporaire avec une clé localStorage séparée → session coach jamais touchée
+    const tempClient = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY, {
+      auth: { storageKey: 'apex-create-temp' }
     });
-    if (error) throw error;
-
-    // Restaurer la session coach immédiatement
-    if (coachSession) {
-      await getSupabase().auth.setSession({
-        access_token: coachSession.access_token,
-        refresh_token: coachSession.refresh_token
+    try {
+      const { data, error } = await tempClient.auth.signUp({
+        email,
+        password,
+        options: { data: { prenom, role: 'client' } }
       });
+      if (error) throw error;
+      return data;
+    } finally {
+      await tempClient.auth.signOut();
     }
-
-    return data;
   },
 
   // Coach — Plans
