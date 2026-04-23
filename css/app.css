@@ -41,7 +41,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-#app { max-width: 680px; margin: 0 auto; padding: 0 1rem 6.5rem; min-height: 100vh; }
+#app { max-width: 680px; margin: 0 auto; padding: 0 1rem calc(6.5rem + env(safe-area-inset-bottom, 12px)); min-height: 100vh; }
 
 /* ── HEADER ── */
 .app-header {
@@ -213,13 +213,13 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; min-height:
   position: fixed; bottom: 0; left: 0; right: 0;
   background: rgba(255,255,255,0.95); border-top: 1px solid var(--border);
   display: flex; justify-content: center; z-index: 100;
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: env(safe-area-inset-bottom, 12px);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 .nav-inner { display: flex; max-width: 680px; width: 100%; }
 .nav-item {
   flex: 1; display: flex; flex-direction: column; align-items: center;
-  padding: 8px 0 6px; cursor: pointer; text-decoration: none;
+  padding: 10px 0 8px; cursor: pointer; text-decoration: none;
   border: none; background: none; font-family: var(--font);
   transition: all 0.2s; position: relative;
 }
