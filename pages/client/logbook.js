@@ -152,7 +152,7 @@ const LogbookPage = {
       html += `</div>`;
     });
 
-    if (this.entries.length >= 3) {
+    if (this.entries.length >= 2) {
       html += `<button class="btn btn-secondary" style="margin-top:0.5rem;" onclick="LogbookPage.generateRecap()">📊 Récap de la journée</button>`;
     }
 
