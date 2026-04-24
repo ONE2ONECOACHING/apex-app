@@ -4,6 +4,7 @@ const CoachBilanTemplatesPage = {
   templates: [],
   _tpl: null,       // template en cours d'édition (copie)
   _newQType: 'scale',
+  _editIdx: null,
 
   render() {
     return `
@@ -112,6 +113,7 @@ const CoachBilanTemplatesPage = {
             <div style="flex:1;font-size:13px;color:var(--black);">${q.label}</div>
             <button class="btn btn-ghost btn-small" style="padding:0 7px;" onclick="CoachBilanTemplatesPage._moveQ(${i},-1)" ${i === 0 ? 'disabled style="opacity:0.3;"' : ''}>↑</button>
             <button class="btn btn-ghost btn-small" style="padding:0 7px;" onclick="CoachBilanTemplatesPage._moveQ(${i},1)" ${i === qs.length-1 ? 'disabled style="opacity:0.3;"' : ''}>↓</button>
+            <button class="btn btn-ghost btn-small" style="padding:0 7px;" onclick="CoachBilanTemplatesPage._editQ(${i})">✏️</button>
             <button class="btn btn-ghost btn-small" style="color:var(--error);padding:0 8px;" onclick="CoachBilanTemplatesPage._removeQ(${i})">×</button>
           </div>`).join('');
     const cnt = document.getElementById('btQCount');
@@ -164,6 +166,59 @@ const CoachBilanTemplatesPage = {
       q.options = raw ? raw.split('\n').map(o => o.trim()).filter(Boolean) : ['Oui', 'Non'];
     }
     this._tpl.questions.push(q);
+    document.getElementById('btAddQForm').innerHTML = '';
+    this._refreshQList();
+  },
+
+  _editQ(idx) {
+    this._editIdx = idx;
+    const q = this._tpl.questions[idx];
+    this._newQType = q.type;
+    document.getElementById('btAddQForm').innerHTML = `
+      <div class="card card-accent" style="margin-bottom:0.75rem;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);margin-bottom:10px;">Modifier la question</div>
+        <div class="field">
+          <label class="field-label">Type</label>
+          <div class="toggle-row" id="btQTypeRow">
+            <button class="toggle-btn ${q.type==='scale'?'active':''}"  onclick="CoachBilanTemplatesPage._setQType('scale',this)">⭐ Échelle</button>
+            <button class="toggle-btn ${q.type==='text'?'active':''}"   onclick="CoachBilanTemplatesPage._setQType('text',this)">📝 Texte</button>
+            <button class="toggle-btn ${q.type==='number'?'active':''}" onclick="CoachBilanTemplatesPage._setQType('number',this)">🔢 Nombre</button>
+            <button class="toggle-btn ${q.type==='choice'?'active':''}" onclick="CoachBilanTemplatesPage._setQType('choice',this)">✅ Choix</button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Question</label>
+          <input class="input" id="btQLabel" value="${q.label.replace(/"/g,'&quot;')}" placeholder="ex: Comment tu te sens cette semaine ?">
+        </div>
+        <div id="btQChoicesWrap" style="display:${q.type==='choice'?'block':'none'};">
+          <div class="field">
+            <label class="field-label">Options (une par ligne)</label>
+            <textarea class="input" id="btQChoices" rows="3" style="resize:none;">${(q.options||[]).join('\n')}</textarea>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" style="height:40px;font-size:13px;"
+            onclick="document.getElementById('btAddQForm').innerHTML='';CoachBilanTemplatesPage._editIdx=null;">Annuler</button>
+          <button class="btn btn-primary" style="height:40px;font-size:13px;"
+            onclick="CoachBilanTemplatesPage._confirmEditQ()">✓ Mettre à jour</button>
+        </div>
+      </div>`;
+    document.getElementById('btAddQForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  },
+
+  _confirmEditQ() {
+    const label = document.getElementById('btQLabel').value.trim();
+    if (!label) { alert('Saisis la question.'); return; }
+    const orig = this._tpl.questions[this._editIdx];
+    const q = { ...orig, type: this._newQType, label };
+    if (q.type === 'choice') {
+      const raw = document.getElementById('btQChoices').value.trim();
+      q.options = raw ? raw.split('\n').map(o => o.trim()).filter(Boolean) : ['Oui', 'Non'];
+    } else {
+      delete q.options;
+    }
+    this._tpl.questions[this._editIdx] = q;
+    this._editIdx = null;
     document.getElementById('btAddQForm').innerHTML = '';
     this._refreshQList();
   },
