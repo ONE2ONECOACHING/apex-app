@@ -444,6 +444,66 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; min-height:
 .rec-ingredient-row:last-child { border-bottom: none; }
 .rec-ingredient-qty { font-size: 13px; font-weight: 600; color: var(--gray); white-space: nowrap; margin-left: 8px; }
 
+/* ── BILAN HEBDO ── */
+.bilan-badge-card {
+  background: linear-gradient(135deg, var(--gold-light) 0%, #FFF8E8 100%);
+  border: 1.5px solid var(--gold-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  animation: pulse-gold 2.5s ease-in-out infinite;
+  text-decoration: none;
+}
+.bilan-badge-icon { font-size: 30px; flex-shrink: 0; }
+.bilan-badge-title { font-size: 15px; font-weight: 700; color: var(--black); }
+.bilan-badge-sub { font-size: 12px; color: var(--gray-muted); margin-top: 2px; }
+.bilan-badge-arrow { margin-left: auto; font-size: 22px; color: var(--gold); flex-shrink: 0; }
+.bilan-question {
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+.bilan-q-label { font-size: 14px; font-weight: 600; color: var(--black); line-height: 1.5; }
+.bilan-range {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  outline: none;
+  flex: 1;
+}
+.bilan-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  background: var(--gold);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2.5px solid var(--white);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.bilan-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  background: var(--gold);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--white);
+}
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196,130,10,0.25); }
+  50%       { box-shadow: 0 0 0 8px rgba(196,130,10,0); }
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 480px) {
   #app { padding: 0 0.75rem 6rem; }

@@ -5,6 +5,7 @@ const DashboardPage = {
   poidsHistory: [],
   habitudes: [],
   habitudesJournal: [],
+  pendingBilans: [],
 
   render() {
     return `
@@ -34,10 +35,14 @@ const DashboardPage = {
     document.getElementById('dashGreeting').textContent = 'Salut ' + (profile.prenom || '') + ' 👊';
 
     try {
-      [this.poidsHistory, this.habitudes, this.habitudesJournal] = await Promise.all([
+      // Déclencher la création du bilan de la semaine si assignation active
+      await db.ensureBilanInstance(profile.id).catch(() => {});
+
+      [this.poidsHistory, this.habitudes, this.habitudesJournal, this.pendingBilans] = await Promise.all([
         db.getPoidsHistory(profile.id),
         db.getHabitudes(profile.id).catch(() => []),
-        db.getHabitudesJournal(profile.id, todayStr()).catch(() => [])
+        db.getHabitudesJournal(profile.id, todayStr()).catch(() => []),
+        db.getPendingBilans(profile.id).catch(() => [])
       ]);
       this.renderContent();
     } catch (e) {
@@ -53,6 +58,19 @@ const DashboardPage = {
     const poidsObjectif = p.poids_objectif || null;
 
     let html = '';
+
+    // Badge bilan en attente
+    if (this.pendingBilans.length > 0) {
+      const n = this.pendingBilans.length;
+      html += `<div class="bilan-badge-card" onclick="window.location.hash='#client-bilan'">
+        <div class="bilan-badge-icon">📝</div>
+        <div>
+          <div class="bilan-badge-title">${n} bilan${n > 1 ? 's' : ''} en attente</div>
+          <div class="bilan-badge-sub">Remplis ton questionnaire hebdomadaire</div>
+        </div>
+        <div class="bilan-badge-arrow">›</div>
+      </div>`;
+    }
 
     // Carte poids
     html += `<div class="card card-dark">

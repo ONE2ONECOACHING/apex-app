@@ -381,5 +381,137 @@ const db = {
       .order('position');
     if (error) throw error;
     return data || [];
+  },
+
+  // ── Bilan hebdomadaire ────────────────────────────────────────
+
+  async getBilanTemplates(coachId) {
+    const { data, error } = await getSupabase()
+      .from('bilan_templates')
+      .select('*')
+      .eq('coach_id', coachId)
+      .eq('actif', true)
+      .order('created_at');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async upsertBilanTemplate(tpl) {
+    const { data, error } = await getSupabase()
+      .from('bilan_templates')
+      .upsert(tpl)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteBilanTemplate(id) {
+    const { error } = await getSupabase()
+      .from('bilan_templates')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async getBilanAssignation(clientId) {
+    const { data, error } = await getSupabase()
+      .from('bilan_assignations')
+      .select('*, bilan_templates(*)')
+      .eq('client_id', clientId)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async upsertBilanAssignation(assignation) {
+    const { data, error } = await getSupabase()
+      .from('bilan_assignations')
+      .upsert(assignation, { onConflict: 'client_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async removeBilanAssignation(clientId) {
+    const { error } = await getSupabase()
+      .from('bilan_assignations')
+      .delete()
+      .eq('client_id', clientId);
+    if (error) throw error;
+  },
+
+  async ensureBilanInstance(clientId) {
+    const sb = getSupabase();
+    // Récupérer l'assignation active du client
+    const { data: asgn } = await sb
+      .from('bilan_assignations')
+      .select('*, bilan_templates(*)')
+      .eq('client_id', clientId)
+      .eq('actif', true)
+      .single();
+    if (!asgn) return null;
+
+    // Calculer le samedi de déclenchement (dernier samedi écoulé)
+    const d = new Date();
+    const back = (d.getDay() + 1) % 7; // sam=0, dim=1, lun=2 …
+    d.setDate(d.getDate() - back);
+    const semaine = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+    // Upsert sans écraser si déjà existant
+    await sb.from('bilan_instances').upsert({
+      client_id: clientId,
+      coach_id: asgn.coach_id,
+      template_id: asgn.template_id,
+      semaine,
+      questions_snapshot: asgn.bilan_templates?.questions || []
+    }, { onConflict: 'client_id,semaine', ignoreDuplicates: true });
+
+    // Retourner l'instance (nouvelle ou existante)
+    const { data, error } = await sb
+      .from('bilan_instances')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('semaine', semaine)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getPendingBilans(clientId) {
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('statut', 'en_attente')
+      .order('semaine');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getBilanInstancesForCoach(clientId) {
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('semaine', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async completeBilan(instanceId, reponses) {
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .update({
+        statut: 'complete',
+        reponses,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', instanceId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 };
