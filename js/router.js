@@ -54,6 +54,11 @@ const Router = {
       return;
     }
 
+    // Init push notifications pour les clients (silencieux)
+    if (user && this.userProfile && this.userProfile.role === 'client' && this.userProfile.onboarding_done) {
+      PushNotifications.init(this.userProfile.id).catch(() => {});
+    }
+
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding'];
     const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client'];

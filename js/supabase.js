@@ -191,6 +191,18 @@ const db = {
     return data;
   },
 
+  // Push notifications
+  async savePushSubscription(profileId, subscription) {
+    const { error } = await getSupabase()
+      .from('push_subscriptions')
+      .upsert({
+        profile_id: profileId,
+        endpoint:   subscription.endpoint,
+        keys:       subscription.keys
+      }, { onConflict: 'profile_id,endpoint', ignoreDuplicates: true });
+    if (error) throw error;
+  },
+
   async updateActivePlanMacros(profileId, macros) {
     const { error } = await getSupabase()
       .from('plans_nutritionnels')
