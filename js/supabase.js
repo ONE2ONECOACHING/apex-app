@@ -191,6 +191,20 @@ const db = {
     return data;
   },
 
+  async updateActivePlanMacros(profileId, macros) {
+    const { error } = await getSupabase()
+      .from('plans_nutritionnels')
+      .update({
+        calories_cible:  macros.calories_cible,
+        proteines_cible: macros.proteines_cible,
+        glucides_cible:  macros.glucides_cible,
+        lipides_cible:   macros.lipides_cible
+      })
+      .eq('profile_id', profileId)
+      .eq('actif', true);
+    if (error) throw error;
+  },
+
   async deactivateOtherPlans(profileId, keepSemaine) {
     const { error } = await getSupabase()
       .from('plans_nutritionnels')

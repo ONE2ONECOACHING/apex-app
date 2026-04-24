@@ -217,19 +217,35 @@ const CoachClientEditPage = {
     };
 
     // Calcul TDEE si possible
+    let tdeeResult = null;
     if (updates.age && updates.poids && updates.taille) {
-      const result = TDEE.calculate(updates, this.activites);
-      updates.bmr = result.bmr;
-      updates.neat = result.neat;
-      updates.eat = result.eat;
-      updates.tdee = result.tdee;
+      tdeeResult = TDEE.calculate(updates, this.activites);
+      updates.bmr  = tdeeResult.bmr;
+      updates.neat = tdeeResult.neat;
+      updates.eat  = tdeeResult.eat;
+      updates.tdee = tdeeResult.tdee;
     }
 
     try {
       await db.updateProfile(id, updates);
       await db.setActivites(id, this.activites);
-      document.getElementById('ceSaveMsg').innerHTML = '<div class="alert alert-success">✅ Client mis à jour</div>';
-      setTimeout(() => { document.getElementById('ceSaveMsg').innerHTML = ''; }, 3000);
+
+      // Mettre à jour les macros du plan actif si TDEE calculé
+      let planMsg = '';
+      if (tdeeResult) {
+        try {
+          await db.updateActivePlanMacros(id, {
+            calories_cible:  tdeeResult.targetKcal,
+            proteines_cible: tdeeResult.proteines,
+            glucides_cible:  tdeeResult.glucides,
+            lipides_cible:   tdeeResult.lipides
+          });
+          planMsg = ' · Objectifs du plan mis à jour';
+        } catch (_) {}
+      }
+
+      document.getElementById('ceSaveMsg').innerHTML = `<div class="alert alert-success">✅ Client mis à jour${planMsg}</div>`;
+      setTimeout(() => { document.getElementById('ceSaveMsg').innerHTML = ''; }, 4000);
     } catch (e) {
       document.getElementById('ceSaveMsg').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
     }
