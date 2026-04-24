@@ -254,17 +254,26 @@ const CoachPlanEditPage = {
     const r = this.repas[idx];
     const a = r._aliment;
     const qty = parseFloat(newQty) || 0;
-    r.quantite = qty;
 
     if (a) {
+      // Aliment connu (ajouté pendant cette session) → recalcul depuis les valeurs /100g
       const factor = a.mode === 'unit' ? qty : qty / 100;
-      r.calories = Math.round(a.calories * factor * 10) / 10;
-      r.proteines = Math.round(a.proteines * factor * 10) / 10;
-      r.glucides = Math.round(a.glucides * factor * 10) / 10;
-      r.lipides = Math.round(a.lipides * factor * 10) / 10;
-      r.fibres = Math.round((a.fibres || 0) * factor * 10) / 10;
+      r.calories  = Math.round(a.calories          * factor * 10) / 10;
+      r.proteines = Math.round(a.proteines         * factor * 10) / 10;
+      r.glucides  = Math.round(a.glucides          * factor * 10) / 10;
+      r.lipides   = Math.round(a.lipides           * factor * 10) / 10;
+      r.fibres    = Math.round((a.fibres || 0)     * factor * 10) / 10;
+    } else if (r.quantite > 0) {
+      // Plan chargé depuis la DB : recalcul par ratio nouvelle/ancienne quantité
+      const ratio = qty / r.quantite;
+      r.calories  = Math.round(r.calories          * ratio * 10) / 10;
+      r.proteines = Math.round(r.proteines         * ratio * 10) / 10;
+      r.glucides  = Math.round(r.glucides          * ratio * 10) / 10;
+      r.lipides   = Math.round(r.lipides           * ratio * 10) / 10;
+      r.fibres    = Math.round((r.fibres || 0)     * ratio * 10) / 10;
     }
 
+    r.quantite = qty; // mise à jour après le calcul du ratio
     this.renderEditor();
   },
 
