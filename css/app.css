@@ -504,6 +504,89 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; min-height:
   50%       { box-shadow: 0 0 0 8px rgba(196,130,10,0); }
 }
 
+/* ── ONBOARDING ── */
+.onb-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem 2rem;
+  text-align: center;
+}
+.onb-logo {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--gray-muted);
+  margin-bottom: 2rem;
+}
+.onb-dots {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 2.5rem;
+}
+.onb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.25s, transform 0.25s;
+}
+.onb-dot.active  { background: var(--gold); transform: scale(1.25); }
+.onb-dot.done    { background: var(--gold); opacity: 0.4; }
+.onb-welcome-icon {
+  font-size: 52px;
+  margin-bottom: 1.25rem;
+  line-height: 1;
+}
+.onb-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--black);
+  line-height: 1.2;
+  margin-bottom: 0.75rem;
+}
+.onb-sub {
+  font-size: 15px;
+  color: var(--gray-muted);
+  line-height: 1.5;
+  margin-bottom: 2.5rem;
+}
+.onb-form {
+  width: 100%;
+  max-width: 360px;
+  text-align: left;
+  margin-bottom: 1rem;
+}
+.onb-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.onb-toggle-btn {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.onb-toggle-btn.active {
+  border-color: var(--gold);
+  background: var(--gold-light, #FFF8E8);
+  color: var(--gold);
+}
+.onb-btn {
+  width: 100%;
+  max-width: 360px;
+  height: 52px;
+  font-size: 16px;
+  margin-top: 0.5rem;
+}
+
 /* ── HABITS LIBRARY ── */
 .hab-lib-scroll {
   display: flex;

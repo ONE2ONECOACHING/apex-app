@@ -39,14 +39,23 @@ const Router = {
     if (user && hash === 'login') {
       if (this.userProfile && this.userProfile.role === 'coach') {
         window.location.hash = '#coach-clients';
+      } else if (this.userProfile && !this.userProfile.onboarding_done) {
+        window.location.hash = '#onboarding';
       } else {
         window.location.hash = '#dashboard';
       }
       return;
     }
 
+    // Client sans onboarding → forcer onboarding (sauf s'il y est déjà)
+    if (user && this.userProfile && this.userProfile.role === 'client'
+        && !this.userProfile.onboarding_done && hash !== 'onboarding') {
+      window.location.hash = '#onboarding';
+      return;
+    }
+
     // Cloisonnement role ↔ route
-    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan'];
+    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding'];
     const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
@@ -72,6 +81,7 @@ const Router = {
       case 'historique': app.innerHTML = HistoriquePage.render(); HistoriquePage.init(); break;
       case 'recettes': app.innerHTML = RecettesPage.render(); RecettesPage.init(); break;
       case 'client-bilan': app.innerHTML = ClientBilanPage.render(); ClientBilanPage.init(); break;
+      case 'onboarding': app.innerHTML = OnboardingPage.render(); OnboardingPage.init(); break;
       case 'coach-clients': app.innerHTML = CoachClientsPage.render(); CoachClientsPage.init(); break;
       case 'coach-client-edit': app.innerHTML = CoachClientEditPage.render(); CoachClientEditPage.init(); break;
       case 'coach-plan-edit': app.innerHTML = CoachPlanEditPage.render(); CoachPlanEditPage.init(); break;
