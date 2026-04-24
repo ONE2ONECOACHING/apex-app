@@ -119,17 +119,19 @@ const db = {
       .from('profiles')
       .select('*')
       .eq('role', 'client')
+      .neq('actif', false)
       .order('prenom');
     if (error) throw error;
     return data;
   },
 
   async deleteClient(profileId) {
-    // Supprimer le compte Auth via Edge Function (nécessite clé admin)
-    const { error: fnError } = await getSupabase().functions.invoke('delete-user', {
-      body: { userId: profileId }
-    });
-    if (fnError) throw fnError;
+    // Soft delete : désactive le profil (actif = false) sans toucher à Auth
+    const { error } = await getSupabase()
+      .from('profiles')
+      .update({ actif: false })
+      .eq('id', profileId);
+    if (error) throw error;
   },
 
   async updateProfile(id, updates) {
