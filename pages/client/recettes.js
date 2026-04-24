@@ -66,11 +66,16 @@ const RecettesPage = {
 
     const ingredients = (r.ingredients || []).map(ing => {
       const q = ing.quantite * factor;
-      // Arrondi pratique : 5g pour poids/volumes, 0.5 pour unités
-      const isWeight = (ing.unite === 'g' || ing.unite === 'ml');
-      const qFmt = isWeight
-        ? (Math.round(q / 5) * 5) || 5
-        : (Math.round(q * 2) / 2) || 0.5;
+      const u = ing.unite;
+      // Unités indivisibles → entier (min 1)
+      const isWhole = ['pièce','pièces','tranche','tranches','gousse','gousses','pincée','pincées'].includes(u);
+      // Poids / volumes → arrondi au 5g le plus proche
+      const isWeight = (u === 'g' || u === 'ml');
+      // Demi-portions ok (citron, c.à.c., c.à.s.)
+      let qFmt;
+      if (isWhole)       qFmt = Math.max(1, Math.round(q));
+      else if (isWeight) qFmt = Math.max(5, Math.round(q / 5) * 5);
+      else               qFmt = Math.max(0.5, Math.round(q * 2) / 2);
       return { ...ing, qs: qFmt };
     });
 
