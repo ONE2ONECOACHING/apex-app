@@ -81,7 +81,7 @@ const SnapPage = {
       <!-- MODE PHOTO -->
       <div id="snapModePhoto" style="display:none;">
         <div id="snapUploadZone" class="upload-zone">
-          <input type="file" id="snapFile" accept="image/*" capture="environment" onchange="SnapPage.onFile(event)">
+          <input type="file" id="snapFile" accept="image/*" onchange="SnapPage.onFile(event)">
           <div class="upload-icon">📷</div>
           <div class="upload-title">Prends ou importe une photo</div>
           <div class="upload-sub">Ton assiette, ton plat, ta collation</div>
