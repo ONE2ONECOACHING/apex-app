@@ -146,7 +146,7 @@ const DashboardPage = {
 
   renderGraph(entries) {
     if (entries.length < 2) return '';
-    const W = 300, H = 120, px = 22, py = 22, pb = 8;
+    const W = 300, H = 78, px = 20, py = 16, pb = 4;
     const weights = entries.map(e => parseFloat(e.poids));
     const minW = Math.min(...weights);
     const maxW = Math.max(...weights);
@@ -160,33 +160,40 @@ const DashboardPage = {
       w: parseFloat(e.poids)
     }));
 
-    const linePoints = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    // Courbe lissée cardinal spline → cubic bezier
+    const t = 0.25;
+    let linePath = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const cp1x = (p1.x + (p2.x - p0.x) * t).toFixed(1);
+      const cp1y = (p1.y + (p2.y - p0.y) * t).toFixed(1);
+      const cp2x = (p2.x - (p3.x - p1.x) * t).toFixed(1);
+      const cp2y = (p2.y - (p3.y - p1.y) * t).toFixed(1);
+      linePath += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+    }
+    const areaPath = linePath
+      + ` L ${pts[pts.length-1].x.toFixed(1)},${H}`
+      + ` L ${pts[0].x.toFixed(1)},${H} Z`;
 
-    // Zone de remplissage dégradée sous la courbe
-    const areaPath = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} `
-      + pts.slice(1).map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-      + ` L ${pts[pts.length-1].x.toFixed(1)},${(H - pb).toFixed(1)}`
-      + ` L ${pts[0].x.toFixed(1)},${(H - pb).toFixed(1)} Z`;
-
-    // Afficher label sur tous les points si ≤ 8 sinon 1 sur N
     const step = entries.length <= 8 ? 1 : Math.ceil(entries.length / 8);
     const showLabel = i => i % step === 0 || i === pts.length - 1;
 
-    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;margin-top:8px;">
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;margin-top:6px;">
       <defs>
         <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stop-color="#C4820A" stop-opacity="0.30"/>
+          <stop offset="0%"   stop-color="#C4820A" stop-opacity="0.15"/>
           <stop offset="100%" stop-color="#C4820A" stop-opacity="0"/>
         </linearGradient>
       </defs>
       <path d="${areaPath}" fill="url(#wGrad)"/>
-      <polyline points="${linePoints}" fill="none" stroke="#C4820A" stroke-width="2.5"
-        stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${linePath}" fill="none" stroke="#C4820A" stroke-width="1.8" stroke-linecap="round"/>
       ${pts.map((p, i) => `
-        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5.5" fill="#C4820A"/>
-        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="#1A1A1A"/>
-        ${showLabel(i) ? `<text x="${p.x.toFixed(1)}" y="${(p.y - 11).toFixed(1)}"
-          text-anchor="middle" font-size="9.5" font-weight="700" fill="#C4820A">${p.w}kg</text>` : ''}
+        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.8" fill="#C4820A"/>
+        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="1.6" fill="#1A1A1A"/>
+        ${showLabel(i) ? `<text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="600" fill="#C4820A">${p.w}kg</text>` : ''}
       `).join('')}
     </svg>`;
   },
