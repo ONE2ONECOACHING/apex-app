@@ -146,23 +146,47 @@ const DashboardPage = {
 
   renderGraph(entries) {
     if (entries.length < 2) return '';
-    const W = 280, H = 72, px = 16, py = 12;
+    const W = 300, H = 120, px = 22, py = 22, pb = 8;
     const weights = entries.map(e => parseFloat(e.poids));
     const minW = Math.min(...weights);
     const maxW = Math.max(...weights);
-    const range = maxW - minW || 0.5;
+    const range = maxW - minW || 1;
+    const innerH = H - py - pb;
     const xStep = (W - px * 2) / (entries.length - 1);
-    const pts = weights.map((w, i) => ({
+
+    const pts = entries.map((e, i) => ({
       x: px + i * xStep,
-      y: py + (1 - (w - minW) / range) * (H - py * 2),
-      w
+      y: py + (1 - (parseFloat(e.poids) - minW) / range) * innerH,
+      w: parseFloat(e.poids)
     }));
-    const polyline = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;margin-top:4px;">
-      <polyline points="${polyline}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+
+    const linePoints = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+    // Zone de remplissage dégradée sous la courbe
+    const areaPath = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} `
+      + pts.slice(1).map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+      + ` L ${pts[pts.length-1].x.toFixed(1)},${(H - pb).toFixed(1)}`
+      + ` L ${pts[0].x.toFixed(1)},${(H - pb).toFixed(1)} Z`;
+
+    // Afficher label sur tous les points si ≤ 8 sinon 1 sur N
+    const step = entries.length <= 8 ? 1 : Math.ceil(entries.length / 8);
+    const showLabel = i => i % step === 0 || i === pts.length - 1;
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;margin-top:8px;">
+      <defs>
+        <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#C4820A" stop-opacity="0.30"/>
+          <stop offset="100%" stop-color="#C4820A" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="${areaPath}" fill="url(#wGrad)"/>
+      <polyline points="${linePoints}" fill="none" stroke="#C4820A" stroke-width="2.5"
+        stroke-linejoin="round" stroke-linecap="round"/>
       ${pts.map((p, i) => `
-        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="var(--gold)"/>
-        ${(i === 0 || i === pts.length - 1) ? `<text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--gray-light)">${p.w}kg</text>` : ''}
+        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5.5" fill="#C4820A"/>
+        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="#1A1A1A"/>
+        ${showLabel(i) ? `<text x="${p.x.toFixed(1)}" y="${(p.y - 11).toFixed(1)}"
+          text-anchor="middle" font-size="9.5" font-weight="700" fill="#C4820A">${p.w}kg</text>` : ''}
       `).join('')}
     </svg>`;
   },
