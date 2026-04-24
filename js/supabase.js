@@ -453,10 +453,25 @@ const db = {
       .single();
     if (!asgn) return null;
 
-    // Calculer le samedi de déclenchement (dernier samedi écoulé)
-    const d = new Date();
-    const back = (d.getDay() + 1) % 7; // sam=0, dim=1, lun=2 …
-    d.setDate(d.getDate() - back);
+    // Calculer la date de déclenchement selon jour_envoi / heure_envoi
+    const jourEnvoi  = asgn.jour_envoi  ?? 6;          // 0=dim … 6=sam
+    const heureEnvoi = asgn.heure_envoi ?? '08:00';    // "HH:MM"
+    const [hh, mm]   = heureEnvoi.split(':').map(Number);
+    const now = new Date();
+    const d   = new Date(now);
+
+    // Revenir au dernier jour correspondant à jourEnvoi
+    const daysBack = (now.getDay() - jourEnvoi + 7) % 7;
+    d.setDate(d.getDate() - daysBack);
+    d.setHours(0, 0, 0, 0);
+
+    // Si c'est aujourd'hui mais l'heure de déclenchement n'est pas encore passée → semaine précédente
+    if (daysBack === 0) {
+      const triggerTime = new Date(d);
+      triggerTime.setHours(hh, mm, 0, 0);
+      if (now < triggerTime) d.setDate(d.getDate() - 7);
+    }
+
     const semaine = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
     // Upsert sans écraser si déjà existant

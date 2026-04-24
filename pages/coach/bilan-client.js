@@ -44,6 +44,12 @@ const CoachBilanClientPage = {
   renderContent() {
     const asgn = this.assignation;
     const currentTemplateId = asgn?.actif ? asgn.template_id : null;
+    const jourEnvoi  = asgn?.jour_envoi  ?? 6;
+    const heureEnvoi = asgn?.heure_envoi ?? '08:00';
+    const jours = [
+      [1,'Lundi'],[2,'Mardi'],[3,'Mercredi'],[4,'Jeudi'],
+      [5,'Vendredi'],[6,'Samedi'],[0,'Dimanche']
+    ];
 
     let html = `
       <!-- Navigation tabs -->
@@ -71,6 +77,18 @@ const CoachBilanClientPage = {
             <option value="">— Aucun bilan —</option>
             ${this.templates.map(t => `<option value="${t.id}" ${currentTemplateId === t.id ? 'selected' : ''}>${t.nom} (${(t.questions||[]).length} questions)</option>`).join('')}
           </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0.5rem;">
+          <div class="field" style="margin-bottom:0;">
+            <label class="field-label">Jour d'envoi</label>
+            <select class="input" id="bcJourEnvoi">
+              ${jours.map(([v,l]) => `<option value="${v}" ${jourEnvoi==v?'selected':''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label class="field-label">Heure</label>
+            <input type="time" class="input" id="bcHeureEnvoi" value="${heureEnvoi}">
+          </div>
         </div>
         <div id="bcAssignMsg"></div>
         <button class="btn btn-primary" style="height:44px;font-size:14px;" onclick="CoachBilanClientPage.saveAssignation()">
@@ -141,7 +159,9 @@ const CoachBilanClientPage = {
   },
 
   async saveAssignation() {
-    const templateId = document.getElementById('bcTemplateSelect').value;
+    const templateId  = document.getElementById('bcTemplateSelect').value;
+    const jourEnvoi   = parseInt(document.getElementById('bcJourEnvoi')?.value ?? 6, 10);
+    const heureEnvoi  = document.getElementById('bcHeureEnvoi')?.value || '08:00';
     const msg = document.getElementById('bcAssignMsg');
 
     try {
@@ -154,7 +174,9 @@ const CoachBilanClientPage = {
           template_id: templateId,
           client_id: this.clientId,
           coach_id: Router.userProfile.id,
-          actif: true
+          actif: true,
+          jour_envoi: jourEnvoi,
+          heure_envoi: heureEnvoi
         });
         this.assignation = { ...saved, bilan_templates: this.templates.find(t => t.id === templateId) };
       }

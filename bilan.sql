@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS bilan_assignations (
   client_id   UUID    REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   coach_id    UUID    REFERENCES profiles(id) NOT NULL,
   actif       BOOLEAN DEFAULT true,
+  jour_envoi  INTEGER NOT NULL DEFAULT 6,   -- 0=dim … 6=sam
+  heure_envoi TEXT    NOT NULL DEFAULT '08:00',
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(client_id)   -- un seul template actif par client
 );
