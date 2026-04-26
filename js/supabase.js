@@ -126,12 +126,21 @@ const db = {
   },
 
   async deleteClient(profileId) {
-    // Soft delete : désactive le profil (actif = false) sans toucher à Auth
-    const { error } = await getSupabase()
-      .from('profiles')
-      .update({ actif: false })
-      .eq('id', profileId);
-    if (error) throw error;
+    // Suppression complète via edge function (service role requis pour auth.users)
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/delete-client`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ profileId }),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
   },
 
   async updateProfile(id, updates) {
