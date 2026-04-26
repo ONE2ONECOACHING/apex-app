@@ -43,19 +43,20 @@ serve(async (req) => {
     const { email, prenom, nom, appUrl } = await req.json();
     if (!email || !prenom) throw new Error('Email et prénom requis');
 
-    // Ne pas mettre #set-password ici — Supabase ajoute #access_token=...&type=invite
-    // et notre router le détecte ensuite
-    const redirectTo = appUrl;
-
-    // Générer le lien d'invitation (crée le user auth si inexistant)
-    const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'invite',
+    // Créer le user avec email confirmé + mdp aléatoire
+    const randomPwd = crypto.randomUUID() + crypto.randomUUID();
+    const { data: userData, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email,
-      options: { redirectTo },
+      email_confirm: true,
+      password: randomPwd,
     });
-    if (linkErr) throw linkErr;
+    if (createErr && createErr.message !== 'User already registered') throw createErr;
 
-    const userId = linkData.user.id;
+    const userId = userData?.user?.id || (
+      await supabaseAdmin.auth.admin.listUsers()
+        .then(({ data }) => data.users.find(u => u.email === email)?.id)
+    );
+    if (!userId) throw new Error('Impossible de créer l\'utilisateur');
 
     // Créer / mettre à jour le profil client
     const { error: profileErr } = await supabaseAdmin.from('profiles').upsert({
@@ -67,6 +68,14 @@ serve(async (req) => {
       onboarding_done: false,
     }, { onConflict: 'id' });
     if (profileErr) throw profileErr;
+
+    // Générer un lien recovery (reset password) — plus fiable que invite
+    const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: { redirectTo: appUrl },
+    });
+    if (linkErr) throw linkErr;
 
     return new Response(
       JSON.stringify({

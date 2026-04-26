@@ -44,6 +44,22 @@ const ResetPasswordPage = {
 
     try {
       await db.updatePassword(pwd1);
+
+      // Vérifier si c'est un nouveau client (onboarding pas encore fait)
+      const user = await db.getUser();
+      if (user) {
+        try {
+          const profile = await db.getProfile(user.id);
+          if (profile && !profile.onboarding_done) {
+            // Nouveau client via lien d'invitation → onboarding
+            Router.userProfile = null;
+            window.location.hash = '#onboarding';
+            return;
+          }
+        } catch (_) {}
+      }
+
+      // Utilisateur existant (reset normal) → retour au login
       alertEl.innerHTML = '<div class="alert alert-success">✅ Mot de passe mis à jour ! Reconnecte-toi.</div>';
       await db.signOut();
       setTimeout(() => { Router.userProfile = null; window.location.hash = '#login'; }, 2000);
