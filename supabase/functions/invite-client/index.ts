@@ -69,7 +69,7 @@ serve(async (req) => {
     }, { onConflict: 'id' });
     if (profileErr) throw profileErr;
 
-    // Générer un lien recovery (reset password) — plus fiable que invite
+    // Générer un lien recovery (reset password)
     const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email,
@@ -77,9 +77,18 @@ serve(async (req) => {
     });
     if (linkErr) throw linkErr;
 
+    // Extraire uniquement le token du lien Supabase
+    // On ne partage PAS le lien Supabase directement (WhatsApp le pré-fetcherait et consommerait le token)
+    // On partage un lien vers notre app avec le token encodé dans le hash
+    const actionUrl = new URL(linkData.properties.action_link);
+    const otpToken = actionUrl.searchParams.get('token');
+
+    // Lien que le coach envoie au client : pointe vers notre app (pas Supabase)
+    const inviteLink = `${appUrl}/#invite?t=${otpToken}&type=recovery`;
+
     return new Response(
       JSON.stringify({
-        link: linkData.properties.action_link,
+        link: inviteLink,
         profileId: userId,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

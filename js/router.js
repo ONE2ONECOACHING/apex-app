@@ -26,12 +26,21 @@ const Router = {
   },
 
   async route() {
-    const hash = window.location.hash.slice(1) || 'login';
+    // Extraire la route sans les query params du hash (ex: #invite?t=xxx → 'invite')
+    const fullHash = window.location.hash.slice(1) || 'login';
+    const hash = fullHash.split('?')[0];
     const user = await db.getUser();
 
-    // Non connecté → login
-    if (!user && hash !== 'login') {
+    // Non connecté → login (sauf page invite qui est publique)
+    if (!user && hash !== 'login' && hash !== 'invite') {
       window.location.hash = '#login';
+      return;
+    }
+
+    // Page invite accessible sans connexion
+    if (hash === 'invite') {
+      app.innerHTML = InvitePage.render();
+      InvitePage.init();
       return;
     }
 
@@ -69,7 +78,7 @@ const Router = {
     }
 
     // Cloisonnement role ↔ route
-    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password'];
+    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite'];
     const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
@@ -97,6 +106,7 @@ const Router = {
       case 'client-bilan': app.innerHTML = ClientBilanPage.render(); ClientBilanPage.init(); break;
       case 'onboarding': app.innerHTML = OnboardingPage.render(); OnboardingPage.init(); break;
       case 'set-password': app.innerHTML = SetPasswordPage.render(); SetPasswordPage.init(); break;
+      case 'invite': app.innerHTML = InvitePage.render(); InvitePage.init(); break;
       case 'coach-clients': app.innerHTML = CoachClientsPage.render(); CoachClientsPage.init(); break;
       case 'coach-client-edit': app.innerHTML = CoachClientEditPage.render(); CoachClientEditPage.init(); break;
       case 'coach-plan-edit': app.innerHTML = CoachPlanEditPage.render(); CoachPlanEditPage.init(); break;
