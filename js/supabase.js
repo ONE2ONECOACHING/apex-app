@@ -169,7 +169,7 @@ const db = {
         email,
         prenom,
         nom,
-        appUrl: window.location.origin,
+        appUrl: APP_CONFIG.APP_URL,
       }),
     });
     const json = await res.json();
