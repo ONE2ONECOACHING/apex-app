@@ -88,11 +88,13 @@ const CoachClientsPage = {
       <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('coachModal').innerHTML=''">
         <div class="modal">
           <div class="modal-title">Nouveau client <button class="modal-close" onclick="document.getElementById('coachModal').innerHTML=''">×</button></div>
-          <div class="field"><label class="field-label">Prénom</label><input class="input" id="newPrenom" placeholder="Marc"></div>
-          <div class="field"><label class="field-label">Email</label><input class="input" id="newEmail" type="email" placeholder="marc@email.com"></div>
-          <div class="field"><label class="field-label">Mot de passe temporaire</label><input class="input" id="newPass" type="text" value="Apex2026!"></div>
-          <div id="createError"></div>
-          <button class="btn btn-primary" onclick="CoachClientsPage.createClient()">Créer le client</button>
+          <div id="createForm">
+            <div class="field"><label class="field-label">Prénom</label><input class="input" id="newPrenom" placeholder="Marc"></div>
+            <div class="field"><label class="field-label">Email</label><input class="input" id="newEmail" type="email" placeholder="marc@email.com"></div>
+            <div id="createError"></div>
+            <button class="btn btn-primary" style="width:100%" onclick="CoachClientsPage.createClient()" id="createBtn">Générer le lien d'invitation</button>
+          </div>
+          <div id="inviteResult" style="display:none;"></div>
         </div>
       </div>`;
   },
@@ -100,19 +102,48 @@ const CoachClientsPage = {
   async createClient() {
     const prenom = document.getElementById('newPrenom').value.trim();
     const email = document.getElementById('newEmail').value.trim();
-    const password = document.getElementById('newPass').value;
+    const btn = document.getElementById('createBtn');
 
-    if (!prenom || !email || !password) {
-      document.getElementById('createError').innerHTML = '<div class="alert alert-error">Tous les champs sont requis.</div>';
+    if (!prenom || !email) {
+      document.getElementById('createError').innerHTML = '<div class="alert alert-error">Prénom et email requis.</div>';
       return;
     }
 
+    btn.disabled = true;
+    btn.textContent = 'Génération en cours…';
+
     try {
-      await db.createUser(email, password, prenom);
-      document.getElementById('coachModal').innerHTML = '';
-      await this.init();
+      const { link } = await db.generateInviteLink(email, prenom);
+
+      // Masquer le formulaire, afficher le lien
+      document.getElementById('createForm').style.display = 'none';
+      document.getElementById('inviteResult').style.display = 'block';
+      document.getElementById('inviteResult').innerHTML = `
+        <div style="text-align:center;margin-bottom:1rem;">
+          <div style="font-size:1.5rem;margin-bottom:0.5rem;">✅</div>
+          <div style="font-weight:700;margin-bottom:0.25rem;">Compte créé pour ${prenom}</div>
+          <div style="font-size:13px;color:var(--gray);">Envoie ce lien au client. Il est valable 24h.</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11px;word-break:break-all;color:var(--gray);margin-bottom:1rem;">${link}</div>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachClientsPage.copyInviteLink('${encodeURIComponent(link)}')">📋 Copier le lien</button>
+        <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('coachModal').innerHTML='';CoachClientsPage.init()">Fermer</button>
+      `;
+
     } catch (e) {
       document.getElementById('createError').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Générer le lien d\'invitation';
     }
+  },
+
+  copyInviteLink(encodedLink) {
+    const link = decodeURIComponent(encodedLink);
+    navigator.clipboard.writeText(link).then(() => {
+      // Feedback visuel
+      const btns = document.querySelectorAll('#inviteResult .btn-primary');
+      if (btns[0]) { btns[0].textContent = '✅ Lien copié !'; setTimeout(() => { btns[0].textContent = '📋 Copier le lien'; }, 2000); }
+    }).catch(() => {
+      prompt('Copie ce lien :', link);
+    });
   }
 };

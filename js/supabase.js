@@ -145,22 +145,26 @@ const db = {
     return data;
   },
 
-  async createUser(email, password, prenom) {
-    // Client temporaire avec une clé localStorage séparée → session coach jamais touchée
-    const tempClient = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY, {
-      auth: { storageKey: 'apex-create-temp' }
-    });
-    try {
-      const { data, error } = await tempClient.auth.signUp({
+  async generateInviteLink(email, prenom) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/invite-client`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
         email,
-        password,
-        options: { data: { prenom, role: 'client' } }
-      });
-      if (error) throw error;
-      return data;
-    } finally {
-      await tempClient.auth.signOut();
-    }
+        prenom,
+        appUrl: window.location.origin,
+      }),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json; // { link, profileId }
   },
 
   // Coach — Plans

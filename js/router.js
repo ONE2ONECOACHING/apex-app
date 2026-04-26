@@ -12,6 +12,13 @@ const Router = {
       ResetPasswordPage.init();
       return;
     }
+    // Detect Supabase invite redirect
+    if (window.location.hash.includes('type=invite')) {
+      history.replaceState(null, '', window.location.pathname + '#set-password');
+      document.getElementById('app').innerHTML = SetPasswordPage.render();
+      SetPasswordPage.init();
+      return;
+    }
     window.addEventListener('hashchange', () => this.route());
     await this.route();
   },
@@ -60,7 +67,7 @@ const Router = {
     }
 
     // Cloisonnement role ↔ route
-    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding'];
+    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password'];
     const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
@@ -87,6 +94,7 @@ const Router = {
       case 'recettes': app.innerHTML = RecettesPage.render(); RecettesPage.init(); break;
       case 'client-bilan': app.innerHTML = ClientBilanPage.render(); ClientBilanPage.init(); break;
       case 'onboarding': app.innerHTML = OnboardingPage.render(); OnboardingPage.init(); break;
+      case 'set-password': app.innerHTML = SetPasswordPage.render(); SetPasswordPage.init(); break;
       case 'coach-clients': app.innerHTML = CoachClientsPage.render(); CoachClientsPage.init(); break;
       case 'coach-client-edit': app.innerHTML = CoachClientEditPage.render(); CoachClientEditPage.init(); break;
       case 'coach-plan-edit': app.innerHTML = CoachPlanEditPage.render(); CoachPlanEditPage.init(); break;
