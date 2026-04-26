@@ -1,4 +1,4 @@
-// APEX APP — Reset Password
+// APEX APP — Reset Password (mot de passe oublié — flow existants uniquement)
 
 const ResetPasswordPage = {
   render() {
@@ -43,23 +43,18 @@ const ResetPasswordPage = {
     btn.textContent = 'Enregistrement…';
 
     try {
-      await db.updatePassword(pwd1);
-
-      // Vérifier si c'est un nouveau client (onboarding pas encore fait)
-      const user = await db.getUser();
-      if (user) {
+      // Restaurer la session si nécessaire (double sécurité)
+      const at = sessionStorage.getItem('recovery_access_token');
+      const rt = sessionStorage.getItem('recovery_refresh_token');
+      if (at && rt) {
         try {
-          const profile = await db.getProfile(user.id);
-          if (profile && !profile.onboarding_done) {
-            // Nouveau client via lien d'invitation → onboarding
-            Router.userProfile = null;
-            window.location.hash = '#onboarding';
-            return;
-          }
+          await db.restoreSession(at, rt);
+          sessionStorage.removeItem('recovery_access_token');
+          sessionStorage.removeItem('recovery_refresh_token');
         } catch (_) {}
       }
 
-      // Utilisateur existant (reset normal) → retour au login
+      await db.updatePassword(pwd1);
       alertEl.innerHTML = '<div class="alert alert-success">✅ Mot de passe mis à jour ! Reconnecte-toi.</div>';
       await db.signOut();
       setTimeout(() => { Router.userProfile = null; window.location.hash = '#login'; }, 2000);

@@ -3,7 +3,9 @@ let _supabase = null;
 
 function getSupabase() {
   if (!_supabase) {
-    _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
+    _supabase = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY, {
+      auth: { detectSessionInUrl: false } // On gère la session manuellement depuis le hash
+    });
   }
   return _supabase;
 }
@@ -32,9 +34,44 @@ const db = {
     if (error) throw error;
   },
 
+  async verifyInviteToken(email, token) {
+    // Vérifie l'OTP recovery directement — établit la session sans redirect
+    const { data, error } = await getSupabase().auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery',
+    });
+    if (error) throw error;
+    return data.session;
+  },
+
+  async restoreSession(accessToken, refreshToken) {
+    const { error } = await getSupabase().auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw error;
+  },
+
   async getSessionFromUrl() {
-    // Force la création du client Supabase pour qu'il traite les tokens du hash
-    // et établisse la session en mémoire / localStorage
+    // Extraire access_token + refresh_token du hash URL
+    // ex: #access_token=xxx&refresh_token=yyy&type=recovery
+    const hashStr = window.location.hash.substring(1);
+    const params = new URLSearchParams(hashStr);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+
+    if (accessToken && refreshToken) {
+      // Établir explicitement la session depuis les tokens
+      const { data, error } = await getSupabase().auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) throw error;
+      return data.session;
+    }
+
+    // Fallback : session déjà en mémoire
     const { data } = await getSupabase().auth.getSession();
     return data.session;
   },
@@ -161,7 +198,7 @@ const db = {
     return data;
   },
 
-  async generateInviteLink(email, prenom, nom = '') {
+  async createClientAccount(email, prenom, nom = '') {
     const session = await getSupabase().auth.getSession();
     const token = session.data.session?.access_token;
     if (!token) throw new Error('Non connecté');
@@ -172,16 +209,11 @@ const db = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        email,
-        prenom,
-        nom,
-        appUrl: APP_CONFIG.APP_URL,
-      }),
+      body: JSON.stringify({ email, prenom, nom }),
     });
     const json = await res.json();
     if (json.error) throw new Error(json.error);
-    return json; // { link, profileId }
+    return json; // { profileId }
   },
 
   // Coach — Plans

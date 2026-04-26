@@ -95,7 +95,7 @@ const CoachClientsPage = {
             </div>
             <div class="field"><label class="field-label">Email</label><input class="input" id="newEmail" type="email" placeholder="marc@email.com"></div>
             <div id="createError"></div>
-            <button class="btn btn-primary" style="width:100%" onclick="CoachClientsPage.createClient()" id="createBtn">Générer le lien d'invitation</button>
+            <button class="btn btn-primary" style="width:100%" onclick="CoachClientsPage.createClient()" id="createBtn">Créer le compte</button>
           </div>
           <div id="inviteResult" style="display:none;"></div>
         </div>
@@ -114,40 +114,45 @@ const CoachClientsPage = {
     }
 
     btn.disabled = true;
-    btn.textContent = 'Génération en cours…';
+    btn.textContent = 'Création en cours…';
 
     try {
-      const { link } = await db.generateInviteLink(email, prenom, nom);
+      await db.createClientAccount(email, prenom, nom);
 
-      // Masquer le formulaire, afficher le lien
+      const appUrl = APP_CONFIG.APP_URL;
+      const message = `Bonjour ${prenom} 👊\n\nTon espace APEX ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 Apex2026!\n\nConnecte-toi et choisis ton nouveau mot de passe.`;
+
       document.getElementById('createForm').style.display = 'none';
       document.getElementById('inviteResult').style.display = 'block';
       document.getElementById('inviteResult').innerHTML = `
-        <div style="text-align:center;margin-bottom:1rem;">
+        <div style="text-align:center;margin-bottom:1.25rem;">
           <div style="font-size:1.5rem;margin-bottom:0.5rem;">✅</div>
-          <div style="font-weight:700;margin-bottom:0.25rem;">Compte créé pour ${prenom} ${nom}</div>
-          <div style="font-size:13px;color:var(--gray);">Envoie ce lien au client. Il est valable 24h.</div>
+          <div style="font-weight:700;margin-bottom:0.25rem;">Compte créé pour ${prenom} ${nom || ''}</div>
+          <div style="font-size:13px;color:var(--gray);">Envoie ces identifiants au client via WhatsApp.</div>
         </div>
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11px;word-break:break-all;color:var(--gray);margin-bottom:1rem;">${link}</div>
-        <button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachClientsPage.copyInviteLink('${encodeURIComponent(link)}')">📋 Copier le lien</button>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;font-size:13px;margin-bottom:1rem;line-height:1.8;">
+          <div>🔗 <b>Lien :</b> ${appUrl}</div>
+          <div>📧 <b>Email :</b> ${email}</div>
+          <div>🔑 <b>Mot de passe :</b> Apex2026!</div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachClientsPage.copyCredentials('${encodeURIComponent(message)}')">📋 Copier le message WhatsApp</button>
         <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('coachModal').innerHTML='';CoachClientsPage.init()">Fermer</button>
       `;
 
     } catch (e) {
       document.getElementById('createError').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
       btn.disabled = false;
-      btn.textContent = 'Générer le lien d\'invitation';
+      btn.textContent = 'Créer le compte';
     }
   },
 
-  copyInviteLink(encodedLink) {
-    const link = decodeURIComponent(encodedLink);
-    navigator.clipboard.writeText(link).then(() => {
-      // Feedback visuel
-      const btns = document.querySelectorAll('#inviteResult .btn-primary');
-      if (btns[0]) { btns[0].textContent = '✅ Lien copié !'; setTimeout(() => { btns[0].textContent = '📋 Copier le lien'; }, 2000); }
+  copyCredentials(encodedMsg) {
+    const msg = decodeURIComponent(encodedMsg);
+    navigator.clipboard.writeText(msg).then(() => {
+      const btn = document.querySelector('#inviteResult .btn-primary');
+      if (btn) { btn.textContent = '✅ Copié !'; setTimeout(() => { btn.textContent = '📋 Copier le message WhatsApp'; }, 2000); }
     }).catch(() => {
-      prompt('Copie ce lien :', link);
+      prompt('Copie ce message :', msg);
     });
   }
 };

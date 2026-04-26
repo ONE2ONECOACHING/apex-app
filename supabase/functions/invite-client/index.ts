@@ -1,4 +1,4 @@
-// APEX APP — Edge Function : Génération lien d'invitation client
+// APEX APP — Edge Function : Création compte client
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -7,13 +7,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, content-type',
 };
 
+const DEFAULT_PASSWORD = 'Apex2026!';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Vérifier que l'appelant est bien un coach connecté
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Non autorisé');
 
@@ -23,7 +24,6 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Vérifier le token JWT du coach
     const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -32,7 +32,6 @@ serve(async (req) => {
     const { data: { user: caller }, error: authErr } = await supabaseUser.auth.getUser();
     if (authErr || !caller) throw new Error('Non autorisé');
 
-    // Vérifier que le caller est un coach
     const { data: callerProfile } = await supabaseAdmin
       .from('profiles')
       .select('role')
@@ -40,15 +39,22 @@ serve(async (req) => {
       .single();
     if (!callerProfile || callerProfile.role !== 'coach') throw new Error('Accès refusé');
 
-    const { email, prenom, nom, appUrl } = await req.json();
+    const { email, prenom, nom } = await req.json();
     if (!email || !prenom) throw new Error('Email et prénom requis');
 
-    // Créer le user avec email confirmé + mdp aléatoire
-    const randomPwd = crypto.randomUUID() + crypto.randomUUID();
+    // Sécurité : interdire de créer un client avec un email déjà coach
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('email', email)
+      .single();
+    if (existingProfile && existingProfile.role === 'coach') throw new Error('Cet email appartient déjà à un coach.');
+
+    // Créer le user avec le mot de passe par défaut
     const { data: userData, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email,
       email_confirm: true,
-      password: randomPwd,
+      password: DEFAULT_PASSWORD,
     });
     if (createErr && createErr.message !== 'User already registered') throw createErr;
 
@@ -69,28 +75,8 @@ serve(async (req) => {
     }, { onConflict: 'id' });
     if (profileErr) throw profileErr;
 
-    // Générer un lien recovery (reset password)
-    const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: { redirectTo: appUrl },
-    });
-    if (linkErr) throw linkErr;
-
-    // Extraire uniquement le token du lien Supabase
-    // On ne partage PAS le lien Supabase directement (WhatsApp le pré-fetcherait et consommerait le token)
-    // On partage un lien vers notre app avec le token encodé dans le hash
-    const actionUrl = new URL(linkData.properties.action_link);
-    const otpToken = actionUrl.searchParams.get('token');
-
-    // Lien que le coach envoie au client : pointe vers notre app (pas Supabase)
-    const inviteLink = `${appUrl}/#invite?t=${otpToken}&type=recovery`;
-
     return new Response(
-      JSON.stringify({
-        link: inviteLink,
-        profileId: userId,
-      }),
+      JSON.stringify({ profileId: userId }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

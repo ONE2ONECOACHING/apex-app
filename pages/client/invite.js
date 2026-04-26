@@ -20,33 +20,43 @@ const InvitePage = {
 
   init() {},
 
-  activate() {
+  async activate() {
     const btn = document.getElementById('inviteActivateBtn');
+    const errEl = document.getElementById('inviteError');
     btn.disabled = true;
     btn.textContent = 'Activation…';
+    errEl.innerHTML = '';
 
-    // Récupérer le token depuis le hash : #invite?t=TOKEN
-    const hash = window.location.hash; // ex: #invite?t=abc123
+    // Lire email + mot de passe temporaire depuis le hash
+    const hash = window.location.hash;
     const qIndex = hash.indexOf('?');
     if (qIndex === -1) {
-      document.getElementById('inviteError').innerHTML = '<div class="alert alert-error">Lien invalide.</div>';
-      btn.disabled = false;
-      btn.textContent = 'Activer mon compte →';
+      errEl.innerHTML = '<div class="alert alert-error">Lien invalide.</div>';
+      btn.disabled = false; btn.textContent = 'Activer mon compte →';
       return;
     }
     const params = new URLSearchParams(hash.slice(qIndex + 1));
-    const token = params.get('t');
-    const type = params.get('type') || 'recovery';
+    const email = params.get('email');
+    const tmp = params.get('tmp');
 
-    if (!token) {
-      document.getElementById('inviteError').innerHTML = '<div class="alert alert-error">Token manquant.</div>';
-      btn.disabled = false;
-      btn.textContent = 'Activer mon compte →';
+    if (!email || !tmp) {
+      errEl.innerHTML = '<div class="alert alert-error">Lien invalide ou expiré.</div>';
+      btn.disabled = false; btn.textContent = 'Activer mon compte →';
       return;
     }
 
-    // Naviguer vers Supabase UNIQUEMENT quand l'utilisateur clique
-    const verifyUrl = `${APP_CONFIG.SUPABASE_URL}/auth/v1/verify?token=${token}&type=${type}&redirect_to=${encodeURIComponent(APP_CONFIG.APP_URL)}`;
-    window.location.href = verifyUrl;
+    try {
+      // Connexion directe avec le mot de passe temporaire → session établie immédiatement
+      await db.signIn(email, tmp);
+      // Afficher directement la page de création de mot de passe sans passer par le router
+      Router.userProfile = null;
+      history.replaceState(null, '', window.location.pathname + '#set-password');
+      document.getElementById('app').innerHTML = SetPasswordPage.render();
+      SetPasswordPage.init();
+    } catch (e) {
+      errEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Activer mon compte →';
+    }
   }
 };

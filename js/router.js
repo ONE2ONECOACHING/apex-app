@@ -5,8 +5,21 @@ const Router = {
   userProfile: null,
 
   async init() {
-    // Detect Supabase password recovery redirect
-    if (window.location.hash.includes('type=recovery')) {
+    // Detect Supabase password recovery redirect (retour Supabase avec access_token)
+    // Ne pas confondre avec le lien d'invitation initial #invite?t=TOKEN&type=recovery
+    if (window.location.hash.includes('access_token') && window.location.hash.includes('type=recovery')) {
+      // Extraire les tokens AVANT de modifier le hash
+      const hashStr = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hashStr);
+      const at = hashParams.get('access_token');
+      const rt = hashParams.get('refresh_token');
+      // Établir la session explicitement (detectSessionInUrl est désactivé)
+      if (at && rt) {
+        try { await db.restoreSession(at, rt); } catch (_) {}
+        // Backup dans sessionStorage au cas où
+        sessionStorage.setItem('recovery_access_token', at);
+        sessionStorage.setItem('recovery_refresh_token', rt);
+      }
       history.replaceState(null, '', window.location.pathname + '#reset-password');
       document.getElementById('app').innerHTML = ResetPasswordPage.render();
       ResetPasswordPage.init();
@@ -65,10 +78,10 @@ const Router = {
       return;
     }
 
-    // Client sans onboarding → forcer onboarding (sauf s'il y est déjà)
+    // Client sans onboarding → forcer changement de mdp d'abord, puis onboarding
     if (user && this.userProfile && this.userProfile.role === 'client'
-        && !this.userProfile.onboarding_done && hash !== 'onboarding') {
-      window.location.hash = '#onboarding';
+        && !this.userProfile.onboarding_done && hash !== 'set-password' && hash !== 'onboarding') {
+      window.location.hash = '#set-password';
       return;
     }
 
