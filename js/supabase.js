@@ -32,6 +32,13 @@ const db = {
     if (error) throw error;
   },
 
+  async getSessionFromUrl() {
+    // Force la création du client Supabase pour qu'il traite les tokens du hash
+    // et établisse la session en mémoire / localStorage
+    const { data } = await getSupabase().auth.getSession();
+    return data.session;
+  },
+
   async getUser() {
     const { data: { user } } = await getSupabase().auth.getUser();
     return user;

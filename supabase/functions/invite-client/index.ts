@@ -43,7 +43,9 @@ serve(async (req) => {
     const { email, prenom, nom, appUrl } = await req.json();
     if (!email || !prenom) throw new Error('Email et prénom requis');
 
-    const redirectTo = `${appUrl}/#set-password`;
+    // Ne pas mettre #set-password ici — Supabase ajoute #access_token=...&type=invite
+    // et notre router le détecte ensuite
+    const redirectTo = appUrl;
 
     // Générer le lien d'invitation (crée le user auth si inexistant)
     const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({

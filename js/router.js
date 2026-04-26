@@ -14,6 +14,8 @@ const Router = {
     }
     // Detect Supabase invite redirect
     if (window.location.hash.includes('type=invite')) {
+      // Établir la session AVANT de changer le hash (sinon les tokens sont perdus)
+      await db.getSessionFromUrl();
       history.replaceState(null, '', window.location.pathname + '#set-password');
       document.getElementById('app').innerHTML = SetPasswordPage.render();
       SetPasswordPage.init();
