@@ -40,7 +40,7 @@ serve(async (req) => {
       .single();
     if (!callerProfile || callerProfile.role !== 'coach') throw new Error('Accès refusé');
 
-    const { email, prenom, appUrl } = await req.json();
+    const { email, prenom, nom, appUrl } = await req.json();
     if (!email || !prenom) throw new Error('Email et prénom requis');
 
     const redirectTo = `${appUrl}/#set-password`;
@@ -60,6 +60,7 @@ serve(async (req) => {
       id: userId,
       email,
       prenom,
+      nom: nom || null,
       role: 'client',
       onboarding_done: false,
     }, { onConflict: 'id' });

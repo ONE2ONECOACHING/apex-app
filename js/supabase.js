@@ -145,7 +145,7 @@ const db = {
     return data;
   },
 
-  async generateInviteLink(email, prenom) {
+  async generateInviteLink(email, prenom, nom = '') {
     const session = await getSupabase().auth.getSession();
     const token = session.data.session?.access_token;
     if (!token) throw new Error('Non connecté');
@@ -159,6 +159,7 @@ const db = {
       body: JSON.stringify({
         email,
         prenom,
+        nom,
         appUrl: window.location.origin,
       }),
     });

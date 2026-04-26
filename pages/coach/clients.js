@@ -89,7 +89,10 @@ const CoachClientsPage = {
         <div class="modal">
           <div class="modal-title">Nouveau client <button class="modal-close" onclick="document.getElementById('coachModal').innerHTML=''">×</button></div>
           <div id="createForm">
-            <div class="field"><label class="field-label">Prénom</label><input class="input" id="newPrenom" placeholder="Marc"></div>
+            <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="field"><label class="field-label">Nom</label><input class="input" id="newNom" placeholder="Dupont"></div>
+              <div class="field"><label class="field-label">Prénom</label><input class="input" id="newPrenom" placeholder="Marc"></div>
+            </div>
             <div class="field"><label class="field-label">Email</label><input class="input" id="newEmail" type="email" placeholder="marc@email.com"></div>
             <div id="createError"></div>
             <button class="btn btn-primary" style="width:100%" onclick="CoachClientsPage.createClient()" id="createBtn">Générer le lien d'invitation</button>
@@ -100,6 +103,7 @@ const CoachClientsPage = {
   },
 
   async createClient() {
+    const nom = document.getElementById('newNom').value.trim();
     const prenom = document.getElementById('newPrenom').value.trim();
     const email = document.getElementById('newEmail').value.trim();
     const btn = document.getElementById('createBtn');
@@ -113,7 +117,7 @@ const CoachClientsPage = {
     btn.textContent = 'Génération en cours…';
 
     try {
-      const { link } = await db.generateInviteLink(email, prenom);
+      const { link } = await db.generateInviteLink(email, prenom, nom);
 
       // Masquer le formulaire, afficher le lien
       document.getElementById('createForm').style.display = 'none';
@@ -121,7 +125,7 @@ const CoachClientsPage = {
       document.getElementById('inviteResult').innerHTML = `
         <div style="text-align:center;margin-bottom:1rem;">
           <div style="font-size:1.5rem;margin-bottom:0.5rem;">✅</div>
-          <div style="font-weight:700;margin-bottom:0.25rem;">Compte créé pour ${prenom}</div>
+          <div style="font-weight:700;margin-bottom:0.25rem;">Compte créé pour ${prenom} ${nom}</div>
           <div style="font-size:13px;color:var(--gray);">Envoie ce lien au client. Il est valable 24h.</div>
         </div>
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11px;word-break:break-all;color:var(--gray);margin-bottom:1rem;">${link}</div>
