@@ -115,7 +115,9 @@ const CoachClientEditPage = {
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="CoachClientEditPage.calcTDEE()">🔢 Calculer TDEE</button>
         <button class="btn btn-primary" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
+        <button class="btn btn-secondary" onclick="CoachClientEditPage.testPush()" id="testPushBtn">🔔 Tester notif</button>
       </div>
+      <div id="testPushResult" style="margin-top:0.5rem;"></div>
       <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>
 
       <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
@@ -196,6 +198,26 @@ const CoachClientEditPage = {
         <div style="font-size:24px;font-weight:700;color:var(--gold);">${result.targetKcal} kcal</div>
         <div style="font-size:12px;color:var(--gray);margin-top:4px;">P: ${result.proteines}g · G: ${result.glucides}g · L: ${result.lipides}g</div>
       </div>`;
+  },
+
+  async testPush() {
+    const btn = document.getElementById('testPushBtn');
+    const res = document.getElementById('testPushResult');
+    btn.disabled = true;
+    btn.textContent = '⏳ Envoi…';
+    res.innerHTML = '';
+    try {
+      const result = await db.sendPush(this.client.id, '🔔 Test APEX', 'Tes notifications fonctionnent !', '/');
+      if (result.sent > 0) {
+        res.innerHTML = `<div class="alert alert-success">✅ Notification envoyée (${result.sent} appareil${result.sent > 1 ? 's' : ''})</div>`;
+      } else {
+        res.innerHTML = `<div class="alert alert-error">❌ Aucun appareil abonné — le client n'a pas encore accepté les notifications.</div>`;
+      }
+    } catch (e) {
+      res.innerHTML = `<div class="alert alert-error">Erreur : ${e.message}</div>`;
+    }
+    btn.disabled = false;
+    btn.textContent = '🔔 Tester notif';
   },
 
   async save() {

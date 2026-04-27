@@ -245,6 +245,19 @@ const db = {
   },
 
   // Push notifications
+  async sendPush(profileId, title, body, url = '/') {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ profileId, title, body, url }),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json; // { sent: N }
+  },
+
   async savePushSubscription(profileId, subscription) {
     const { error } = await getSupabase()
       .from('push_subscriptions')
