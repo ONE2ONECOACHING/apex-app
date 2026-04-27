@@ -332,7 +332,7 @@ const CoachPlanEditPage = {
         '📋 Nouveau plan disponible !',
         'Ton coach a publié ton plan nutritionnel. Consulte-le dès maintenant.',
         '/#plan'
-      ).catch(() => {});
+      ).catch((e) => console.warn('Push plan failed:', e));
 
       const msg = document.getElementById('peSaveMsg');
       if (msg) {
