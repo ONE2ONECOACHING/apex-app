@@ -326,6 +326,14 @@ const CoachPlanEditPage = {
       // Recharger les plans
       this.plans = await db.getPlansForClient(this.clientId);
 
+      // Notifier le client
+      db.sendPush(
+        this.clientId,
+        '📋 Nouveau plan disponible !',
+        'Ton coach a publié ton plan nutritionnel. Consulte-le dès maintenant.',
+        '/#plan'
+      ).catch(() => {});
+
       const msg = document.getElementById('peSaveMsg');
       if (msg) {
         msg.innerHTML = '<div class="alert alert-success">✅ Plan enregistré</div>';
