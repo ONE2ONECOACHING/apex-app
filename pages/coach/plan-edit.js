@@ -63,12 +63,13 @@ const CoachPlanEditPage = {
 
     let html = '';
 
-    // Sélecteur de phase (sans semaine)
+    // Sélecteur de phase + bouton générateur
     html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
       <label class="field-label" style="margin:0;">Phase</label>
       <select class="input" style="width:180px;" id="pePhase" onchange="CoachPlanEditPage.updatePhaseTitle()">
         ${phases.map(ph => `<option value="${ph}" ${(p && p.phase === ph) || (!p && c.phase === ph) ? 'selected' : ''}>${ph.charAt(0).toUpperCase() + ph.slice(1)}</option>`).join('')}
       </select>
+      <button class="btn" style="margin-left:auto;height:36px;padding:0 12px;font-size:13px;white-space:nowrap;" onclick="CoachPlanEditPage.showGeneratorModal()">⚡ Générer</button>
     </div>`;
 
     // Macros cibles
@@ -279,6 +280,94 @@ const CoachPlanEditPage = {
 
   removeItem(idx) {
     this.repas.splice(idx, 1);
+    this.renderEditor();
+  },
+
+  showGeneratorModal() {
+    const existing = document.getElementById('pgModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'pgModal';
+    modal.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;display:flex;align-items:flex-end;" onclick="if(event.target===this)document.getElementById('pgModal').remove()">
+        <div style="background:var(--white);border-radius:16px 16px 0 0;padding:1.5rem;width:100%;max-height:85vh;overflow-y:auto;">
+          <div style="font-size:16px;font-weight:700;margin-bottom:1.25rem;">⚡ Générer un plan</div>
+
+          <div class="field">
+            <label class="field-label">Repas principaux</label>
+            <div style="display:flex;gap:8px;">
+              <button id="pgR3" class="tag-pill-btn active-ben" onclick="CoachPlanEditPage._pgSetRepas(3)">3 repas</button>
+              <button id="pgR2" class="tag-pill-btn" onclick="CoachPlanEditPage._pgSetRepas(2)">2 repas</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Collations</label>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+                <input type="checkbox" id="pgCM"> Matin
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+                <input type="checkbox" id="pgCA"> Après-midi
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+                <input type="checkbox" id="pgCS" checked> Soir
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Options alimentaires</label>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+                <input type="checkbox" id="pgVege"> 🥦 Végétarien
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+                <input type="checkbox" id="pgWhey"> 💪 Whey protéine
+              </label>
+            </div>
+          </div>
+
+          <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gray);margin-bottom:1rem;">
+            Les macros cibles utilisées sont celles renseignées dans les objectifs du plan.
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-secondary" onclick="document.getElementById('pgModal').remove()">Annuler</button>
+            <button class="btn btn-primary" onclick="CoachPlanEditPage._pgConfirm()">⚡ Générer le plan</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    this._pgRepas = 3;
+  },
+
+  _pgSetRepas(n) {
+    this._pgRepas = n;
+    document.getElementById('pgR2').className = 'tag-pill-btn' + (n === 2 ? ' active-ben' : '');
+    document.getElementById('pgR3').className = 'tag-pill-btn' + (n === 3 ? ' active-ben' : '');
+  },
+
+  _pgConfirm() {
+    const opts = {
+      nbRepas:    this._pgRepas || 3,
+      colMatin:   document.getElementById('pgCM').checked,
+      colAprem:   document.getElementById('pgCA').checked,
+      colSoir:    document.getElementById('pgCS').checked,
+      vegetarien: document.getElementById('pgVege').checked,
+      whey:       document.getElementById('pgWhey').checked,
+    };
+
+    const targets = {
+      calories:  +document.getElementById('peKcal')?.value || this.currentPlan?.calories_cible  || 2000,
+      proteines: +document.getElementById('peProt')?.value || this.currentPlan?.proteines_cible || 160,
+      glucides:  +document.getElementById('peGluc')?.value || this.currentPlan?.glucides_cible  || 200,
+      lipides:   +document.getElementById('peLip')?.value  || this.currentPlan?.lipides_cible   || 55,
+    };
+
+    this.repas = PlanGenerator.generate(opts, targets);
+    document.getElementById('pgModal').remove();
     this.renderEditor();
   },
 
