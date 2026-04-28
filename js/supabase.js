@@ -622,5 +622,50 @@ const db = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // ── Coach Dashboard ───────────────────────────────────────────────────────
+
+  async getAllActivePlans() {
+    const { data, error } = await getSupabase()
+      .from('plans_nutritionnels')
+      .select('profile_id, calories_cible, proteines_cible, glucides_cible, lipides_cible, semaine')
+      .eq('actif', true);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getRecentCompletedBilans(days = 7) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .select('id, client_id, semaine, completed_at')
+      .eq('statut', 'complete')
+      .gte('completed_at', since.toISOString())
+      .order('completed_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getAllPendingBilans() {
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .select('id, client_id, semaine')
+      .eq('statut', 'en_attente')
+      .order('semaine', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getJournalEntriesForClients(profileIds, dateFrom, dateTo) {
+    const { data, error } = await getSupabase()
+      .from('journal_entries')
+      .select('profile_id, date_entree, calories')
+      .in('profile_id', profileIds)
+      .gte('date_entree', dateFrom)
+      .lte('date_entree', dateTo);
+    if (error) throw error;
+    return data || [];
   }
 };
