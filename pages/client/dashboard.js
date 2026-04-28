@@ -19,6 +19,7 @@ const DashboardPage = {
       <nav class="nav-bottom"><div class="nav-inner">
         <a class="nav-item active" href="#dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
         <a class="nav-item" href="#logbook"><span class="nav-icon">🥗</span><span class="nav-label">Nutrition</span></a>
+        <a class="nav-item" href="#mesure"><span class="nav-icon">📏</span><span class="nav-label">Mesures</span></a>
       </div></nav>`;
   },
 

@@ -678,5 +678,81 @@ const db = {
       .lte('date_entree', dateTo);
     if (error) throw error;
     return data || [];
+  },
+
+  // ── Mesures ───────────────────────────────────────────────────────────────
+
+  async getMesures(profileId, limit = 50) {
+    const { data, error } = await getSupabase()
+      .from('mesures')
+      .select('*')
+      .eq('profile_id', profileId)
+      .order('date_entree', { ascending: true })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getMesure(profileId, date) {
+    const { data, error } = await getSupabase()
+      .from('mesures')
+      .select('*')
+      .eq('profile_id', profileId)
+      .eq('date_entree', date)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || null;
+  },
+
+  async upsertMesure(mesure) {
+    const { data, error } = await getSupabase()
+      .from('mesures')
+      .upsert(mesure, { onConflict: 'profile_id,date_entree' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Coach : lire les mesures d'un client
+  async getClientMesures(clientId, limit = 50) {
+    const { data, error } = await getSupabase()
+      .from('mesures')
+      .select('*')
+      .eq('profile_id', clientId)
+      .order('date_entree', { ascending: true })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
+
+  // ── Storage photos mesures ────────────────────────────────────────────────
+
+  async uploadMesurePhoto(profileId, date, file) {
+    const ext  = file.name.split('.').pop().toLowerCase() || 'jpg';
+    const path = `${profileId}/${date}/${Date.now()}.${ext}`;
+    const { data, error } = await getSupabase()
+      .storage
+      .from('mesures')
+      .upload(path, file, { upsert: false });
+    if (error) throw error;
+    return data.path;
+  },
+
+  async getMesurePhotoUrl(path) {
+    const { data, error } = await getSupabase()
+      .storage
+      .from('mesures')
+      .createSignedUrl(path, 3600);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async deleteMesurePhoto(path) {
+    const { error } = await getSupabase()
+      .storage
+      .from('mesures')
+      .remove([path]);
+    if (error) throw error;
   }
 };

@@ -237,6 +237,8 @@ const CoachClientsPage = {
           onclick="event.stopPropagation();Router.navigate('coach-journal-view',{clientId:'${client.id}'})">📖</button>
         <button class="icon-btn" title="Plan"
           onclick="event.stopPropagation();Router.navigate('coach-plan-edit',{clientId:'${client.id}'})">📋</button>
+        <button class="icon-btn" title="Mesures"
+          onclick="event.stopPropagation();Router.navigate('coach-mesure-client',{clientId:'${client.id}',clientName:'${client.prenom}'})">📏</button>
         <div class="client-arrow">›</div>
       </div>
     </div>`;
