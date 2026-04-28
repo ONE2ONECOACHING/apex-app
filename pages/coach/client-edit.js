@@ -34,7 +34,6 @@ const CoachClientEditPage = {
 
   renderForm() {
     const c = this.client;
-    const phases = ['relance', 'transformation', 'stabilisation'];
     const metiers = [
       { v: 'sedentaire', l: 'Sédentaire' }, { v: 'leger', l: 'Légèrement actif' },
       { v: 'actif', l: 'Actif' }, { v: 'tres_actif', l: 'Très physique' }
@@ -92,14 +91,9 @@ const CoachClientEditPage = {
       </div>
 
       <div class="card">
-        <div class="card-title">Objectif & Phase</div>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Objectif</label>
-            <select class="input" id="ceObjectif">${objectifs.map(o => `<option value="${o.v}" ${c.objectif === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
-          </div>
-          <div class="field"><label class="field-label">Phase</label>
-            <select class="input" id="cePhase">${phases.map(p => `<option value="${p}" ${c.phase === p ? 'selected' : ''}>${p.charAt(0).toUpperCase() + p.slice(1)}</option>`).join('')}</select>
-          </div>
+        <div class="card-title">Objectif</div>
+        <div class="field"><label class="field-label">Objectif</label>
+          <select class="input" id="ceObjectif">${objectifs.map(o => `<option value="${o.v}" ${c.objectif === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
         </div>
         <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="field"><label class="field-label">Semaine courante</label><input class="input" type="number" id="ceSemaine" value="${c.semaine_courante || 1}" min="1" max="16"></div>
@@ -210,7 +204,6 @@ const CoachClientEditPage = {
       type_metier: document.getElementById('ceMetier').value,
       pas_par_jour: +document.getElementById('cePas').value || 5000,
       objectif: document.getElementById('ceObjectif').value,
-      phase: document.getElementById('cePhase').value,
       semaine_courante: +document.getElementById('ceSemaine').value || 1,
       masse_grasse_pct: +document.getElementById('ceFat').value || null,
       coach_tag: this.selectedTag

@@ -217,9 +217,6 @@ const CoachClientsPage = {
     const completedBilan = this._completedBilans.find(b => b.client_id === client.id);
 
     const initials = (client.prenom || 'C')[0].toUpperCase();
-    const phase    = client.phase
-      ? client.phase.charAt(0).toUpperCase() + client.phase.slice(1)
-      : '—';
     const tagHtml = client.coach_tag
       ? `<span class="coach-tag coach-tag-${client.coach_tag}">${client.coach_tag === 'ben' ? 'Ben' : 'Chris'}</span>`
       : '';
@@ -235,7 +232,7 @@ const CoachClientsPage = {
         <div class="client-name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           ${client.prenom} ${tagHtml}${badges}
         </div>
-        <div class="client-meta">S${client.semaine_courante || 1} · ${phase}</div>
+        <div class="client-meta">Semaine ${client.semaine_courante || 1}</div>
       </div>
       <div style="display:flex;gap:5px;align-items:center;">
         <button class="icon-btn" title="Journal"
