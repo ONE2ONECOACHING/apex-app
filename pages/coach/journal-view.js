@@ -91,9 +91,12 @@ const CoachJournalPage = {
 
         html += `<div class="creneau-section"><div class="creneau-header"><div class="creneau-title">${creneauIcon(cr)} ${creneauLabel(cr)}</div></div>`;
         items.forEach(e => {
+          const qtyLabel = e.quantite
+            ? (e.unite === 'unité' ? `${e.quantite} unité${e.quantite > 1 ? 's' : ''}` : `${e.quantite}g`)
+            : '';
           html += `<div class="entry-row">
             <div class="entry-info">
-              <div class="entry-name">${e.nom}</div>
+              <div class="entry-name">${e.nom}${qtyLabel ? ` <span style="font-size:11px;font-weight:500;color:var(--gold);background:var(--gold-light);border-radius:4px;padding:1px 5px;">${qtyLabel}</span>` : ''}</div>
               <div class="entry-macros">P:${Math.round(e.proteines)}g · G:${Math.round(e.glucides)}g · L:${Math.round(e.lipides)}g${e.source === 'snap_calories' ? ' · 📷' : ''}</div>
             </div>
             <div class="entry-kcal">${e.calories} ${e.note ? '<span class="entry-note">' + noteEmoji(e.note) + '</span>' : ''}</div>
