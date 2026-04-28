@@ -165,19 +165,6 @@ const CoachClientsPage = {
       }
     }
 
-    // 3. Clients inactifs (ont un plan mais aucun log cette semaine)
-    for (const client of clients) {
-      if (!planMap.has(client.id)) continue;
-      const hasLog = this._weekEntries.some(e => e.profile_id === client.id);
-      if (!hasLog) {
-        actions.push({
-          icon: '⚠️',
-          label: `Inactif — ${client.prenom}`,
-          sub: 'Aucun log enregistré cette semaine',
-          onclick: `Router.navigate('coach-journal-view', { clientId: '${client.id}' })`
-        });
-      }
-    }
 
     return actions;
   },
