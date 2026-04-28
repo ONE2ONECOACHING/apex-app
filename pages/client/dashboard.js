@@ -113,12 +113,30 @@ const DashboardPage = {
 
   renderProgress(depart, actuel, objectif) {
     if (!depart || !actuel || !objectif || depart === objectif) return '';
-    const totalDelta = Math.abs(objectif - depart);
-    const doneDelta = Math.abs(actuel - depart);
-    const pct = Math.min(100, Math.round(doneDelta / totalDelta * 100));
-    const perdu = Math.abs(actuel - depart).toFixed(1);
-    const reste = Math.abs(objectif - actuel).toFixed(1);
-    const label = objectif < depart ? `−${perdu} kg perdus · ${reste} kg restants` : `+${perdu} kg gagnés · ${reste} kg restants`;
+    const loseGoal   = objectif < depart;          // true = objectif de perte
+    const totalDelta = Math.abs(objectif - depart); // amplitude totale
+    let pct, label;
+
+    if (loseGoal) {
+      const done = depart - actuel;  // positif = perdu, négatif = pris
+      pct = Math.max(0, Math.min(100, Math.round(done / totalDelta * 100)));
+      if (done < 0) {
+        // Mauvaise direction : a pris du poids
+        label = `+${Math.abs(done).toFixed(1)} kg pris · ${(actuel - objectif).toFixed(1)} kg à perdre`;
+      } else {
+        label = `−${done.toFixed(1)} kg perdus · ${Math.max(0, actuel - objectif).toFixed(1)} kg restants`;
+      }
+    } else {
+      const done = actuel - depart;  // positif = pris, négatif = perdu
+      pct = Math.max(0, Math.min(100, Math.round(done / totalDelta * 100)));
+      if (done < 0) {
+        // Mauvaise direction : a perdu du poids
+        label = `−${Math.abs(done).toFixed(1)} kg perdus · ${(objectif - actuel).toFixed(1)} kg à prendre`;
+      } else {
+        label = `+${done.toFixed(1)} kg gagnés · ${Math.max(0, objectif - actuel).toFixed(1)} kg restants`;
+      }
+    }
+
     return `<div style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--gray-muted);margin-bottom:4px;">
         <span>Progression</span><span>${pct}%</span>
