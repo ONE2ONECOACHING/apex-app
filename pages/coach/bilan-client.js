@@ -35,6 +35,8 @@ const CoachBilanClientPage = {
         db.getBilanInstancesForCoach(this.clientId).catch(() => [])
       ]);
       document.getElementById('bcTitle').textContent = (this.client.prenom || 'Client') + ' — Bilan';
+      // Marquer tous les bilans complétés de ce client comme lus
+      db.markBilansAsRead(this.clientId).catch(() => {});
       this.renderContent();
     } catch (e) {
       document.getElementById('bcContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';

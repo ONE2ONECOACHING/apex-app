@@ -642,10 +642,20 @@ const db = {
       .from('bilan_instances')
       .select('id, client_id, semaine, completed_at')
       .eq('statut', 'complete')
+      .eq('coach_lu', false)
       .gte('completed_at', since.toISOString())
       .order('completed_at', { ascending: false });
     if (error) throw error;
     return data || [];
+  },
+
+  async markBilansAsRead(clientId) {
+    const { error } = await getSupabase()
+      .from('bilan_instances')
+      .update({ coach_lu: true })
+      .eq('client_id', clientId)
+      .eq('statut', 'complete');
+    if (error) throw error;
   },
 
   async getAllPendingBilans() {
