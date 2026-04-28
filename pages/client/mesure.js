@@ -132,7 +132,10 @@ const MesurePage = {
 
     // ── Photos ──
     html += `<div class="card" style="margin-top:1rem;">
-      <div class="card-title">Photos</div>`;
+      <div class="card-title">Photos</div>
+      <div style="font-size:12px;color:var(--gray-muted);margin-bottom:12px;line-height:1.6;">
+        💡 <span style="font-weight:600;">Face</span> · <span style="font-weight:600;">Profil</span> · <span style="font-weight:600;">Dos</span> — en sous-vêtements ou tenue de sport, même éclairage à chaque fois.
+      </div>`;
 
     if (this.photoUrls.length > 0) {
       html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
@@ -154,9 +157,9 @@ const MesurePage = {
 
     html += `<label class="btn btn-ghost btn-small"
         style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;">
-        📷 Ajouter une photo
-        <input type="file" accept="image/*" capture="environment" style="display:none;"
-          onchange="MesurePage.uploadPhoto(this)">
+        📷 Ajouter des photos
+        <input type="file" accept="image/*" multiple style="display:none;"
+          onchange="MesurePage.uploadPhotos(this)">
       </label>
       <div id="mesurePhotoResult" style="margin-top:0.5rem;"></div>
     </div>`;
@@ -262,15 +265,19 @@ const MesurePage = {
     }
   },
 
-  async uploadPhoto(input) {
-    const file = input.files[0];
-    if (!file) return;
+  async uploadPhotos(input) {
+    const files = Array.from(input.files);
+    if (!files.length) return;
     const resultEl = document.getElementById('mesurePhotoResult');
-    resultEl.innerHTML = '<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi en cours…</div>';
+    resultEl.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi en cours… (0 / ${files.length})</div>`;
 
     try {
-      const path = await db.uploadMesurePhoto(this.profileId, this.currentDate, file);
-      const existingPhotos = this.mesure?.photos || [];
+      const newPaths = [];
+      for (let i = 0; i < files.length; i++) {
+        resultEl.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi en cours… (${i + 1} / ${files.length})</div>`;
+        const path = await db.uploadMesurePhoto(this.profileId, this.currentDate, files[i]);
+        newPaths.push(path);
+      }
       const m = this.mesure || {};
       const saved = await db.upsertMesure({
         profile_id:  this.profileId,
@@ -281,7 +288,7 @@ const MesurePage = {
         poitrine:    m.poitrine    || null,
         bras:        m.bras        || null,
         cuisse:      m.cuisse      || null,
-        photos: [...existingPhotos, path]
+        photos: [...(m.photos || []), ...newPaths]
       });
       this.mesure    = saved;
       this.photoUrls = await this._loadPhotoUrls(saved);
