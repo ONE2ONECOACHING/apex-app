@@ -1,10 +1,41 @@
-// APEX APP — Plan Alimentaire Client (lecture)
+// APEX APP — Plan Alimentaire Client (lecture + équivalences)
 
 const PlanPage = {
   plan: null,
   repas: [],
   creneaux: ['petit_dejeuner_sale', 'petit_dejeuner_sucre', 'collation_matin', 'dejeuner', 'collation_apres_midi', 'diner', 'collation_soir'],
 
+  // ── État remplacement ──────────────────────────────────────────────────
+  _replacements: {},   // { repasId: { nom, quantite, unite, calories, proteines, glucides, lipides } }
+  _replaceTarget: null,
+  _replaceTab: 'feculents',
+
+  // ── Données équivalences (pour 100g) ──────────────────────────────────
+  _feculents: [
+    { nom: 'Riz blanc',          kcal: 350, p: 7,  g: 77, l: 0.6 },
+    { nom: 'Pâtes',              kcal: 370, p: 13, g: 72, l: 1.5 },
+    { nom: 'Patate douce',       kcal: 86,  p: 1.6,g: 20, l: 0.1 },
+    { nom: 'Pomme de terre',     kcal: 77,  p: 2,  g: 17, l: 0.1 },
+    { nom: 'Quinoa sec',         kcal: 368, p: 14, g: 64, l: 6   },
+    { nom: 'Flocons d\'avoine',  kcal: 389, p: 17, g: 66, l: 7   },
+    { nom: 'Semoule',            kcal: 360, p: 12, g: 73, l: 1   },
+    { nom: 'Lentilles',          kcal: 353, p: 24, g: 60, l: 1.1 },
+    { nom: 'Pain complet',       kcal: 247, p: 9,  g: 41, l: 3.5 },
+  ],
+  _proteines: [
+    { nom: 'Blanc de poulet',    kcal: 110, p: 23, g: 0,   l: 1.5 },
+    { nom: 'Bœuf haché (5%)',   kcal: 121, p: 21, g: 0,   l: 4   },
+    { nom: 'Saumon',             kcal: 208, p: 20, g: 0,   l: 13  },
+    { nom: 'Thon (boîte nature)',kcal: 116, p: 26, g: 0,   l: 1   },
+    { nom: 'Cabillaud',          kcal: 82,  p: 18, g: 0,   l: 0.7 },
+    { nom: 'Dinde',              kcal: 107, p: 24, g: 0,   l: 1   },
+    { nom: 'Œufs',               kcal: 155, p: 13, g: 1.1, l: 11  },
+    { nom: 'Crevettes',          kcal: 99,  p: 21, g: 0,   l: 1   },
+    { nom: 'Jambon blanc',       kcal: 105, p: 18, g: 0.8, l: 3   },
+    { nom: 'Tofu ferme',         kcal: 76,  p: 8,  g: 1.9, l: 4.8 },
+  ],
+
+  // ── Render shell ──────────────────────────────────────────────────────
   render() {
     return `
       <div class="app-header">
@@ -20,6 +51,7 @@ const PlanPage = {
         <button class="tab" onclick="window.location.hash='#recettes'">🍽️ Recettes</button>
       </div>
       <div id="planContent"><div class="spinner" style="margin-top:3rem;"></div></div>
+      <div id="planReplaceModal"></div>
       <nav class="nav-bottom"><div class="nav-inner">
         <a class="nav-item" href="#dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
         <a class="nav-item active" href="#logbook"><span class="nav-icon">🥗</span><span class="nav-label">Nutrition</span></a>
@@ -30,20 +62,23 @@ const PlanPage = {
   async init() {
     const profile = Router.userProfile;
     if (!profile) return;
-
+    this._replacements = {};
     try {
-      this.plan = await db.getActivePlan(profile.id);
+      this.plan  = await db.getActivePlan(profile.id);
       if (this.plan) this.repas = await db.getPlanRepas(this.plan.id);
       this.renderContent();
     } catch (e) {
-      document.getElementById('planContent').innerHTML = '<div class="alert alert-error">Erreur de chargement.</div>';
+      document.getElementById('planContent').innerHTML =
+        '<div class="alert alert-error">Erreur de chargement.</div>';
     }
   },
 
+  // ── Render contenu ────────────────────────────────────────────────────
   renderContent() {
     const el = document.getElementById('planContent');
     if (!this.plan) {
-      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Ton coach n'a pas encore créé ton plan alimentaire.<br>Il sera visible ici dès qu'il sera prêt.</div></div>`;
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div>
+        <div class="empty-text">Ton coach n'a pas encore créé ton plan alimentaire.<br>Il sera visible ici dès qu'il sera prêt.</div></div>`;
       return;
     }
 
@@ -51,7 +86,7 @@ const PlanPage = {
 
     // Objectifs
     html += `<div class="card card-dark">
-      <div class="card-title">Objectifs — ${this.plan.phase ? this.plan.phase.charAt(0).toUpperCase() + this.plan.phase.slice(1) : ''}</div>
+      <div class="card-title">Objectifs${this.plan.phase ? ' — ' + this.plan.phase.charAt(0).toUpperCase() + this.plan.phase.slice(1) : ''}</div>
       <div class="macros-big">
         <span class="macros-big-val">${this.plan.calories_cible.toLocaleString('fr-FR')}</span>
         <span class="macros-big-unit">kcal / jour</span>
@@ -64,7 +99,9 @@ const PlanPage = {
     </div>`;
 
     if (this.plan.notes) {
-      html += `<div class="card card-accent"><div style="font-size:13px;color:var(--gray);line-height:1.6;">💡 ${this.plan.notes}</div></div>`;
+      html += `<div class="card card-accent">
+        <div style="font-size:13px;color:var(--gray);line-height:1.6;">💡 ${this.plan.notes}</div>
+      </div>`;
     }
 
     // Repas par créneau
@@ -72,9 +109,15 @@ const PlanPage = {
       const items = this.repas.filter(r => r.creneau === cr);
       if (items.length === 0) return;
 
-      const crKcal = Math.round(items.reduce((s, r) => s + parseFloat(r.calories), 0));
+      const canReplace = (cr === 'dejeuner' || cr === 'diner');
 
-      // Séparateur "OU" entre les 2 options petit-déj
+      // Calcul total kcal en tenant compte des remplacements
+      const crKcal = Math.round(items.reduce((s, r) => {
+        const repl = this._replacements[r.id];
+        return s + parseFloat(repl ? repl.calories : r.calories);
+      }, 0));
+
+      // Séparateur OU petit-déj
       if (cr === 'petit_dejeuner_sucre' && this.repas.some(r => r.creneau === 'petit_dejeuner_sale')) {
         html += `<div style="text-align:center;font-size:12px;font-weight:700;color:var(--gray-muted);letter-spacing:0.1em;margin:4px 0;">— OU —</div>`;
       }
@@ -86,17 +129,115 @@ const PlanPage = {
         </div>`;
 
       items.forEach(r => {
-        html += `<div class="entry-row">
+        const repl = this._replacements[r.id];
+        const nom   = repl ? repl.nom     : r.aliment_nom;
+        const qty   = repl ? repl.quantite: r.quantite;
+        const cal   = Math.round(repl ? repl.calories  : r.calories);
+        const prot  = Math.round(repl ? repl.proteines : r.proteines);
+        const gluc  = Math.round(repl ? repl.glucides  : r.glucides);
+        const lip   = Math.round(repl ? repl.lipides   : r.lipides);
+        const unite = (repl ? 'g' : r.unite) === 'g' ? 'g' : ' unité(s)';
+
+        html += `<div class="entry-row${repl ? ' entry-replaced' : ''}">
           <div class="entry-info">
-            <div class="entry-name">${r.aliment_nom}</div>
-            <div class="entry-macros">${r.quantite}${r.unite === 'g' ? 'g' : ' unité(s)'} · P:${Math.round(r.proteines)}g · G:${Math.round(r.glucides)}g · L:${Math.round(r.lipides)}g</div>
+            <div class="entry-name">
+              ${nom}
+              ${repl ? `<span class="replace-badge">↔</span>` : ''}
+            </div>
+            <div class="entry-macros">${qty}${unite} · P:${prot}g · G:${gluc}g · L:${lip}g</div>
           </div>
-          <div class="entry-kcal">${Math.round(r.calories)}</div>
-        </div>`;
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div class="entry-kcal">${cal}</div>
+            ${canReplace ? `<button class="replace-btn" title="Remplacer"
+              onclick="PlanPage.openReplace('${r.id}', ${r.calories}, '${r.aliment_nom.replace(/'/g,"\\'")}', ${r.proteines}, ${r.glucides}, ${r.lipides})">↔</button>` : ''}
+          </div>
+        </div>
+        ${repl ? `<div style="text-align:right;margin-top:-4px;margin-bottom:6px;">
+          <button onclick="PlanPage.revert('${r.id}')"
+            style="font-size:11px;color:var(--gray-muted);background:none;border:none;cursor:pointer;padding:2px 4px;">
+            ↩ Rétablir "${r.aliment_nom}"
+          </button></div>` : ''}`;
       });
+
       html += `</div>`;
     });
 
     el.innerHTML = html;
+  },
+
+  // ── Remplacement ─────────────────────────────────────────────────────
+
+  openReplace(repasId, calories, nom, proteines, glucides, lipides) {
+    // Auto-détecter le bon onglet selon le profil macro de l'aliment
+    this._replaceTab = glucides > proteines * 1.5 ? 'feculents' : 'proteines';
+    this._replaceTarget = { repasId, calories, nom, proteines, glucides, lipides };
+    this._renderReplaceModal();
+  },
+
+  _renderReplaceModal() {
+    const { repasId, calories, nom } = this._replaceTarget;
+    const isFec  = this._replaceTab === 'feculents';
+    const items  = isFec ? this._feculents : this._proteines;
+    const origKcal = Math.round(calories);
+
+    const rows = items.map(f => {
+      // Quantité calorie-équivalente, arrondie au 5g
+      let qty = Math.round(calories / f.kcal * 100 / 5) * 5;
+      qty = Math.max(20, qty);
+      const newKcal = Math.round(f.kcal * qty / 100);
+      const newP    = Math.round(f.p   * qty / 100);
+      const newG    = Math.round(f.g   * qty / 100);
+      const newL    = Math.round(f.l   * qty / 100);
+      // Indicateur delta kcal
+      const delta   = newKcal - origKcal;
+      const deltaStr = delta === 0 ? '' : `<span style="font-size:10px;color:${Math.abs(delta) <= 20 ? 'var(--success)' : 'var(--gray-muted)'};">(${delta > 0 ? '+' : ''}${delta} kcal)</span>`;
+
+      return `<div class="replace-row">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:14px;">${f.nom}</div>
+          <div style="font-size:12px;color:var(--gray-muted);margin-top:2px;">
+            ${qty}g · P:${newP}g G:${newG}g L:${newL}g · ${newKcal} kcal ${deltaStr}
+          </div>
+        </div>
+        <button class="btn btn-primary btn-small" style="flex-shrink:0;"
+          onclick="PlanPage.applyReplace('${repasId}','${f.nom.replace(/'/g,"\\'")}',${qty},${newKcal},${newP},${newG},${newL})">
+          Choisir
+        </button>
+      </div>`;
+    }).join('');
+
+    document.getElementById('planReplaceModal').innerHTML = `
+      <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('planReplaceModal').innerHTML=''">
+        <div class="modal" style="padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,12px));">
+          <div class="modal-title">
+            Remplacer "${nom}"
+            <button class="modal-close" onclick="document.getElementById('planReplaceModal').innerHTML=''">×</button>
+          </div>
+          <div style="font-size:12px;color:var(--gray-muted);margin-top:-0.5rem;margin-bottom:1rem;">
+            Équivalences pour ~${origKcal} kcal
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:1rem;">
+            <button class="rec-kcal-btn${isFec ? ' active' : ''}"
+              onclick="PlanPage._replaceTab='feculents';PlanPage._renderReplaceModal()">🍚 Féculents</button>
+            <button class="rec-kcal-btn${!isFec ? ' active' : ''}"
+              onclick="PlanPage._replaceTab='proteines';PlanPage._renderReplaceModal()">🥩 Protéines</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">${rows}</div>
+        </div>
+      </div>`;
+  },
+
+  applyReplace(repasId, nom, qty, kcal, p, g, l) {
+    this._replacements[repasId] = {
+      nom, quantite: qty, unite: 'g',
+      calories: kcal, proteines: p, glucides: g, lipides: l
+    };
+    document.getElementById('planReplaceModal').innerHTML = '';
+    this.renderContent();
+  },
+
+  revert(repasId) {
+    delete this._replacements[repasId];
+    this.renderContent();
   }
 };
