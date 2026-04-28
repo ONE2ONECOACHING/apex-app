@@ -110,21 +110,6 @@ const CoachClientsPage = {
       </div>`;
     }
 
-    // ── ZONE 2 : SUIVI SEMAINE ────────────────────────────────────────────
-    if (filtered.length > 0) {
-      // Label de la semaine
-      const mondayDate = new Date(this._mondayStr + 'T00:00:00');
-      const weekLabel  = mondayDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-
-      html += `<div class="dash-section">
-        <div class="dash-section-title">
-          📊 Suivi semaine
-          <span style="font-size:11px;color:var(--gray-muted);font-weight:500;text-transform:none;letter-spacing:0;">du ${weekLabel}</span>
-        </div>
-        ${filtered.map(c => this._renderWeekRow(c, planMap)).join('')}
-      </div>`;
-    }
-
     // ── ZONE 3 : CLIENTS ─────────────────────────────────────────────────
     html += `<div class="dash-section">
       <div class="dash-section-title">👥 Clients <span class="dash-badge dash-badge-gray">${filtered.length}</span></div>
