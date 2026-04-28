@@ -16,15 +16,17 @@ const RecettesPage = {
         </div>
         <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>
       </div>
+      <div class="tabs" style="margin-bottom:1rem;">
+        <button class="tab" onclick="window.location.hash='#logbook'">📖 Logbook</button>
+        <button class="tab" onclick="window.location.hash='#plan'">📋 Plan</button>
+        <button class="tab active" onclick="window.location.hash='#recettes'">🍽️ Recettes</button>
+      </div>
       <div id="recFilters"></div>
       <div id="recList"><div class="spinner" style="margin-top:3rem;"></div></div>
       <div id="recModal"></div>
       <nav class="nav-bottom"><div class="nav-inner">
         <a class="nav-item" href="#dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
-        <a class="nav-item" href="#logbook"><span class="nav-icon">📖</span><span class="nav-label">Logbook</span></a>
-        <a class="nav-item active" href="#recettes"><span class="nav-icon">🍽️</span><span class="nav-label">Recettes</span></a>
-        <a class="nav-item" href="#plan"><span class="nav-icon">📋</span><span class="nav-label">Plan</span></a>
-        <a class="nav-item" href="#historique"><span class="nav-icon">📈</span><span class="nav-label">Historique</span></a>
+        <a class="nav-item active" href="#logbook"><span class="nav-icon">🥗</span><span class="nav-label">Nutrition</span></a>
       </div></nav>`;
   },
 
