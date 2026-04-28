@@ -136,9 +136,12 @@ const LogbookPage = {
         </div>`;
 
       crEntries.forEach(e => {
+        const qtyLabel = e.quantite
+          ? (e.unite === 'unité' ? `${e.quantite} unité${e.quantite > 1 ? 's' : ''}` : `${e.quantite}g`)
+          : '';
         html += `<div class="entry-row">
           <div class="entry-info">
-            <div class="entry-name">${e.nom}</div>
+            <div class="entry-name">${e.nom}${qtyLabel ? ` <span style="font-size:11px;font-weight:500;color:var(--gold);background:var(--gold-light);border-radius:4px;padding:1px 5px;">${qtyLabel}</span>` : ''}</div>
             <div class="entry-macros">P: ${Math.round(e.proteines)}g · G: ${Math.round(e.glucides)}g · L: ${Math.round(e.lipides)}g</div>
           </div>
           <div class="entry-kcal">${e.calories} ${e.note ? '<span class="entry-note">' + noteEmoji(e.note) + '</span>' : ''}</div>

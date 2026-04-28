@@ -278,7 +278,7 @@ const SnapPage = {
     this._cart.push({
       nom: a.nom,
       quantite: qty,
-      unite: a.mode === 'unit' ? 'u' : 'g',
+      unite: a.mode === 'unit' ? 'unité' : 'g',
       calories: Math.round(a.calories * factor),
       proteines: Math.round(a.proteines * factor),
       glucides: Math.round(a.glucides * factor),
@@ -335,6 +335,8 @@ const SnapPage = {
           date_entree: this.date,
           creneau: this.creneau,
           nom: item.nom,
+          quantite: item.quantite,
+          unite: item.unite,
           calories: item.calories,
           proteines: item.proteines,
           glucides: item.glucides,
