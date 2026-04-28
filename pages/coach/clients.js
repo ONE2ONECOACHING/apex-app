@@ -139,8 +139,10 @@ const CoachClientsPage = {
   _buildActions(clients, planMap) {
     const actions = [];
 
-    // 1. Bilans répondus (complétés dans les 7 derniers jours)
+    // 1. Bilans répondus (complétés dans les 7 derniers jours, non lus)
+    const readIds = JSON.parse(localStorage.getItem('coach_read_bilans') || '[]');
     for (const bilan of this._completedBilans) {
+      if (readIds.includes(bilan.id)) continue;
       const client = clients.find(c => c.id === bilan.client_id);
       if (!client) continue;
       actions.push({
