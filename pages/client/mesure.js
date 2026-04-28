@@ -3,9 +3,10 @@
 const MesurePage = {
   currentDate: todayStr(),
   profileId: null,
-  mesure: null,    // entrée du jour courant
-  history: [],     // toutes les entrées (pour le graphique)
-  photoUrls: [],   // [{url, path}] signées pour la date courante
+  mesure: null,         // entrée du jour courant
+  history: [],          // toutes les entrées (pour les graphiques)
+  photoUrls: [],        // [{url, path}] signées pour la date courante
+  _selectedMens: null,  // onglet mensuration actif
 
   render() {
     return `
@@ -53,11 +54,10 @@ const MesurePage = {
     this.currentDate = formatDate(d);
     this.updateDateLabel();
     try {
-      this.mesure = await db.getMesure(this.profileId, this.currentDate);
+      this.mesure    = await db.getMesure(this.profileId, this.currentDate);
       this.photoUrls = await this._loadPhotoUrls(this.mesure);
     } catch (e) {
-      this.mesure = null;
-      this.photoUrls = [];
+      this.mesure = null; this.photoUrls = [];
     }
     this.renderContent();
   },
@@ -77,20 +77,20 @@ const MesurePage = {
   },
 
   async _loadPhotoUrls(mesure) {
-    if (!mesure || !mesure.photos || mesure.photos.length === 0) return [];
+    if (!mesure?.photos?.length) return [];
     try {
       const urls = await Promise.all(mesure.photos.map(p => db.getMesurePhotoUrl(p)));
       return urls.map((url, i) => ({ url, path: mesure.photos[i] }));
     } catch (_) { return []; }
   },
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render principal ─────────────────────────────────────────────────────
 
   renderContent() {
     const m = this.mesure || {};
     let html = '';
 
-    // ── Poids ──
+    // ── Carte poids ──
     html += `<div class="card card-dark">
       <div class="card-title">Poids</div>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -100,10 +100,13 @@ const MesurePage = {
           style="flex:1;height:44px;">
         <span style="font-size:14px;color:var(--gray-light);">kg</span>
       </div>
-      ${this._renderPoidsGraph()}
+      ${this._renderLineGraph(this.history.filter(e => e.poids != null), 'poids', '#C4820A', 'mGrad', 'kg')}
     </div>`;
 
-    // ── Mensurations ──
+    // ── Courbes mensurations (si données suffisantes) ──
+    html += this._renderMensurations();
+
+    // ── Saisie mensurations ──
     const fields = [
       { key: 'tour_taille', label: 'Tour de taille' },
       { key: 'hanches',     label: 'Hanches'        },
@@ -134,7 +137,7 @@ const MesurePage = {
     html += `<div class="card" style="margin-top:1rem;">
       <div class="card-title">Photos</div>
       <div style="font-size:12px;color:var(--gray-muted);margin-bottom:12px;line-height:1.6;">
-        💡 <span style="font-weight:600;">Face</span> · <span style="font-weight:600;">Profil</span> · <span style="font-weight:600;">Dos</span> — en sous-vêtements ou tenue de sport, même éclairage à chaque fois.
+        💡 <span style="font-weight:600;">Face</span> · <span style="font-weight:600;">Profil</span> · <span style="font-weight:600;">Dos</span> — tenue de sport, même éclairage à chaque fois.
       </div>`;
 
     if (this.photoUrls.length > 0) {
@@ -151,8 +154,7 @@ const MesurePage = {
           </div>`).join('')}
       </div>`;
     } else {
-      html += `<div style="font-size:13px;color:var(--gray-muted);margin-bottom:12px;">
-        Aucune photo pour cette date.</div>`;
+      html += `<div style="font-size:13px;color:var(--gray-muted);margin-bottom:12px;">Aucune photo pour cette date.</div>`;
     }
 
     html += `<label class="btn btn-ghost btn-small"
@@ -167,19 +169,52 @@ const MesurePage = {
     document.getElementById('mesureContent').innerHTML = html;
   },
 
-  _renderPoidsGraph() {
-    const entries = this.history.filter(e => e.poids != null);
+  // ── Courbes ──────────────────────────────────────────────────────────────
+
+  _renderMensurations() {
+    const fieldsMeta = [
+      { key: 'tour_taille', label: 'Taille'   },
+      { key: 'hanches',     label: 'Hanches'  },
+      { key: 'poitrine',    label: 'Poitrine' },
+      { key: 'bras',        label: 'Bras'     },
+      { key: 'cuisse',      label: 'Cuisse'   },
+    ];
+    const available = fieldsMeta.filter(f =>
+      this.history.filter(e => e[f.key] != null).length >= 2
+    );
+    if (!available.length) return '';
+
+    if (!this._selectedMens || !available.find(f => f.key === this._selectedMens)) {
+      this._selectedMens = available[0].key;
+    }
+    const entries = this.history.filter(e => e[this._selectedMens] != null);
+
+    return `<div class="card" style="margin-top:1rem;">
+      <div class="card-title">Évolution des mensurations</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;">
+        ${available.map(f => `
+          <button class="rec-kcal-btn${this._selectedMens === f.key ? ' active' : ''}"
+            onclick="MesurePage._selectedMens='${f.key}';MesurePage.renderContent()">
+            ${f.label}
+          </button>`).join('')}
+      </div>
+      ${this._renderLineGraph(entries, this._selectedMens, '#6366F1', 'msGrad', 'cm')}
+    </div>`;
+  },
+
+  /** Graphe SVG générique — réutilisé pour poids ET mensurations */
+  _renderLineGraph(entries, field, color, gradId, unit) {
     if (entries.length < 2) return '';
     const W = 300, H = 78, px = 20, py = 16, pb = 4;
-    const weights = entries.map(e => parseFloat(e.poids));
-    const minW = Math.min(...weights), maxW = Math.max(...weights);
-    const range = maxW - minW || 1;
-    const innerH = H - py - pb;
-    const xStep = (W - px * 2) / (entries.length - 1);
+    const values  = entries.map(e => parseFloat(e[field]));
+    const minV    = Math.min(...values), maxV = Math.max(...values);
+    const range   = maxV - minV || 1;
+    const innerH  = H - py - pb;
+    const xStep   = (W - px * 2) / (entries.length - 1);
     const pts = entries.map((e, i) => ({
       x: px + i * xStep,
-      y: py + (1 - (parseFloat(e.poids) - minW) / range) * innerH,
-      w: parseFloat(e.poids)
+      y: py + (1 - (parseFloat(e[field]) - minV) / range) * innerH,
+      v: parseFloat(e[field])
     }));
     const t = 0.25;
     let lp = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
@@ -190,21 +225,21 @@ const MesurePage = {
           + ` ${(p2.x-(p3.x-p1.x)*t).toFixed(1)},${(p2.y-(p3.y-p1.y)*t).toFixed(1)}`
           + ` ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
     }
-    const ap = lp + ` L ${pts[pts.length-1].x.toFixed(1)},${H} L ${pts[0].x.toFixed(1)},${H} Z`;
+    const ap   = lp + ` L ${pts[pts.length-1].x.toFixed(1)},${H} L ${pts[0].x.toFixed(1)},${H} Z`;
     const step = entries.length <= 8 ? 1 : Math.ceil(entries.length / 8);
-    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;margin-top:10px;">
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;margin-top:8px;">
       <defs>
-        <linearGradient id="mGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stop-color="#C4820A" stop-opacity="0.15"/>
-          <stop offset="100%" stop-color="#C4820A" stop-opacity="0"/>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="${color}" stop-opacity="0.15"/>
+          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <path d="${ap}" fill="url(#mGrad)"/>
-      <path d="${lp}" fill="none" stroke="#C4820A" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="${ap}" fill="url(#${gradId})"/>
+      <path d="${lp}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round"/>
       ${pts.map((p, i) => `
-        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.8" fill="#C4820A"/>
+        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.8" fill="${color}"/>
         <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="1.6" fill="#1A1A1A"/>
-        ${(i % step === 0 || i === pts.length - 1) ? `<text x="${p.x.toFixed(1)}" y="${(p.y-7).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="600" fill="#C4820A">${p.w}kg</text>` : ''}
+        ${(i % step === 0 || i === pts.length - 1) ? `<text x="${p.x.toFixed(1)}" y="${(p.y-7).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="600" fill="${color}">${p.v}${unit}</text>` : ''}
       `).join('')}
     </svg>`;
   },
@@ -212,12 +247,12 @@ const MesurePage = {
   // ── Actions ──────────────────────────────────────────────────────────────
 
   async save() {
-    const poids      = parseFloat(document.getElementById('mesurePoids').value)        || null;
-    const tour_taille= parseFloat(document.getElementById('mesure_tour_taille').value) || null;
-    const hanches    = parseFloat(document.getElementById('mesure_hanches').value)     || null;
-    const poitrine   = parseFloat(document.getElementById('mesure_poitrine').value)    || null;
-    const bras       = parseFloat(document.getElementById('mesure_bras').value)        || null;
-    const cuisse     = parseFloat(document.getElementById('mesure_cuisse').value)      || null;
+    const poids       = parseFloat(document.getElementById('mesurePoids').value)        || null;
+    const tour_taille = parseFloat(document.getElementById('mesure_tour_taille').value) || null;
+    const hanches     = parseFloat(document.getElementById('mesure_hanches').value)     || null;
+    const poitrine    = parseFloat(document.getElementById('mesure_poitrine').value)    || null;
+    const bras        = parseFloat(document.getElementById('mesure_bras').value)        || null;
+    const cuisse      = parseFloat(document.getElementById('mesure_cuisse').value)      || null;
 
     if (!poids && !tour_taille && !hanches && !poitrine && !bras && !cuisse) {
       document.getElementById('mesureSaveResult').innerHTML =
@@ -235,20 +270,17 @@ const MesurePage = {
 
     try {
       const saved = await db.upsertMesure({
-        profile_id:  this.profileId,
-        date_entree: this.currentDate,
+        profile_id: this.profileId, date_entree: this.currentDate,
         poids, tour_taille, hanches, poitrine, bras, cuisse,
         photos: this.mesure?.photos || []
       });
       this.mesure = saved;
 
-      // Sync poids dans profiles + cache Router
       if (poids) {
         await db.updateProfile(this.profileId, { poids });
         Router.userProfile.poids = poids;
       }
 
-      // Recharger l'historique pour le graphique
       this.history = await db.getMesures(this.profileId);
 
       document.getElementById('mesureSaveResult').innerHTML =
@@ -269,26 +301,20 @@ const MesurePage = {
     const files = Array.from(input.files);
     if (!files.length) return;
     const resultEl = document.getElementById('mesurePhotoResult');
-    resultEl.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi en cours… (0 / ${files.length})</div>`;
-
+    resultEl.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi… (0 / ${files.length})</div>`;
     try {
       const newPaths = [];
       for (let i = 0; i < files.length; i++) {
-        resultEl.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi en cours… (${i + 1} / ${files.length})</div>`;
-        const path = await db.uploadMesurePhoto(this.profileId, this.currentDate, files[i]);
-        newPaths.push(path);
+        resultEl.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi… (${i+1} / ${files.length})</div>`;
+        newPaths.push(await db.uploadMesurePhoto(this.profileId, this.currentDate, files[i]));
       }
       const m = this.mesure || {};
       const saved = await db.upsertMesure({
-        profile_id:  this.profileId,
-        date_entree: this.currentDate,
-        poids:       m.poids       || null,
-        tour_taille: m.tour_taille || null,
-        hanches:     m.hanches     || null,
-        poitrine:    m.poitrine    || null,
-        bras:        m.bras        || null,
-        cuisse:      m.cuisse      || null,
-        photos: [...(m.photos || []), ...newPaths]
+        profile_id: this.profileId, date_entree: this.currentDate,
+        poids: m.poids||null, tour_taille: m.tour_taille||null,
+        hanches: m.hanches||null, poitrine: m.poitrine||null,
+        bras: m.bras||null, cuisse: m.cuisse||null,
+        photos: [...(m.photos||[]), ...newPaths]
       });
       this.mesure    = saved;
       this.photoUrls = await this._loadPhotoUrls(saved);
@@ -303,18 +329,13 @@ const MesurePage = {
     if (!confirm('Supprimer cette photo ?')) return;
     try {
       await db.deleteMesurePhoto(path);
-      const newPhotos = (this.mesure.photos || []).filter(p => p !== path);
-      const m = this.mesure;
+      const m     = this.mesure;
       const saved = await db.upsertMesure({
-        profile_id:  this.profileId,
-        date_entree: this.currentDate,
-        poids:       m.poids       || null,
-        tour_taille: m.tour_taille || null,
-        hanches:     m.hanches     || null,
-        poitrine:    m.poitrine    || null,
-        bras:        m.bras        || null,
-        cuisse:      m.cuisse      || null,
-        photos: newPhotos
+        profile_id: this.profileId, date_entree: this.currentDate,
+        poids: m.poids||null, tour_taille: m.tour_taille||null,
+        hanches: m.hanches||null, poitrine: m.poitrine||null,
+        bras: m.bras||null, cuisse: m.cuisse||null,
+        photos: (m.photos||[]).filter(p => p !== path)
       });
       this.mesure    = saved;
       this.photoUrls = await this._loadPhotoUrls(saved);
