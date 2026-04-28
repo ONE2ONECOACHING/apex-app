@@ -83,14 +83,13 @@ Deno.serve(async (_req) => {
       .neq("actif", false);
 
     for (const client of clients || []) {
-      // Aucune entrée aujourd'hui ?
+      // Moins de 3 repas enregistrés aujourd'hui ?
       const { data: entries } = await sb
         .from("journal_entries")
         .select("id")
         .eq("profile_id", client.id)
-        .eq("date_entree", todayStr)
-        .limit(1);
-      if (entries?.length) continue;
+        .eq("date_entree", todayStr);
+      if ((entries?.length ?? 0) >= 3) continue;
 
       if (await alreadySent(sb, client.id, "logbook", todayStr)) continue;
 
