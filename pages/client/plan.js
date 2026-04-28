@@ -5,37 +5,73 @@ const PlanPage = {
   repas: [],
   creneaux: ['petit_dejeuner_sale', 'petit_dejeuner_sucre', 'collation_matin', 'dejeuner', 'collation_apres_midi', 'diner', 'collation_soir'],
 
-  // ── État remplacement ──────────────────────────────────────────────────
-  _replacements: {},   // { repasId: { nom, quantite, unite, calories, proteines, glucides, lipides } }
+  // ── État remplacement ─────────────────────────────────────────────────
+  _replacements: {},   // { repasId: { nom, quantite, calories, proteines, glucides, lipides } }
   _replaceTarget: null,
-  _replaceTab: 'feculents',
 
-  // ── Données équivalences (pour 100g) ──────────────────────────────────
+  // ── Données équivalences (pour 100g) ─────────────────────────────────
   _feculents: [
-    { nom: 'Riz blanc',          kcal: 350, p: 7,  g: 77, l: 0.6 },
-    { nom: 'Pâtes',              kcal: 370, p: 13, g: 72, l: 1.5 },
-    { nom: 'Patate douce',       kcal: 86,  p: 1.6,g: 20, l: 0.1 },
-    { nom: 'Pomme de terre',     kcal: 77,  p: 2,  g: 17, l: 0.1 },
-    { nom: 'Quinoa sec',         kcal: 368, p: 14, g: 64, l: 6   },
-    { nom: 'Flocons d\'avoine',  kcal: 389, p: 17, g: 66, l: 7   },
-    { nom: 'Semoule',            kcal: 360, p: 12, g: 73, l: 1   },
-    { nom: 'Lentilles',          kcal: 353, p: 24, g: 60, l: 1.1 },
-    { nom: 'Pain complet',       kcal: 247, p: 9,  g: 41, l: 3.5 },
+    { nom: 'Riz blanc',         kcal: 350, p: 7,   g: 77, l: 0.6 },
+    { nom: 'Pâtes',             kcal: 370, p: 13,  g: 72, l: 1.5 },
+    { nom: 'Patate douce',      kcal: 86,  p: 1.6, g: 20, l: 0.1 },
+    { nom: 'Pomme de terre',    kcal: 77,  p: 2,   g: 17, l: 0.1 },
+    { nom: 'Quinoa sec',        kcal: 368, p: 14,  g: 64, l: 6   },
+    { nom: 'Flocons d\'avoine', kcal: 389, p: 17,  g: 66, l: 7   },
+    { nom: 'Semoule',           kcal: 360, p: 12,  g: 73, l: 1   },
+    { nom: 'Lentilles',         kcal: 353, p: 24,  g: 60, l: 1.1 },
+    { nom: 'Pain complet',      kcal: 247, p: 9,   g: 41, l: 3.5 },
   ],
   _proteines: [
-    { nom: 'Blanc de poulet',    kcal: 110, p: 23, g: 0,   l: 1.5 },
-    { nom: 'Bœuf haché (5%)',   kcal: 121, p: 21, g: 0,   l: 4   },
-    { nom: 'Saumon',             kcal: 208, p: 20, g: 0,   l: 13  },
-    { nom: 'Thon (boîte nature)',kcal: 116, p: 26, g: 0,   l: 1   },
-    { nom: 'Cabillaud',          kcal: 82,  p: 18, g: 0,   l: 0.7 },
-    { nom: 'Dinde',              kcal: 107, p: 24, g: 0,   l: 1   },
-    { nom: 'Œufs',               kcal: 155, p: 13, g: 1.1, l: 11  },
-    { nom: 'Crevettes',          kcal: 99,  p: 21, g: 0,   l: 1   },
-    { nom: 'Jambon blanc',       kcal: 105, p: 18, g: 0.8, l: 3   },
-    { nom: 'Tofu ferme',         kcal: 76,  p: 8,  g: 1.9, l: 4.8 },
+    { nom: 'Blanc de poulet',     kcal: 110, p: 23, g: 0,   l: 1.5 },
+    { nom: 'Bœuf haché (5%)',    kcal: 121, p: 21, g: 0,   l: 4   },
+    { nom: 'Saumon',              kcal: 208, p: 20, g: 0,   l: 13  },
+    { nom: 'Thon (boîte nature)', kcal: 116, p: 26, g: 0,   l: 1   },
+    { nom: 'Cabillaud',           kcal: 82,  p: 18, g: 0,   l: 0.7 },
+    { nom: 'Dinde',               kcal: 107, p: 24, g: 0,   l: 1   },
+    { nom: 'Œufs',                kcal: 155, p: 13, g: 1.1, l: 11  },
+    { nom: 'Crevettes',           kcal: 99,  p: 21, g: 0,   l: 1   },
+    { nom: 'Jambon blanc',        kcal: 105, p: 18, g: 0.8, l: 3   },
+    { nom: 'Tofu ferme',          kcal: 76,  p: 8,  g: 1.9, l: 4.8 },
+  ],
+  _legumes: [
+    { nom: 'Brocolis',       kcal: 34, p: 2.8, g: 7,   l: 0.4 },
+    { nom: 'Courgettes',     kcal: 17, p: 1.2, g: 3.1, l: 0.3 },
+    { nom: 'Haricots verts', kcal: 31, p: 1.8, g: 7,   l: 0.1 },
+    { nom: 'Épinards',       kcal: 23, p: 2.9, g: 3.6, l: 0.4 },
+    { nom: 'Salade verte',   kcal: 15, p: 1.2, g: 2.2, l: 0.3 },
+    { nom: 'Tomates',        kcal: 18, p: 0.9, g: 3.9, l: 0.2 },
+    { nom: 'Carottes',       kcal: 41, p: 0.9, g: 10,  l: 0.2 },
+    { nom: 'Champignons',    kcal: 22, p: 3.1, g: 3.3, l: 0.3 },
+    { nom: 'Poivrons',       kcal: 31, p: 1,   g: 6,   l: 0.3 },
+    { nom: 'Asperges',       kcal: 20, p: 2.2, g: 3.9, l: 0.1 },
+    { nom: 'Chou-fleur',     kcal: 25, p: 1.9, g: 5,   l: 0.3 },
+    { nom: 'Concombre',      kcal: 16, p: 0.7, g: 3.6, l: 0.1 },
   ],
 
-  // ── Render shell ──────────────────────────────────────────────────────
+  // ── Détection automatique de catégorie ───────────────────────────────
+  _detectCategory(r) {
+    const totalKcal = r.proteines * 4 + r.glucides * 4 + r.lipides * 9;
+    if (!totalKcal || totalKcal < 1) return null;
+    const pctG = r.glucides  * 4 / totalKcal;
+    const pctP = r.proteines * 4 / totalKcal;
+    // Légume : peu de calories absolues + peu de glucides
+    if (r.calories < 80 && r.glucides < 15) return 'legumes';
+    // Féculent : glucides dominants (> 50% des calories)
+    if (pctG > 0.50) return 'feculents';
+    // Protéine : protéines dominantes (> 30% des calories)
+    if (pctP > 0.30) return 'proteines';
+    return null;
+  },
+
+  _catMeta(cat) {
+    return {
+      feculents: { icon: '🍚', label: 'Féculent',  color: '#C4820A', list: this._feculents },
+      proteines: { icon: '🥩', label: 'Protéine',  color: '#3B82F6', list: this._proteines },
+      legumes:   { icon: '🥦', label: 'Légume',    color: '#16A34A', list: this._legumes   },
+    }[cat];
+  },
+
+  // ── Render shell ─────────────────────────────────────────────────────
   render() {
     return `
       <div class="app-header">
@@ -73,7 +109,7 @@ const PlanPage = {
     }
   },
 
-  // ── Render contenu ────────────────────────────────────────────────────
+  // ── Render contenu ───────────────────────────────────────────────────
   renderContent() {
     const el = document.getElementById('planContent');
     if (!this.plan) {
@@ -111,7 +147,7 @@ const PlanPage = {
 
       const canReplace = (cr === 'dejeuner' || cr === 'diner');
 
-      // Calcul total kcal en tenant compte des remplacements
+      // Total kcal tenant compte des remplacements
       const crKcal = Math.round(items.reduce((s, r) => {
         const repl = this._replacements[r.id];
         return s + parseFloat(repl ? repl.calories : r.calories);
@@ -129,27 +165,39 @@ const PlanPage = {
         </div>`;
 
       items.forEach(r => {
-        const repl = this._replacements[r.id];
-        const nom   = repl ? repl.nom     : r.aliment_nom;
-        const qty   = repl ? repl.quantite: r.quantite;
+        const repl  = this._replacements[r.id];
+        const nom   = repl ? repl.nom      : r.aliment_nom;
+        const qty   = repl ? repl.quantite : r.quantite;
         const cal   = Math.round(repl ? repl.calories  : r.calories);
         const prot  = Math.round(repl ? repl.proteines : r.proteines);
         const gluc  = Math.round(repl ? repl.glucides  : r.glucides);
         const lip   = Math.round(repl ? repl.lipides   : r.lipides);
         const unite = (repl ? 'g' : r.unite) === 'g' ? 'g' : ' unité(s)';
 
+        // Bouton remplacer selon catégorie détectée
+        let replaceBtnHtml = '';
+        if (canReplace) {
+          const cat  = this._detectCategory(r);
+          const meta = cat ? this._catMeta(cat) : null;
+          if (meta) {
+            replaceBtnHtml = `<button class="replace-btn" title="Remplacer le ${meta.label.toLowerCase()}"
+              style="border-color:${meta.color}20;color:${meta.color};"
+              onclick="PlanPage.openReplace('${r.id}',${r.calories},'${r.aliment_nom.replace(/'/g,"\\'")}','${cat}')">
+              ${meta.icon}
+            </button>`;
+          }
+        }
+
         html += `<div class="entry-row${repl ? ' entry-replaced' : ''}">
           <div class="entry-info">
             <div class="entry-name">
-              ${nom}
-              ${repl ? `<span class="replace-badge">↔</span>` : ''}
+              ${nom}${repl ? ` <span class="replace-badge">${this._catMeta(this._detectCategory(r) || 'feculents')?.icon || '↔'}</span>` : ''}
             </div>
             <div class="entry-macros">${qty}${unite} · P:${prot}g · G:${gluc}g · L:${lip}g</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <div class="entry-kcal">${cal}</div>
-            ${canReplace ? `<button class="replace-btn" title="Remplacer"
-              onclick="PlanPage.openReplace('${r.id}', ${r.calories}, '${r.aliment_nom.replace(/'/g,"\\'")}', ${r.proteines}, ${r.glucides}, ${r.lipides})">↔</button>` : ''}
+            ${replaceBtnHtml}
           </div>
         </div>
         ${repl ? `<div style="text-align:right;margin-top:-4px;margin-bottom:6px;">
@@ -165,32 +213,30 @@ const PlanPage = {
     el.innerHTML = html;
   },
 
-  // ── Remplacement ─────────────────────────────────────────────────────
+  // ── Remplacement ────────────────────────────────────────────────────
 
-  openReplace(repasId, calories, nom, proteines, glucides, lipides) {
-    // Auto-détecter le bon onglet selon le profil macro de l'aliment
-    this._replaceTab = glucides > proteines * 1.5 ? 'feculents' : 'proteines';
-    this._replaceTarget = { repasId, calories, nom, proteines, glucides, lipides };
+  openReplace(repasId, calories, nom, cat) {
+    this._replaceTarget = { repasId, calories, nom, cat };
     this._renderReplaceModal();
   },
 
   _renderReplaceModal() {
-    const { repasId, calories, nom } = this._replaceTarget;
-    const isFec  = this._replaceTab === 'feculents';
-    const items  = isFec ? this._feculents : this._proteines;
+    const { repasId, calories, nom, cat } = this._replaceTarget;
+    const meta  = this._catMeta(cat);
+    const items = meta.list;
     const origKcal = Math.round(calories);
 
     const rows = items.map(f => {
-      // Quantité calorie-équivalente, arrondie au 5g
       let qty = Math.round(calories / f.kcal * 100 / 5) * 5;
       qty = Math.max(20, qty);
       const newKcal = Math.round(f.kcal * qty / 100);
-      const newP    = Math.round(f.p   * qty / 100);
-      const newG    = Math.round(f.g   * qty / 100);
-      const newL    = Math.round(f.l   * qty / 100);
-      // Indicateur delta kcal
+      const newP    = Math.round(f.p    * qty / 100);
+      const newG    = Math.round(f.g    * qty / 100);
+      const newL    = Math.round(f.l    * qty / 100);
       const delta   = newKcal - origKcal;
-      const deltaStr = delta === 0 ? '' : `<span style="font-size:10px;color:${Math.abs(delta) <= 20 ? 'var(--success)' : 'var(--gray-muted)'};">(${delta > 0 ? '+' : ''}${delta} kcal)</span>`;
+      const deltaStr = Math.abs(delta) > 5
+        ? `<span style="font-size:10px;color:var(--gray-muted);">(${delta > 0 ? '+' : ''}${delta} kcal)</span>`
+        : '';
 
       return `<div class="replace-row">
         <div style="flex:1;min-width:0;">
@@ -210,17 +256,11 @@ const PlanPage = {
       <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('planReplaceModal').innerHTML=''">
         <div class="modal" style="padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,12px));">
           <div class="modal-title">
-            Remplacer "${nom}"
+            ${meta.icon} Remplacer "${nom}"
             <button class="modal-close" onclick="document.getElementById('planReplaceModal').innerHTML=''">×</button>
           </div>
           <div style="font-size:12px;color:var(--gray-muted);margin-top:-0.5rem;margin-bottom:1rem;">
-            Équivalences pour ~${origKcal} kcal
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:1rem;">
-            <button class="rec-kcal-btn${isFec ? ' active' : ''}"
-              onclick="PlanPage._replaceTab='feculents';PlanPage._renderReplaceModal()">🍚 Féculents</button>
-            <button class="rec-kcal-btn${!isFec ? ' active' : ''}"
-              onclick="PlanPage._replaceTab='proteines';PlanPage._renderReplaceModal()">🥩 Protéines</button>
+            Équivalences ${meta.label.toLowerCase()}s pour ~${origKcal} kcal
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;">${rows}</div>
         </div>
