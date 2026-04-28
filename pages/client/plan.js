@@ -180,10 +180,9 @@ const PlanPage = {
           const cat  = this._detectCategory(r);
           const meta = cat ? this._catMeta(cat) : null;
           if (meta) {
-            replaceBtnHtml = `<button class="replace-btn" title="Remplacer le ${meta.label.toLowerCase()}"
-              style="border-color:${meta.color}20;color:${meta.color};"
+            replaceBtnHtml = `<button class="replace-btn" title="Remplacer"
               onclick="PlanPage.openReplace('${r.id}',${r.calories},'${r.aliment_nom.replace(/'/g,"\\'")}','${cat}')">
-              ${meta.icon}
+              ↔
             </button>`;
           }
         }
