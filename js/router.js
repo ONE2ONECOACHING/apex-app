@@ -39,6 +39,9 @@ const Router = {
   },
 
   async route() {
+    // Nettoyer les classes de layout desktop avant chaque navigation
+    document.body.classList.remove('coach-wide');
+
     // Extraire la route sans les query params du hash (ex: #invite?t=xxx → 'invite')
     const fullHash = window.location.hash.slice(1) || 'login';
     const hash = fullHash.split('?')[0];
@@ -91,8 +94,8 @@ const Router = {
     }
 
     // Cloisonnement role ↔ route
-    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client'];
+    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
         window.location.hash = '#coach-clients';
@@ -128,7 +131,11 @@ const Router = {
       case 'coach-bilan-templates': app.innerHTML = CoachBilanTemplatesPage.render(); CoachBilanTemplatesPage.init(); break;
       case 'coach-bilan-client': app.innerHTML = CoachBilanClientPage.render(); CoachBilanClientPage.init(); break;
       case 'mesure': app.innerHTML = MesurePage.render(); MesurePage.init(); break;
+      case 'entrainement': app.innerHTML = EntrainementPage.render(); EntrainementPage.init(); break;
       case 'coach-mesure-client': app.innerHTML = CoachMesureClientPage.render(); CoachMesureClientPage.init(); break;
+      case 'coach-exercices': app.innerHTML = CoachExercicesPage.render(); CoachExercicesPage.init(); break;
+      case 'coach-prog-templates': app.innerHTML = CoachProgTemplatesPage.render(); CoachProgTemplatesPage.init(); break;
+      case 'coach-prog-template-edit': app.innerHTML = CoachProgTemplateEditPage.render(); CoachProgTemplateEditPage.init(); break;
       default: window.location.hash = '#login';
     }
   },
