@@ -135,7 +135,7 @@ const CoachExercicesPage = {
         <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--card-bg);color:var(--gray-light);">${effortLabel}</span>
       </div>
       ${ex.description ? `<div style="font-size:12px;color:var(--gray);margin-top:4px;line-height:1.5;">${ex.description}</div>` : ''}
-      ${ytId ? `<a href="https://www.youtube.com/watch?v=${ytId}" target="_blank" rel="noopener"
+      ${ex.youtube_url ? `<a href="${ex.youtube_url}" target="_blank" rel="noopener"
         style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#FF0000;
                margin-top:8px;text-decoration:none;font-weight:600;">
         ▶ Voir sur YouTube</a>` : ''}
