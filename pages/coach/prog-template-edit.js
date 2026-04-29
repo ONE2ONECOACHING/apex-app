@@ -86,6 +86,7 @@ const CoachProgTemplateEditPage = {
             id:             ex.id,
             exercice_id:    ex.exercice_id,
             exercice:       ex.exercices_bdd,
+            type_effort:    ex.type_effort || ex.exercices_bdd?.type_effort || 'reps',
             series:         ex.series ?? 3,
             reps_cible:     ex.reps_cible || '10',
             charge_cible:   ex.charge_cible || '',
@@ -127,14 +128,16 @@ const CoachProgTemplateEditPage = {
       if (sNote) s.notes_coach = sNote.value;
 
       s.exercices.forEach((ex, ei) => {
-        const ser  = document.getElementById(`exser_${si}_${ei}`);
-        if (ser)  ex.series = parseInt(ser.value) || 3;
-        const reps = document.getElementById(`exreps_${si}_${ei}`);
-        if (reps) ex.reps_cible = reps.value;
-        const rest = document.getElementById(`exrest_${si}_${ei}`);
-        if (rest) ex.repos_secondes = parseInt(rest.value) || 90;
-        const chg  = document.getElementById(`excharge_${si}_${ei}`);
-        if (chg)  ex.charge_cible = chg.value;
+        const ser    = document.getElementById(`exser_${si}_${ei}`);
+        if (ser)    ex.series = parseInt(ser.value) || 3;
+        const reps   = document.getElementById(`exreps_${si}_${ei}`);
+        if (reps)   ex.reps_cible = reps.value;
+        const rest   = document.getElementById(`exrest_${si}_${ei}`);
+        if (rest)   ex.repos_secondes = parseInt(rest.value) || 90;
+        const chg    = document.getElementById(`excharge_${si}_${ei}`);
+        if (chg)    ex.charge_cible = chg.value;
+        const effort = document.querySelector(`input[name="effort_${si}_${ei}"]:checked`);
+        if (effort) ex.type_effort = effort.value;
       });
     });
   },
@@ -237,8 +240,26 @@ const CoachProgTemplateEditPage = {
   },
 
   _renderExoRow(ex, si, ei) {
-    const color = this._muscleColors[ex.exercice?.muscle_principal] || '#999';
-    const yt    = ex.exercice?.youtube_url ? this._ytId(ex.exercice.youtube_url) : null;
+    const effort  = ex.type_effort || ex.exercice?.type_effort || 'reps';
+    const ytUrl   = ex.exercice?.youtube_url || null;
+    const repsPlaceholder = { reps:'reps', temps:'durée', amrap:'amrap', distance:'dist.' };
+    const effortBtns = ['reps','temps','amrap','distance'].map(k => {
+      const labels = { reps:'🔁 Reps', temps:'⏱ Temps', amrap:'♾ AMRAP', distance:'📏 Dist.' };
+      return `<label style="cursor:pointer;">
+        <input type="radio" name="effort_${si}_${ei}" value="${k}"
+          ${effort === k ? 'checked' : ''}
+          onchange="CoachProgTemplateEditPage._syncFromDOM();CoachProgTemplateEditPage.renderContent();"
+          style="display:none;">
+        <span style="display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;
+          border:1px solid var(--border-solid);cursor:pointer;
+          background:${effort===k?'var(--gold)':'var(--card-bg)'};
+          color:${effort===k?'#fff':'var(--gray)'};
+          transition:all .15s;">
+          ${labels[k]}
+        </span>
+      </label>`;
+    }).join('');
+
     return `
       <div style="background:var(--white);border-radius:8px;padding:8px 10px;
                   margin-bottom:6px;border:1px solid var(--border);">
@@ -247,34 +268,38 @@ const CoachProgTemplateEditPage = {
             <!-- Nom + lien YT -->
             <div style="font-weight:600;font-size:13px;line-height:1.3;margin-bottom:6px;">
               ${ex.exercice?.nom || '?'}
-              ${yt ? `<a href="https://youtube.com/watch?v=${yt}" target="_blank"
+              ${ytUrl ? `<a href="${ytUrl}" target="_blank"
                 style="font-size:10px;color:#FF0000;text-decoration:none;margin-left:6px;">▶ YT</a>` : ''}
             </div>
-            <!-- Séries × Reps · Repos -->
+
+            <!-- Modalité -->
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;">
+              ${effortBtns}
+            </div>
+
+            <!-- Séries × Valeur · Repos -->
             <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
               <input id="exser_${si}_${ei}" type="number" min="1" max="20"
-                value="${ex.series}"
-                title="Séries"
+                value="${ex.series}" title="Séries"
                 style="width:38px;height:30px;text-align:center;border:1px solid var(--border-solid);
                        border-radius:6px;background:var(--card-bg);color:var(--black);
                        font-size:12px;padding:0;font-family:var(--font);">
               <span style="font-size:11px;color:var(--gray-muted);">×</span>
               <input id="exreps_${si}_${ei}" type="text"
                 value="${ex.reps_cible}"
-                title="Reps / durée cible (ex : 10, 8-12, 30s)"
-                placeholder="reps"
+                placeholder="${repsPlaceholder[effort] || 'val.'}"
                 style="width:54px;height:30px;text-align:center;border:1px solid var(--border-solid);
                        border-radius:6px;background:var(--card-bg);color:var(--black);
                        font-size:12px;padding:0 2px;font-family:var(--font);">
               <span style="font-size:11px;color:var(--gray-muted);">·</span>
               <input id="exrest_${si}_${ei}" type="number" min="0" max="600"
-                value="${ex.repos_secondes}"
-                title="Repos en secondes"
+                value="${ex.repos_secondes}" title="Repos en secondes"
                 style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
                        border-radius:6px;background:var(--card-bg);color:var(--black);
                        font-size:12px;padding:0;font-family:var(--font);">
-              <span style="font-size:11px;color:var(--gray-muted);">s</span>
+              <span style="font-size:11px;color:var(--gray-muted);">s repos</span>
             </div>
+
             <!-- Charge cible -->
             <input id="excharge_${si}_${ei}" type="text"
               value="${ex.charge_cible}"
@@ -410,13 +435,14 @@ const CoachProgTemplateEditPage = {
     const exo = this._allExos.find(e => e.id === exoId);
     if (!exo || !this.seances[this._picking]) return;
 
+    const effort = exo.type_effort || 'reps';
     this.seances[this._picking].exercices.push({
       id:             null,
       exercice_id:    exoId,
       exercice:       exo,
+      type_effort:    effort,
       series:         3,
-      reps_cible:     exo.type_effort === 'temps' ? '30s'
-                    : exo.type_effort === 'distance' ? '100m' : '10',
+      reps_cible:     effort === 'temps' ? '30s' : effort === 'distance' ? '100m' : '10',
       charge_cible:   '',
       repos_secondes: 90,
       notes:          '',
@@ -467,6 +493,7 @@ const CoachProgTemplateEditPage = {
           id:             ex.id,
           exercice_id:    ex.exercice_id,
           exercice:       ex.exercices_bdd,
+          type_effort:    ex.type_effort || ex.exercices_bdd?.type_effort || 'reps',
           series:         ex.series ?? 3,
           reps_cible:     ex.reps_cible || '10',
           charge_cible:   ex.charge_cible || '',
