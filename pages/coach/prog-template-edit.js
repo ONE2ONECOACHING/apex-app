@@ -698,7 +698,7 @@ const CoachProgTemplateEditPage = {
       exercice_id:     exoId,
       exercice:        exo,
       type_effort:     effort,
-      series:          3,
+      series:          effort === 'reps' ? 3 : 1,
       reps_cible:      effort === 'temps' ? '0:30' : effort === 'distance' ? '100m' : '10',
       charge_cible:    '',
       repos_secondes:  90,

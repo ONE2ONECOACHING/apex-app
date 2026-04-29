@@ -82,11 +82,16 @@ const CoachClientProgrammePage = {
       return `
         <div style="padding:10px 0;border-bottom:1px solid var(--border);">
           <div style="font-weight:600;font-size:13px;margin-bottom:4px;">📌 ${s.nom}</div>
-          ${exos.slice(0, 4).map(e =>
-            `<div style="font-size:12px;color:var(--gray-muted);padding:1px 0;">
-              · ${e.exercices_bdd?.nom || '—'} — ${e.series}×${e.reps_cible}
-            </div>`
-          ).join('')}
+          ${exos.slice(0, 4).map(e => {
+            const te  = e.type_effort || 'reps';
+            const qty = te === 'amrap'    ? `AMRAP ${e.reps_cible}`
+                      : te === 'temps'    ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)
+                      : te === 'distance' ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)
+                      : `${e.series}×${e.reps_cible}`;
+            return `<div style="font-size:12px;color:var(--gray-muted);padding:1px 0;">
+              · ${e.exercices_bdd?.nom || '—'} — ${qty}
+            </div>`;
+          }).join('')}
           ${exos.length > 4
             ? `<div style="font-size:11px;color:var(--gray-muted);margin-top:2px;">+${exos.length - 4} autres…</div>`
             : ''}
