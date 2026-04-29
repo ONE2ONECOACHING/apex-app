@@ -604,13 +604,7 @@ const CoachProgTemplateEditPage = {
   },
 
   _renderPicker() {
-    let exos = this._allExos;
-    if (this._pickMuscle !== 'all') exos = exos.filter(e => e.muscle_principal === this._pickMuscle);
-    if (this._pickSearch.trim()) {
-      const q = this._pickSearch.toLowerCase();
-      exos = exos.filter(e => e.nom.toLowerCase().includes(q));
-    }
-
+    // Construit la modale UNE SEULE FOIS — l'input n'est jamais recréé ensuite
     document.getElementById('tplExoPicker').innerHTML = `
       <div class="modal-overlay"
         onclick="if(event.target===this){
@@ -624,46 +618,15 @@ const CoachProgTemplateEditPage = {
                        CoachProgTemplateEditPage._picking=null;">×</button>
           </div>
 
-          <input class="input" placeholder="🔍 Rechercher…"
-            value="${this._pickSearch}"
+          <input class="input" id="pickerSearch" placeholder="🔍 Rechercher…"
             style="margin-bottom:10px;"
             oninput="CoachProgTemplateEditPage._pickSearch=this.value;
-                     CoachProgTemplateEditPage._renderPicker()">
+                     CoachProgTemplateEditPage._renderPickerList()">
 
-          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
-            ${this._musclePicker.map(m => `
-              <button class="rec-kcal-btn${this._pickMuscle===m.key?' active':''}"
-                onclick="CoachProgTemplateEditPage._pickMuscle='${m.key}';
-                         CoachProgTemplateEditPage._renderPicker()">
-                ${m.label}
-              </button>`).join('')}
-          </div>
+          <div id="pickerMuscles" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;"></div>
 
-          <div style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
-            ${exos.length === 0
-              ? '<div style="text-align:center;color:var(--gray-muted);padding:24px 0;">Aucun exercice trouvé</div>'
-              : exos.map(e => {
-                  const color = this._muscleColors[e.muscle_principal] || '#666';
-                  const equips = { poids_corps:'Poids du corps', halteres:'Haltères', barre:'Barre',
-                    machine:'Machine', cables:'Câbles', elastiques:'Élastiques', autres:'Autres' };
-                  return `<div style="display:flex;align-items:center;justify-content:space-between;
-                    padding:9px 12px;background:var(--card-bg);border-radius:8px;gap:10px;">
-                    <div style="flex:1;min-width:0;">
-                      <div style="font-weight:600;font-size:13px;">${e.nom}</div>
-                      <div style="font-size:11px;margin-top:1px;">
-                        <span style="color:${color};font-weight:600;">${e.muscle_principal}</span>
-                        <span style="color:var(--gray-light);"> · ${equips[e.equipement]||e.equipement}</span>
-                      </div>
-                    </div>
-                    <button class="btn btn-primary btn-small"
-                      onclick="CoachProgTemplateEditPage.addExoToSeance('${e.id}')">
-                      + Ajouter
-                    </button>
-                  </div>`;
-                }).join('')}
-          </div>
+          <div id="pickerList" style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
 
-          <!-- Raccourci vers la bibliothèque si aucun exercice -->
           ${this._allExos.length === 0 ? `
             <div style="text-align:center;margin-top:16px;">
               <a href="#coach-exercices" style="font-size:13px;color:var(--gold);">
@@ -672,6 +635,56 @@ const CoachProgTemplateEditPage = {
             </div>` : ''}
         </div>
       </div>`;
+
+    this._renderPickerMuscles();
+    this._renderPickerList();
+    // Focus sur la recherche après ouverture
+    const inp = document.getElementById('pickerSearch');
+    if (inp) inp.focus();
+  },
+
+  _renderPickerMuscles() {
+    const el = document.getElementById('pickerMuscles');
+    if (!el) return;
+    el.innerHTML = this._musclePicker.map(m => `
+      <button class="rec-kcal-btn${this._pickMuscle === m.key ? ' active' : ''}"
+        onclick="CoachProgTemplateEditPage._pickMuscle='${m.key}';
+                 CoachProgTemplateEditPage._renderPickerMuscles();
+                 CoachProgTemplateEditPage._renderPickerList()">
+        ${m.label}
+      </button>`).join('');
+  },
+
+  _renderPickerList() {
+    const el = document.getElementById('pickerList');
+    if (!el) return;
+    let exos = this._allExos;
+    if (this._pickMuscle !== 'all') exos = exos.filter(e => e.muscle_principal === this._pickMuscle);
+    if (this._pickSearch.trim()) {
+      const q = this._pickSearch.toLowerCase();
+      exos = exos.filter(e => e.nom.toLowerCase().includes(q));
+    }
+    const equips = { poids_corps:'Poids du corps', halteres:'Haltères', barre:'Barre',
+      machine:'Machine', cables:'Câbles', elastiques:'Élastiques', autres:'Autres' };
+    el.innerHTML = exos.length === 0
+      ? '<div style="text-align:center;color:var(--gray-muted);padding:24px 0;">Aucun exercice trouvé</div>'
+      : exos.map(e => {
+          const color = this._muscleColors[e.muscle_principal] || '#666';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;
+            padding:9px 12px;background:var(--card-bg);border-radius:8px;gap:10px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;">${e.nom}</div>
+              <div style="font-size:11px;margin-top:1px;">
+                <span style="color:${color};font-weight:600;">${e.muscle_principal}</span>
+                <span style="color:var(--gray-light);"> · ${equips[e.equipement] || e.equipement}</span>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-small"
+              onclick="CoachProgTemplateEditPage.addExoToSeance('${e.id}')">
+              + Ajouter
+            </button>
+          </div>`;
+        }).join('');
   },
 
   addExoToSeance(exoId) {
