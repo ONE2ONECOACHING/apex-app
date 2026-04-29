@@ -866,15 +866,16 @@ const db = {
 
       if (s.exercices && s.exercices.length) {
         const rows = s.exercices.map((ex, j) => ({
-          seance_id:      seanceData.id,
-          exercice_id:    ex.exercice_id,
-          ordre:          j,
-          type_effort:    ex.type_effort || 'reps',
-          series:         ex.series ?? 3,
-          reps_cible:     ex.reps_cible || '10',
-          charge_cible:   ex.charge_cible || null,
-          repos_secondes: ex.repos_secondes ?? 90,
-          notes:          ex.notes || null,
+          seance_id:        seanceData.id,
+          exercice_id:      ex.exercice_id,
+          ordre:            j,
+          type_effort:      ex.type_effort || 'reps',
+          series:           ex.series ?? 3,
+          reps_cible:       ex.reps_cible || '10',
+          charge_cible:     ex.charge_cible || null,
+          repos_secondes:   ex.repos_secondes ?? 90,
+          superset_groupe:  ex.superset_groupe || null,
+          notes:            ex.notes || null,
         }));
         const { error: e2 } = await sb.from('prog_template_exercices').insert(rows);
         if (e2) throw e2;
@@ -963,15 +964,16 @@ const db = {
 
       for (const ex of (s.exercices || [])) {
         await sb.from('client_prog_exercices').insert({
-          seance_id:      seance.id,
-          exercice_id:    ex.exercice_id,
-          ordre:          ex.ordre ?? 0,
-          type_effort:    ex.type_effort || 'reps',
-          series:         ex.series ?? 3,
-          reps_cible:     ex.reps_cible || '10',
-          charge_cible:   ex.charge_cible || null,
-          repos_secondes: ex.repos_secondes ?? 90,
-          notes:          ex.notes || null,
+          seance_id:       seance.id,
+          exercice_id:     ex.exercice_id,
+          ordre:           ex.ordre ?? 0,
+          type_effort:     ex.type_effort || 'reps',
+          series:          ex.series ?? 3,
+          reps_cible:      ex.reps_cible || '10',
+          charge_cible:    ex.charge_cible || null,
+          repos_secondes:  ex.repos_secondes ?? 90,
+          superset_groupe: ex.superset_groupe || null,
+          notes:           ex.notes || null,
         });
       }
     }

@@ -86,12 +86,13 @@ const CoachProgTemplateEditPage = {
             id:             ex.id,
             exercice_id:    ex.exercice_id,
             exercice:       ex.exercices_bdd,
-            type_effort:    ex.type_effort || ex.exercices_bdd?.type_effort || 'reps',
-            series:         ex.series ?? 3,
-            reps_cible:     ex.reps_cible || '10',
-            charge_cible:   ex.charge_cible || '',
-            repos_secondes: ex.repos_secondes ?? 90,
-            notes:          ex.notes || '',
+            type_effort:     ex.type_effort || ex.exercices_bdd?.type_effort || 'reps',
+            series:          ex.series ?? 3,
+            reps_cible:      ex.reps_cible || '10',
+            charge_cible:    ex.charge_cible || '',
+            repos_secondes:  ex.repos_secondes ?? 90,
+            superset_groupe: ex.superset_groupe || null,
+            notes:           ex.notes || '',
           })),
         }));
         document.getElementById('tplEditTitle').textContent = tpl.nom;
@@ -231,7 +232,7 @@ const CoachProgTemplateEditPage = {
                            border:1px dashed var(--border-solid);border-radius:8px;">
                  Aucun exercice
                </div>`
-            : s.exercices.map((ex, ei) => this._renderExoRow(ex, si, ei)).join('')
+            : this._renderExoList(s.exercices, si)
           }
         </div>
 
@@ -249,6 +250,97 @@ const CoachProgTemplateEditPage = {
       </div>`;
   },
 
+  // ── Superset helpers ────────────────────────────────────────────────────────
+
+  _groupColors: ['#F59E0B','#3B82F6','#10B981','#EC4899','#8B5CF6','#F97316','#06B6D4'],
+
+  _computeGroupMap(exos) {
+    // Returns { groupLetter → { color, positions:[ei,...] } }
+    const groups = {};
+    let idx = 0;
+    exos.forEach((ex, ei) => {
+      if (!ex.superset_groupe) return;
+      if (!groups[ex.superset_groupe]) {
+        groups[ex.superset_groupe] = {
+          color: this._groupColors[idx++ % this._groupColors.length],
+          positions: [],
+        };
+      }
+      groups[ex.superset_groupe].positions.push(ei);
+    });
+    return groups;
+  },
+
+  _renderExoList(exos, si) {
+    const gmap = this._computeGroupMap(exos);
+    // Build reverse map: ei → { letter, color, rank }
+    const exoGroup = {};
+    Object.entries(gmap).forEach(([letter, g]) => {
+      g.positions.forEach((ei, rank) => {
+        exoGroup[ei] = { letter, color: g.color, rank, total: g.positions.length };
+      });
+    });
+
+    let html = '';
+    exos.forEach((ex, ei) => {
+      const g      = exoGroup[ei];
+      const gNext  = exoGroup[ei + 1];
+      const linked = g && gNext && g.letter === gNext.letter;
+
+      // Exercice
+      html += this._renderExoRow(ex, si, ei, g);
+
+      // Bouton superset entre exercices (sauf après le dernier)
+      if (ei < exos.length - 1) {
+        const isLinked = linked;
+        html += `
+          <div style="display:flex;justify-content:center;margin:2px 0;">
+            <button onclick="CoachProgTemplateEditPage.toggleSuperset(${si},${ei})"
+              title="${isLinked ? 'Dissocier le superset' : 'Créer un superset avec le suivant'}"
+              style="display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;
+                     font-size:11px;font-weight:600;cursor:pointer;border:none;
+                     background:${isLinked ? (g?.color || 'var(--gold)') + '22' : 'transparent'};
+                     color:${isLinked ? (g?.color || 'var(--gold)') : 'var(--gray-muted)'};
+                     transition:all .15s;">
+              🔗 ${isLinked ? 'Superset' : 'Coupler'}
+            </button>
+          </div>`;
+      }
+    });
+    return html;
+  },
+
+  toggleSuperset(si, ei) {
+    this._syncFromDOM();
+    const exos = this.seances[si].exercices;
+    const curr = exos[ei];
+    const next = exos[ei + 1];
+    if (!next) return;
+
+    if (curr.superset_groupe && curr.superset_groupe === next.superset_groupe) {
+      // Dissocier next du groupe
+      const grp = curr.superset_groupe;
+      next.superset_groupe = null;
+      // Si curr est maintenant seul dans son groupe → le vider aussi
+      const remaining = exos.filter((e, i) => i !== ei + 1 && e.superset_groupe === grp);
+      if (remaining.length <= 1) remaining.forEach(e => { e.superset_groupe = null; });
+    } else {
+      // Coupler
+      if (curr.superset_groupe) {
+        next.superset_groupe = curr.superset_groupe;
+      } else if (next.superset_groupe) {
+        curr.superset_groupe = next.superset_groupe;
+      } else {
+        const used = new Set(exos.map(e => e.superset_groupe).filter(Boolean));
+        let letter = 'A';
+        while (used.has(letter)) letter = String.fromCharCode(letter.charCodeAt(0) + 1);
+        curr.superset_groupe = letter;
+        next.superset_groupe = letter;
+      }
+    }
+    this.renderContent();
+  },
+
   _parseMinSec(val) {
     if (!val) return [0, 0];
     const colon = String(val).match(/^(\d+):(\d+)$/);
@@ -258,10 +350,16 @@ const CoachProgTemplateEditPage = {
     return [m ? parseInt(m[1]) : 0, s ? parseInt(s[1]) : 0];
   },
 
-  _renderExoRow(ex, si, ei) {
+  _renderExoRow(ex, si, ei, g = null) {
     const effort  = ex.type_effort || ex.exercice?.type_effort || 'reps';
     const ytUrl   = ex.exercice?.youtube_url || null;
     const repsPlaceholder = { reps:'reps', temps:'durée', amrap:'amrap', distance:'dist.' };
+    const groupBadge = g
+      ? `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;
+           background:${g.color}22;color:${g.color};margin-left:6px;">
+           ${g.letter}${g.rank + 1}
+         </span>` : '';
+    const borderLeft = g ? `border-left:3px solid ${g.color};` : '';
     const effortBtns = ['reps','temps','amrap','distance'].map(k => {
       const labels = { reps:'🔁 Reps', temps:'⏱ Temps', amrap:'♾ AMRAP', distance:'📏 Dist.' };
       return `<label style="cursor:pointer;">
@@ -281,12 +379,12 @@ const CoachProgTemplateEditPage = {
 
     return `
       <div style="background:var(--white);border-radius:8px;padding:8px 10px;
-                  margin-bottom:6px;border:1px solid var(--border);">
+                  margin-bottom:2px;border:1px solid var(--border);${borderLeft}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
           <div style="flex:1;min-width:0;">
-            <!-- Nom + lien YT -->
+            <!-- Nom + badge superset + lien YT -->
             <div style="font-weight:600;font-size:13px;line-height:1.3;margin-bottom:6px;">
-              ${ex.exercice?.nom || '?'}
+              ${ex.exercice?.nom || '?'}${groupBadge}
               ${ytUrl ? `<a href="${ytUrl}" target="_blank"
                 style="font-size:10px;color:#FF0000;text-decoration:none;margin-left:6px;">▶ YT</a>` : ''}
             </div>
@@ -510,15 +608,16 @@ const CoachProgTemplateEditPage = {
 
     const effort = exo.type_effort || 'reps';
     this.seances[this._picking].exercices.push({
-      id:             null,
-      exercice_id:    exoId,
-      exercice:       exo,
-      type_effort:    effort,
-      series:         3,
-      reps_cible:     effort === 'temps' ? '30s' : effort === 'distance' ? '100m' : '10',
-      charge_cible:   '',
-      repos_secondes: 90,
-      notes:          '',
+      id:              null,
+      exercice_id:     exoId,
+      exercice:        exo,
+      type_effort:     effort,
+      series:          3,
+      reps_cible:      effort === 'temps' ? '0:30' : effort === 'distance' ? '100m' : '10',
+      charge_cible:    '',
+      repos_secondes:  90,
+      superset_groupe: null,
+      notes:           '',
     });
 
     document.getElementById('tplExoPicker').innerHTML = '';
@@ -566,12 +665,13 @@ const CoachProgTemplateEditPage = {
           id:             ex.id,
           exercice_id:    ex.exercice_id,
           exercice:       ex.exercices_bdd,
-          type_effort:    ex.type_effort || ex.exercices_bdd?.type_effort || 'reps',
-          series:         ex.series ?? 3,
-          reps_cible:     ex.reps_cible || '10',
-          charge_cible:   ex.charge_cible || '',
-          repos_secondes: ex.repos_secondes ?? 90,
-          notes:          ex.notes || '',
+          type_effort:     ex.type_effort || ex.exercices_bdd?.type_effort || 'reps',
+          series:          ex.series ?? 3,
+          reps_cible:      ex.reps_cible || '10',
+          charge_cible:    ex.charge_cible || '',
+          repos_secondes:  ex.repos_secondes ?? 90,
+          superset_groupe: ex.superset_groupe || null,
+          notes:           ex.notes || '',
         })),
       }));
 
