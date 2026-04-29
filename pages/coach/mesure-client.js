@@ -55,19 +55,17 @@ const CoachMesureClientPage = {
 
     let html = '';
 
-    // ── Graphiques côte à côte ──
+    // ── Graphique poids ──
     const poidsEntries = this.history.filter(e => e.poids != null);
-    const _poidsCard = poidsEntries.length >= 2 ? `<div class="card card-dark">
-      <div class="card-title">Évolution du poids</div>
-      ${this._renderLineGraph(poidsEntries, 'poids', '#C4820A', 'cGrad', 'kg')}
-    </div>` : '';
-    const _mensCard = this._renderMensurations();
-
-    if (_poidsCard && _mensCard) {
-      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">${_poidsCard}${_mensCard}</div>`;
-    } else {
-      html += _poidsCard + _mensCard;
+    if (poidsEntries.length >= 2) {
+      html += `<div class="card card-dark">
+        <div class="card-title">Évolution du poids</div>
+        ${this._renderLineGraph(poidsEntries, 'poids', '#C4820A', 'cGrad', 'kg')}
+      </div>`;
     }
+
+    // ── Courbes mensurations ──
+    html += this._renderMensurations();
 
     // ── Historique (du plus récent au plus ancien) ──
     const sorted = [...this.history].reverse();
