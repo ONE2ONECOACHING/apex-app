@@ -215,10 +215,10 @@ function coachClientNav(clientId, activeTab) {
     { key: 'coach-plan-edit',        label: '📋 Plan' },
     { key: 'coach-habits-edit',      label: '✅ Habitudes' },
     { key: 'coach-journal',          label: '📊 Journal' },
-    { key: 'coach-bilan-client',     label: '📝 Bilan' },
+    { key: 'coach-bilan-client',     label: '📝 Bilans' },
     { key: 'coach-mesure-client',    label: '📏 Mesures' },
-    { key: 'coach-client-programme', label: '💪 Programme' },
-    { key: 'coach-training-client',  label: '🏋️ Entraîn.' },
+    { key: 'coach-client-programme', label: '💪 Programmes' },
+    { key: 'coach-training-client',  label: '🏋️ Entraînement' },
   ];
   return `<div class="tabs" style="margin-bottom:1.25rem;">${
     tabs.map(t => `<button class="tab${activeTab === t.key ? ' active' : ''}"

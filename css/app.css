@@ -686,7 +686,7 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
 
 /* ── COACH DESKTOP WIDE ── */
 body.coach-wide #app {
-  max-width: none !important;
+  max-width: 960px !important;
   padding-left: 1.5rem !important;
   padding-right: 1.5rem !important;
 }
@@ -753,29 +753,19 @@ body.coach-wide #app {
   .app-title { font-size: 20px; }
 }
 
-/* ── COACH CLIENT PAGES — DESKTOP ─────────────────────────── */
+/* ── COACH CLIENT PAGES — TABS SUR UNE LIGNE ──────────────── */
 
-/* Tabs wrap sur desktop au lieu du scroll horizontal */
+/* Tous les onglets tiennent sur une seule ligne */
 body.coach-wide .tabs {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   overflow: visible;
-  -webkit-overflow-scrolling: auto;
 }
 body.coach-wide .tabs .tab {
-  flex: 0 0 auto;
-  padding: 0 13px;
-  font-size: 12.5px;
-}
-
-/* Grille 2 colonnes pour les formulaires */
-@media (min-width: 900px) {
-  body.coach-wide .coach-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-    align-items: start;
-  }
-  body.coach-wide .coach-col-full {
-    grid-column: 1 / -1;
-  }
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
