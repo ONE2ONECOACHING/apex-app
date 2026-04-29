@@ -52,7 +52,8 @@ const CoachBilanTemplatesPage = {
               </div>
             </div>
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-secondary btn-small" onclick="CoachBilanTemplatesPage.openEditor('${t.id}')">✏️</button>
+              <button class="btn btn-secondary btn-small" title="Modifier" onclick="CoachBilanTemplatesPage.openEditor('${t.id}')">✏️</button>
+              <button class="btn btn-secondary btn-small" title="Dupliquer" onclick="CoachBilanTemplatesPage.duplicateTemplate('${t.id}')">⧉</button>
               <button class="btn btn-ghost btn-small" style="color:var(--error);" onclick="CoachBilanTemplatesPage.deleteTemplate('${t.id}')">×</button>
             </div>
           </div>
@@ -251,6 +252,21 @@ const CoachBilanTemplatesPage = {
     } catch (e) {
       document.getElementById('btSaveMsg').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
     }
+  },
+
+  async duplicateTemplate(id) {
+    const src = this.templates.find(t => t.id === id);
+    if (!src) return;
+    const copy = {
+      nom: src.nom + ' (copie)',
+      questions: JSON.parse(JSON.stringify(src.questions || [])),
+      coach_id: Router.userProfile.id
+    };
+    try {
+      const saved = await db.upsertBilanTemplate(copy);
+      this.templates.unshift(saved);
+      this.renderList();
+    } catch (e) { alert('Erreur : ' + e.message); }
   },
 
   async deleteTemplate(id) {
