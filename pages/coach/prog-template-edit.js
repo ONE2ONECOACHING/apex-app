@@ -277,28 +277,50 @@ const CoachProgTemplateEditPage = {
               ${effortBtns}
             </div>
 
-            <!-- Séries × Valeur · Repos -->
-            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
-              <input id="exser_${si}_${ei}" type="number" min="1" max="20"
-                value="${ex.series}" title="Séries"
-                style="width:38px;height:30px;text-align:center;border:1px solid var(--border-solid);
-                       border-radius:6px;background:var(--card-bg);color:var(--black);
-                       font-size:12px;padding:0;font-family:var(--font);">
-              <span style="font-size:11px;color:var(--gray-muted);">×</span>
-              <input id="exreps_${si}_${ei}" type="text"
-                value="${ex.reps_cible}"
-                placeholder="${repsPlaceholder[effort] || 'val.'}"
-                style="width:54px;height:30px;text-align:center;border:1px solid var(--border-solid);
-                       border-radius:6px;background:var(--card-bg);color:var(--black);
-                       font-size:12px;padding:0 2px;font-family:var(--font);">
-              <span style="font-size:11px;color:var(--gray-muted);">·</span>
-              <input id="exrest_${si}_${ei}" type="number" min="0" max="600"
-                value="${ex.repos_secondes}" title="Repos en secondes"
-                style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
-                       border-radius:6px;background:var(--card-bg);color:var(--black);
-                       font-size:12px;padding:0;font-family:var(--font);">
-              <span style="font-size:11px;color:var(--gray-muted);">s repos</span>
-            </div>
+            ${effort === 'reps'
+              /* ── MODE REPS : séries × reps · repos ── */
+              ? `<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+                  <input id="exser_${si}_${ei}" type="number" min="1" max="20"
+                    value="${ex.series}" title="Séries"
+                    style="width:38px;height:30px;text-align:center;border:1px solid var(--border-solid);
+                           border-radius:6px;background:var(--card-bg);color:var(--black);
+                           font-size:12px;padding:0;font-family:var(--font);">
+                  <span style="font-size:11px;color:var(--gray-muted);">×</span>
+                  <input id="exreps_${si}_${ei}" type="text"
+                    value="${ex.reps_cible}" placeholder="reps"
+                    style="width:54px;height:30px;text-align:center;border:1px solid var(--border-solid);
+                           border-radius:6px;background:var(--card-bg);color:var(--black);
+                           font-size:12px;padding:0 2px;font-family:var(--font);">
+                  <span style="font-size:11px;color:var(--gray-muted);">·</span>
+                  <input id="exrest_${si}_${ei}" type="number" min="0" max="600"
+                    value="${ex.repos_secondes}" title="Repos (s)"
+                    style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
+                           border-radius:6px;background:var(--card-bg);color:var(--black);
+                           font-size:12px;padding:0;font-family:var(--font);">
+                  <span style="font-size:11px;color:var(--gray-muted);">s repos</span>
+                </div>`
+              /* ── MODE TEMPS / AMRAP / DISTANCE : valeur seule ── */
+              : `<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+                  <input id="exreps_${si}_${ei}" type="text"
+                    value="${ex.reps_cible}"
+                    placeholder="${repsPlaceholder[effort] || 'val.'}"
+                    style="width:80px;height:30px;text-align:center;border:1px solid var(--border-solid);
+                           border-radius:6px;background:var(--card-bg);color:var(--black);
+                           font-size:12px;padding:0 4px;font-family:var(--font);">
+                  <!-- champ series caché pour sync DOM -->
+                  <input id="exser_${si}_${ei}" type="hidden" value="${ex.series}">
+                </div>
+                <!-- Récup -->
+                <div style="display:flex;gap:5px;align-items:center;margin-top:5px;">
+                  <span style="font-size:14px;">💤</span>
+                  <input id="exrest_${si}_${ei}" type="number" min="0" max="600"
+                    value="${ex.repos_secondes}" title="Repos (s)"
+                    style="width:50px;height:26px;text-align:center;border:1px solid var(--border-solid);
+                           border-radius:6px;background:var(--card-bg);color:var(--black);
+                           font-size:12px;padding:0;font-family:var(--font);">
+                  <span style="font-size:11px;color:var(--gray-muted);">s</span>
+                </div>`
+            }
 
             <!-- Charge cible -->
             <input id="excharge_${si}_${ei}" type="text"
