@@ -21,6 +21,8 @@ const CoachClientsPage = {
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
         <button class="btn btn-primary btn-small" onclick="CoachClientsPage.showCreateModal()">+ Nouveau client</button>
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-bilan-templates'">📝 Templates</button>
+        <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-prog-templates'">📋 Programmes</button>
+        <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-exercices'">🏋️ Exercices</button>
         <div id="tagFilters" style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;"></div>
       </div>
       <div id="dashContent"><div class="spinner" style="margin-top:2rem;"></div></div>

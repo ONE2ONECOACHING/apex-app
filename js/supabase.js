@@ -754,5 +754,285 @@ const db = {
       .from('mesures')
       .remove([path]);
     if (error) throw error;
+  },
+
+  // ── Entraînement — Bibliothèque d'exercices ───────────────────────────────
+
+  async getExercicesBdd(muscle = null) {
+    let q = getSupabase()
+      .from('exercices_bdd')
+      .select('*')
+      .order('muscle_principal')
+      .order('nom');
+    if (muscle) q = q.eq('muscle_principal', muscle);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async upsertExercice(ex) {
+    const { data, error } = await getSupabase()
+      .from('exercices_bdd')
+      .upsert(ex)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteExercice(id) {
+    const { error } = await getSupabase()
+      .from('exercices_bdd')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  // ── Entraînement — Templates de programme ────────────────────────────────
+
+  async getProgTemplates(coachId) {
+    const { data, error } = await getSupabase()
+      .from('prog_templates')
+      .select('*')
+      .eq('coach_id', coachId)
+      .eq('actif', true)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getProgTemplateWithSeances(templateId) {
+    const sb = getSupabase();
+    const { data: tpl, error: e1 } = await sb
+      .from('prog_templates')
+      .select('*')
+      .eq('id', templateId)
+      .single();
+    if (e1) throw e1;
+
+    const { data: seances, error: e2 } = await sb
+      .from('prog_template_seances')
+      .select('*, prog_template_exercices(*, exercices_bdd(*))')
+      .eq('template_id', templateId)
+      .order('ordre');
+    if (e2) throw e2;
+
+    tpl.seances = (seances || []).map(s => ({
+      ...s,
+      exercices: (s.prog_template_exercices || []).sort((a, b) => a.ordre - b.ordre),
+    }));
+    return tpl;
+  },
+
+  async upsertProgTemplate(tpl) {
+    const { data, error } = await getSupabase()
+      .from('prog_templates')
+      .upsert(tpl)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteProgTemplate(id) {
+    const { error } = await getSupabase()
+      .from('prog_templates')
+      .update({ actif: false })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async saveTemplateSeances(templateId, seances) {
+    const sb = getSupabase();
+    // Supprimer toutes les séances existantes (cascade sur exercices)
+    await sb.from('prog_template_seances').delete().eq('template_id', templateId);
+    if (!seances || !seances.length) return [];
+
+    const result = [];
+    for (let i = 0; i < seances.length; i++) {
+      const s = seances[i];
+      const { data: seanceData, error: e1 } = await sb
+        .from('prog_template_seances')
+        .insert({
+          template_id: templateId,
+          nom:         s.nom || ('Séance ' + (i + 1)),
+          jour:        s.jour ?? 0,
+          ordre:       i,
+          notes_coach: s.notes_coach || null,
+        })
+        .select()
+        .single();
+      if (e1) throw e1;
+
+      if (s.exercices && s.exercices.length) {
+        const rows = s.exercices.map((ex, j) => ({
+          seance_id:      seanceData.id,
+          exercice_id:    ex.exercice_id,
+          ordre:          j,
+          series:         ex.series ?? 3,
+          reps_cible:     ex.reps_cible || '10',
+          charge_cible:   ex.charge_cible || null,
+          repos_secondes: ex.repos_secondes ?? 90,
+          notes:          ex.notes || null,
+        }));
+        const { error: e2 } = await sb.from('prog_template_exercices').insert(rows);
+        if (e2) throw e2;
+      }
+      result.push(seanceData);
+    }
+    return result;
+  },
+
+  // ── Entraînement — Programme client ──────────────────────────────────────
+
+  async getClientProgrammes(clientId) {
+    const { data, error } = await getSupabase()
+      .from('client_programmes')
+      .select('*, client_prog_seances(*, client_prog_exercices(*, exercices_bdd(*)))')
+      .eq('client_id', clientId)
+      .eq('actif', true)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(p => ({
+      ...p,
+      seances: (p.client_prog_seances || []).sort((a, b) => a.ordre - b.ordre).map(s => ({
+        ...s,
+        exercices: (s.client_prog_exercices || []).sort((a, b) => a.ordre - b.ordre),
+      })),
+    }));
+  },
+
+  async getClientProgrammeActif(clientId) {
+    const { data, error } = await getSupabase()
+      .from('client_programmes')
+      .select('*, client_prog_seances(*, client_prog_exercices(*, exercices_bdd(*)))')
+      .eq('client_id', clientId)
+      .eq('actif', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      ...data,
+      seances: (data.client_prog_seances || []).sort((a, b) => a.ordre - b.ordre).map(s => ({
+        ...s,
+        exercices: (s.client_prog_exercices || []).sort((a, b) => a.ordre - b.ordre),
+      })),
+    };
+  },
+
+  async assignProgrammeFromTemplate(template, clientId, coachId, dateDebut = null) {
+    const sb = getSupabase();
+    // Désactiver les programmes actifs existants
+    await sb.from('client_programmes')
+      .update({ actif: false })
+      .eq('client_id', clientId)
+      .eq('actif', true);
+
+    // Créer le programme client
+    const { data: prog, error: e1 } = await sb
+      .from('client_programmes')
+      .insert({
+        client_id:   clientId,
+        coach_id:    coachId,
+        template_id: template.id,
+        nom:         template.nom,
+        date_debut:  dateDebut,
+        actif:       true,
+      })
+      .select()
+      .single();
+    if (e1) throw e1;
+
+    // Copier séances et exercices
+    for (const s of (template.seances || [])) {
+      const { data: seance, error: e2 } = await sb
+        .from('client_prog_seances')
+        .insert({
+          programme_id: prog.id,
+          nom:          s.nom,
+          jour:         s.jour ?? 0,
+          ordre:        s.ordre ?? 0,
+          notes_coach:  s.notes_coach || null,
+        })
+        .select()
+        .single();
+      if (e2) throw e2;
+
+      for (const ex of (s.exercices || [])) {
+        await sb.from('client_prog_exercices').insert({
+          seance_id:      seance.id,
+          exercice_id:    ex.exercice_id,
+          ordre:          ex.ordre ?? 0,
+          series:         ex.series ?? 3,
+          reps_cible:     ex.reps_cible || '10',
+          charge_cible:   ex.charge_cible || null,
+          repos_secondes: ex.repos_secondes ?? 90,
+          notes:          ex.notes || null,
+        });
+      }
+    }
+    return prog;
+  },
+
+  async deactivateClientProgramme(programmeId) {
+    const { error } = await getSupabase()
+      .from('client_programmes')
+      .update({ actif: false })
+      .eq('id', programmeId);
+    if (error) throw error;
+  },
+
+  // ── Entraînement — Logs de séances ───────────────────────────────────────
+
+  async getSeancesLog(clientId, limit = 30) {
+    const { data, error } = await getSupabase()
+      .from('seances_log')
+      .select('*, seances_log_sets(*)')
+      .eq('client_id', clientId)
+      .order('date_seance', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async upsertSeanceLog(log) {
+    const { data, error } = await getSupabase()
+      .from('seances_log')
+      .upsert(log)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async saveSeanceSets(logId, sets) {
+    const sb = getSupabase();
+    // Supprimer les sets existants pour ce log
+    await sb.from('seances_log_sets').delete().eq('log_id', logId);
+    if (!sets || !sets.length) return;
+    const rows = sets.map((s, i) => ({
+      log_id:                    logId,
+      exercice_id:               s.exercice_id,
+      client_prog_exercice_id:   s.client_prog_exercice_id || null,
+      ordre:                     i,
+      type_effort:               s.type_effort || 'reps',
+      sets_data:                 s.sets_data || [],
+    }));
+    const { error } = await sb.from('seances_log_sets').insert(rows);
+    if (error) throw error;
+  },
+
+  async getCoachClientSeancesLog(clientId, limit = 20) {
+    const { data, error } = await getSupabase()
+      .from('seances_log')
+      .select('*, seances_log_sets(*, exercices_bdd(nom,muscle_principal))')
+      .eq('client_id', clientId)
+      .eq('statut', 'complete')
+      .order('date_seance', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
   }
 };
