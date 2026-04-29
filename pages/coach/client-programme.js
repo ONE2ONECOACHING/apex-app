@@ -42,16 +42,7 @@ const CoachClientProgrammePage = {
 
       // Tabs cohérents avec les autres pages coach
       const clientId = params.clientId;
-      const tabsHtml = `
-        <div class="tabs" style="overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:1rem;">
-          <button class="tab" onclick="Router.navigate('coach-client-edit',{clientId:'${clientId}'})">👤 Infos</button>
-          <button class="tab" onclick="Router.navigate('coach-plan-edit',{clientId:'${clientId}'})">📋 Plan</button>
-          <button class="tab" onclick="Router.navigate('coach-habits-edit',{clientId:'${clientId}'})">✅ Habitudes</button>
-          <button class="tab" onclick="Router.navigate('coach-journal',{clientId:'${clientId}'})">📊 Journal</button>
-          <button class="tab" onclick="Router.navigate('coach-bilan-client',{clientId:'${clientId}'})">📝 Bilan</button>
-          <button class="tab" onclick="Router.navigate('coach-mesure-client',{clientId:'${clientId}'})">📏 Mesures</button>
-          <button class="tab active">💪 Programme</button>
-        </div>`;
+      const tabsHtml = coachClientNav(clientId, 'coach-client-programme');
 
       this._render(tabsHtml);
     } catch (e) {

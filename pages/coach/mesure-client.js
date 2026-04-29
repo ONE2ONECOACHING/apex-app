@@ -7,18 +7,17 @@ const CoachMesureClientPage = {
   _selectedMens: null,
 
   render() {
+    document.body.classList.add('coach-wide');
     return `
       <div class="app-header">
         <div>
           <div class="app-logo">ONE2ONE — APEX · COACH</div>
           <div class="app-title" id="mesureCoachTitle">Mesures</div>
         </div>
-        <button class="header-btn" onclick="window.location.hash='#coach-clients'">←</button>
+        <button class="header-btn" onclick="history.back()">←</button>
       </div>
-      <div id="mesureCoachContent"><div class="spinner" style="margin-top:3rem;"></div></div>
-      <nav class="nav-bottom"><div class="nav-inner">
-        <a class="nav-item active" href="#coach-clients"><span class="nav-icon">👥</span><span class="nav-label">Clients</span></a>
-      </div></nav>`;
+      <div id="mesureNav"></div>
+      <div id="mesureCoachContent"><div class="spinner" style="margin-top:3rem;"></div></div>`;
   },
 
   async init() {
@@ -32,6 +31,8 @@ const CoachMesureClientPage = {
 
     const title = document.getElementById('mesureCoachTitle');
     if (title) title.textContent = this.clientName;
+    const mesureNav = document.getElementById('mesureNav');
+    if (mesureNav) mesureNav.innerHTML = coachClientNav(this.clientId, 'coach-mesure-client');
 
     try {
       this.history = await db.getClientMesures(this.clientId);

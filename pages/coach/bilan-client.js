@@ -54,14 +54,7 @@ const CoachBilanClientPage = {
     ];
 
     let html = `
-      <!-- Navigation tabs -->
-      <div class="tabs" style="overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:1rem;">
-        <button class="tab" onclick="Router.navigate('coach-client-edit',{clientId:'${this.clientId}'})">👤 Infos</button>
-        <button class="tab" onclick="Router.navigate('coach-plan-edit',{clientId:'${this.clientId}'})">📋 Plan</button>
-        <button class="tab" onclick="Router.navigate('coach-habits-edit',{clientId:'${this.clientId}'})">✅ Habitudes</button>
-        <button class="tab" onclick="Router.navigate('coach-journal',{clientId:'${this.clientId}'})">📊 Journal</button>
-        <button class="tab active">📝 Bilan</button>
-      </div>
+      ${coachClientNav(this.clientId, 'coach-bilan-client')}
 
       <!-- Assignation -->
       <div class="card" style="margin-bottom:1rem;">

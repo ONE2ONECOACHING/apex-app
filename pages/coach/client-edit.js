@@ -6,6 +6,7 @@ const CoachClientEditPage = {
   selectedTag: null,
 
   render() {
+    document.body.classList.add('coach-wide');
     return `
       <div class="app-header">
         <div>
@@ -44,79 +45,79 @@ const CoachClientEditPage = {
     const sports = Object.keys(TDEE.METS);
 
     let html = `
-      <div class="tabs" style="overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:1rem;">
-        <button class="tab active">👤 Infos</button>
-        <button class="tab" onclick="Router.navigate('coach-plan-edit',{clientId:'${c.id}'})">📋 Plan</button>
-        <button class="tab" onclick="Router.navigate('coach-habits-edit',{clientId:'${c.id}'})">✅ Habitudes</button>
-        <button class="tab" onclick="Router.navigate('coach-journal',{clientId:'${c.id}'})">📊 Journal</button>
-        <button class="tab" onclick="Router.navigate('coach-bilan-client',{clientId:'${c.id}'})">📝 Bilan</button>
-        <button class="tab" onclick="Router.navigate('coach-mesure-client',{clientId:'${c.id}'})">📏 Mesures</button>
-        <button class="tab" onclick="Router.navigate('coach-client-programme',{clientId:'${c.id}'})">💪 Programme</button>
-        <button class="tab" onclick="Router.navigate('coach-training-client',{clientId:'${c.id}'})">🏋️ Entraînement</button>
-      </div>
+      ${coachClientNav(c.id, 'coach-client-edit')}
 
-      <div class="card">
-        <div class="card-title">Informations</div>
-        <div class="field">
-          <label class="field-label">Coach référent</label>
-          <div style="display:flex;gap:8px;">
-            <button type="button" id="tagBtnBen" class="tag-pill-btn ${this.selectedTag === 'ben' ? 'active-ben' : ''}" onclick="CoachClientEditPage.setTag('ben')">Ben</button>
-            <button type="button" id="tagBtnChris" class="tag-pill-btn ${this.selectedTag === 'chris' ? 'active-chris' : ''}" onclick="CoachClientEditPage.setTag('chris')">Chris</button>
+      <div class="coach-form-grid">
+
+        <!-- Colonne gauche : Informations + Activité -->
+        <div>
+          <div class="card">
+            <div class="card-title">Informations</div>
+            <div class="field">
+              <label class="field-label">Coach référent</label>
+              <div style="display:flex;gap:8px;">
+                <button type="button" id="tagBtnBen" class="tag-pill-btn ${this.selectedTag === 'ben' ? 'active-ben' : ''}" onclick="CoachClientEditPage.setTag('ben')">Ben</button>
+                <button type="button" id="tagBtnChris" class="tag-pill-btn ${this.selectedTag === 'chris' ? 'active-chris' : ''}" onclick="CoachClientEditPage.setTag('chris')">Chris</button>
+              </div>
+            </div>
+            <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="field"><label class="field-label">Sexe</label>
+                <select class="input" id="ceSexe"><option value="homme" ${c.sexe === 'homme' ? 'selected' : ''}>Homme</option><option value="femme" ${c.sexe === 'femme' ? 'selected' : ''}>Femme</option></select>
+              </div>
+              <div class="field"><label class="field-label">Âge</label><input class="input" type="number" id="ceAge" value="${c.age || ''}"></div>
+            </div>
+            <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="field"><label class="field-label">Poids actuel (kg)</label><input class="input" type="number" id="cePoids" value="${c.poids || ''}" step="0.1"></div>
+              <div class="field"><label class="field-label">Taille (cm)</label><input class="input" type="number" id="ceTaille" value="${c.taille || ''}"></div>
+            </div>
+            <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="field"><label class="field-label">Poids de départ (kg)</label><input class="input" type="number" id="cePoidsDepart" value="${c.poids_depart || ''}" step="0.1"></div>
+              <div class="field"><label class="field-label">Poids objectif (kg)</label><input class="input" type="number" id="cePoidsObjectif" value="${c.poids_objectif || ''}" step="0.1"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Activité</div>
+            <div class="field"><label class="field-label">Type de métier</label>
+              <select class="input" id="ceMetier">${metiers.map(m => `<option value="${m.v}" ${c.type_metier === m.v ? 'selected' : ''}>${m.l}</option>`).join('')}</select>
+            </div>
+            <div class="field"><label class="field-label">Pas par jour</label><input class="input" type="number" id="cePas" value="${c.pas_par_jour || 5000}"></div>
+            <div class="field"><label class="field-label">Séances sportives</label>
+              <div id="ceActivites"></div>
+              <button class="add-meal-btn" style="margin-top:6px;" onclick="CoachClientEditPage.addActivite()">+ Ajouter une activité</button>
+            </div>
           </div>
         </div>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Sexe</label>
-            <select class="input" id="ceSexe"><option value="homme" ${c.sexe === 'homme' ? 'selected' : ''}>Homme</option><option value="femme" ${c.sexe === 'femme' ? 'selected' : ''}>Femme</option></select>
+
+        <!-- Colonne droite : Objectif + TDEE + Actions -->
+        <div>
+          <div class="card">
+            <div class="card-title">Objectif</div>
+            <div class="field"><label class="field-label">Objectif</label>
+              <select class="input" id="ceObjectif">${objectifs.map(o => `<option value="${o.v}" ${c.objectif === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
+            </div>
+            <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="field"><label class="field-label">Semaine courante</label><input class="input" type="number" id="ceSemaine" value="${c.semaine_courante || 1}" min="1" max="16"></div>
+              <div class="field"><label class="field-label">Masse grasse %</label><input class="input" type="number" id="ceFat" value="${c.masse_grasse_pct || ''}" step="0.1"></div>
+            </div>
           </div>
-          <div class="field"><label class="field-label">Âge</label><input class="input" type="number" id="ceAge" value="${c.age || ''}"></div>
-        </div>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Poids actuel (kg)</label><input class="input" type="number" id="cePoids" value="${c.poids || ''}" step="0.1"></div>
-          <div class="field"><label class="field-label">Taille (cm)</label><input class="input" type="number" id="ceTaille" value="${c.taille || ''}"></div>
-        </div>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Poids de départ (kg)</label><input class="input" type="number" id="cePoidsDepart" value="${c.poids_depart || ''}" step="0.1"></div>
-          <div class="field"><label class="field-label">Poids objectif (kg)</label><input class="input" type="number" id="cePoidsObjectif" value="${c.poids_objectif || ''}" step="0.1"></div>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="card-title">Activité</div>
-        <div class="field"><label class="field-label">Type de métier</label>
-          <select class="input" id="ceMetier">${metiers.map(m => `<option value="${m.v}" ${c.type_metier === m.v ? 'selected' : ''}>${m.l}</option>`).join('')}</select>
+          <div class="card card-accent" id="ceTDEEResult">
+            <div class="card-title">TDEE calculé</div>
+            <div style="font-size:13px;color:var(--gray);">Remplis les infos ci-dessus et clique "Calculer" pour voir le TDEE.</div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-secondary" onclick="CoachClientEditPage.calcTDEE()">🔢 Calculer TDEE</button>
+            <button class="btn btn-primary" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
+          </div>
+          <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>
+
+          <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+            <button class="btn" style="background:var(--error-bg);color:var(--error);border:1.5px solid #FFCDD2;width:100%;" onclick="CoachClientEditPage.confirmDelete()">🗑️ Supprimer ce client</button>
+          </div>
         </div>
-        <div class="field"><label class="field-label">Pas par jour</label><input class="input" type="number" id="cePas" value="${c.pas_par_jour || 5000}"></div>
 
-        <div class="field"><label class="field-label">Séances sportives</label>
-          <div id="ceActivites"></div>
-          <button class="add-meal-btn" style="margin-top:6px;" onclick="CoachClientEditPage.addActivite()">+ Ajouter une activité</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Objectif</div>
-        <div class="field"><label class="field-label">Objectif</label>
-          <select class="input" id="ceObjectif">${objectifs.map(o => `<option value="${o.v}" ${c.objectif === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
-        </div>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Semaine courante</label><input class="input" type="number" id="ceSemaine" value="${c.semaine_courante || 1}" min="1" max="16"></div>
-          <div class="field"><label class="field-label">Masse grasse %</label><input class="input" type="number" id="ceFat" value="${c.masse_grasse_pct || ''}" step="0.1"></div>
-        </div>
-      </div>
-
-      <div class="card card-accent" id="ceTDEEResult">
-        <div class="card-title">TDEE calculé</div>
-        <div style="font-size:13px;color:var(--gray);">Remplis les infos ci-dessus et clique "Calculer" pour voir le TDEE.</div>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="CoachClientEditPage.calcTDEE()">🔢 Calculer TDEE</button>
-        <button class="btn btn-primary" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
-      </div>
-      <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>
-
-      <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
-        <button class="btn" style="background:var(--error-bg);color:var(--error);border:1.5px solid #FFCDD2;width:100%;" onclick="CoachClientEditPage.confirmDelete()">🗑️ Supprimer ce client</button>
       </div>`;
 
     document.getElementById('ceContent').innerHTML = html;

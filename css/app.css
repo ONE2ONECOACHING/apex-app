@@ -752,3 +752,30 @@ body.coach-wide #app {
   .macro-val { font-size: 15px; }
   .app-title { font-size: 20px; }
 }
+
+/* ── COACH CLIENT PAGES — DESKTOP ─────────────────────────── */
+
+/* Tabs wrap sur desktop au lieu du scroll horizontal */
+body.coach-wide .tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+  -webkit-overflow-scrolling: auto;
+}
+body.coach-wide .tabs .tab {
+  flex: 0 0 auto;
+  padding: 0 13px;
+  font-size: 12.5px;
+}
+
+/* Grille 2 colonnes pour les formulaires */
+@media (min-width: 900px) {
+  body.coach-wide .coach-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    align-items: start;
+  }
+  body.coach-wide .coach-col-full {
+    grid-column: 1 / -1;
+  }
+}

@@ -208,6 +208,24 @@ function noteEmoji(note) {
   return '🔴';
 }
 
+// ── Navigation partagée — pages client coach ─────────────────
+function coachClientNav(clientId, activeTab) {
+  const tabs = [
+    { key: 'coach-client-edit',      label: '👤 Infos' },
+    { key: 'coach-plan-edit',        label: '📋 Plan' },
+    { key: 'coach-habits-edit',      label: '✅ Habitudes' },
+    { key: 'coach-journal',          label: '📊 Journal' },
+    { key: 'coach-bilan-client',     label: '📝 Bilan' },
+    { key: 'coach-mesure-client',    label: '📏 Mesures' },
+    { key: 'coach-client-programme', label: '💪 Programme' },
+    { key: 'coach-training-client',  label: '🏋️ Entraîn.' },
+  ];
+  return `<div class="tabs" style="margin-bottom:1.25rem;">${
+    tabs.map(t => `<button class="tab${activeTab === t.key ? ' active' : ''}"
+      onclick="Router.navigate('${t.key}',{clientId:'${clientId}'})">${t.label}</button>`).join('')
+  }</div>`;
+}
+
 function lastSaturdayStr(date) {
   const d = new Date(date || new Date());
   const back = (d.getDay() + 1) % 7; // sam=0, dim=1, lun=2 …

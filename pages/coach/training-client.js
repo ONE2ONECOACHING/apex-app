@@ -45,17 +45,7 @@ const CoachTrainingClientPage = {
 
     const c = this.client;
     el.innerHTML = `
-      <!-- Tabs de navigation client (cohérence avec client-edit) -->
-      <div class="tabs" style="overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:1rem;">
-        <button class="tab" onclick="Router.navigate('coach-client-edit',{clientId:'${c.id}'})">👤 Infos</button>
-        <button class="tab" onclick="Router.navigate('coach-plan-edit',{clientId:'${c.id}'})">📋 Plan</button>
-        <button class="tab" onclick="Router.navigate('coach-habits-edit',{clientId:'${c.id}'})">✅ Habitudes</button>
-        <button class="tab" onclick="Router.navigate('coach-journal',{clientId:'${c.id}'})">📊 Journal</button>
-        <button class="tab" onclick="Router.navigate('coach-bilan-client',{clientId:'${c.id}'})">📝 Bilan</button>
-        <button class="tab" onclick="Router.navigate('coach-mesure-client',{clientId:'${c.id}'})">📏 Mesures</button>
-        <button class="tab" onclick="Router.navigate('coach-client-programme',{clientId:'${c.id}'})">💪 Programme</button>
-        <button class="tab active">🏋️ Entraînement</button>
-      </div>
+      ${coachClientNav(c.id, 'coach-training-client')}
 
       ${this._renderStats()}
       ${this._renderLogs()}`;
