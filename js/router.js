@@ -95,7 +95,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
         window.location.hash = '#coach-clients';
@@ -136,6 +136,7 @@ const Router = {
       case 'coach-exercices': app.innerHTML = CoachExercicesPage.render(); CoachExercicesPage.init(); break;
       case 'coach-prog-templates': app.innerHTML = CoachProgTemplatesPage.render(); CoachProgTemplatesPage.init(); break;
       case 'coach-prog-template-edit': app.innerHTML = CoachProgTemplateEditPage.render(); CoachProgTemplateEditPage.init(); break;
+      case 'coach-client-programme': app.innerHTML = CoachClientProgrammePage.render(); CoachClientProgrammePage.init(); break;
       default: window.location.hash = '#login';
     }
   },

@@ -50,6 +50,8 @@ const CoachClientEditPage = {
         <button class="tab" onclick="Router.navigate('coach-habits-edit',{clientId:'${c.id}'})">✅ Habitudes</button>
         <button class="tab" onclick="Router.navigate('coach-journal',{clientId:'${c.id}'})">📊 Journal</button>
         <button class="tab" onclick="Router.navigate('coach-bilan-client',{clientId:'${c.id}'})">📝 Bilan</button>
+        <button class="tab" onclick="Router.navigate('coach-mesure-client',{clientId:'${c.id}'})">📏 Mesures</button>
+        <button class="tab" onclick="Router.navigate('coach-client-programme',{clientId:'${c.id}'})">💪 Programme</button>
       </div>
 
       <div class="card">
