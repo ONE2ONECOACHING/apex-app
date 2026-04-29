@@ -197,9 +197,19 @@ const CoachClientProgrammePage = {
       document.getElementById('cpModal').innerHTML = '';
       this._assigning = false;
 
-      const prenom = this.client?.prenom || 'Client';
       const tabsHtml = document.querySelector('#cpContent .tabs')?.outerHTML || '';
       this._render(tabsHtml);
+
+      // Notification push au client (silencieuse si non abonné)
+      const prenom = this.client?.prenom || 'ton client';
+      try {
+        await db.sendPush(
+          this.client.id,
+          '💪 Nouveau programme disponible',
+          `${Router.userProfile.prenom || 'Ton coach'} vient de t'assigner un programme : ${template.nom}`,
+          '#entrainement'
+        );
+      } catch (_) { /* pas de subscription push → on ignore */ }
 
       // Flash succès
       const flash = document.createElement('div');
