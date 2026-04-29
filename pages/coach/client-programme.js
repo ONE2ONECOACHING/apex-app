@@ -7,6 +7,7 @@ const CoachClientProgrammePage = {
   _assigning:  false,
 
   render() {
+    document.body.classList.add('coach-wide');
     return `
       <div class="app-header">
         <div>

@@ -9,6 +9,7 @@ const CoachBilanClientPage = {
   _openInstanceId: null,
 
   render() {
+    document.body.classList.add('coach-wide');
     return `
       <div class="app-header">
         <div>

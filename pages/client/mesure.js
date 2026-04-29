@@ -92,7 +92,7 @@ const MesurePage = {
     let html = '';
 
     // ── Carte poids ──
-    html += `<div class="card card-dark">
+    const _poidsCard = `<div class="card card-dark">
       <div class="card-title">Poids</div>
       <div style="display:flex;gap:8px;align-items:center;">
         <input type="number" class="input" id="mesurePoids"
@@ -104,8 +104,13 @@ const MesurePage = {
       ${this._renderLineGraph(this.history.filter(e => e.poids != null), 'poids', '#C4820A', 'mGrad', 'kg')}
     </div>`;
 
-    // ── Courbes mensurations (si données suffisantes) ──
-    html += this._renderMensurations();
+    // ── Courbes côte à côte si mensurations disponibles ──
+    const _mensCard = this._renderMensurations();
+    if (_mensCard) {
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">${_poidsCard}${_mensCard}</div>`;
+    } else {
+      html += _poidsCard;
+    }
 
     // ── Saisie mensurations ──
     const fields = [
