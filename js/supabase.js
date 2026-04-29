@@ -1008,7 +1008,7 @@ const db = {
   async getSeancesLog(clientId, limit = 30) {
     const { data, error } = await getSupabase()
       .from('seances_log')
-      .select('*, seances_log_sets(*)')
+      .select('*, seances_log_sets(*, exercices_bdd(nom, muscle_principal))')
       .eq('client_id', clientId)
       .order('date_seance', { ascending: false })
       .limit(limit);
