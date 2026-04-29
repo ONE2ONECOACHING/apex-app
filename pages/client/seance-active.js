@@ -200,15 +200,6 @@ const SeanceActivePage = {
                       : effort === 'distance' ? `📏 ${target.reps}`
                       : `${target.reps} reps${target.charge ? ' · ' + target.charge + ' kg' : ''}`;
 
-    // Placeholder / label for non-reps result field
-    const resultLabel = effort === 'amrap'    ? 'Résultat (reps, tours…)'
-                      : effort === 'temps'    ? 'Résultat (temps, rounds…)'
-                      : effort === 'distance' ? 'Résultat (distance…)'
-                      : 'Note';
-    const resultPlaceholder = effort === 'amrap'    ? 'ex : 47 reps, 5 tours…'
-                            : effort === 'temps'    ? 'ex : 3:45, 5 rounds…'
-                            : effort === 'distance' ? 'ex : 500m, 1.2 km…'
-                            : '';
 
     wrap.innerHTML = `
       ${this._header()}
@@ -269,15 +260,15 @@ const SeanceActivePage = {
               </div>
               <div>
                 <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Reps / score</div>
-                <input id="saReps" type="text" inputmode="text" placeholder="—"
-                  style="width:100%;height:58px;text-align:center;font-size:22px;font-weight:800;
+                <input id="saReps" type="number" inputmode="numeric" min="0" placeholder="—"
+                  style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
                          border:2px solid var(--border-solid);border-radius:12px;
                          background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
               </div>
             </div>
             <div>
-              <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${resultLabel}</div>
-              <input id="saNote" type="text" placeholder="${resultPlaceholder}"
+              <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Notes pour ton coach (optionnel)</div>
+              <input id="saNote" type="text" placeholder="ex : sensations, technique…"
                 style="width:100%;height:48px;padding:0 14px;border:2px solid var(--border-solid);
                        border-radius:12px;background:var(--white);color:var(--black);
                        font-family:var(--font);font-size:15px;box-sizing:border-box;">
