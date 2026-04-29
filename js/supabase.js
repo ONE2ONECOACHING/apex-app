@@ -875,6 +875,7 @@ const db = {
           charge_cible:     ex.charge_cible || null,
           repos_secondes:   ex.repos_secondes ?? 90,
           superset_groupe:  ex.superset_groupe || null,
+          series_data:      ex.series_data || null,
           notes:            ex.notes || null,
         }));
         const { error: e2 } = await sb.from('prog_template_exercices').insert(rows);
@@ -973,6 +974,7 @@ const db = {
           charge_cible:    ex.charge_cible || null,
           repos_secondes:  ex.repos_secondes ?? 90,
           superset_groupe: ex.superset_groupe || null,
+          series_data:     ex.series_data || null,
           notes:           ex.notes || null,
         });
       }
