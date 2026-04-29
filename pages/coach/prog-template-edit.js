@@ -138,6 +138,16 @@ const CoachProgTemplateEditPage = {
         if (chg)    ex.charge_cible = chg.value;
         const effort = document.querySelector(`input[name="effort_${si}_${ei}"]:checked`);
         if (effort) ex.type_effort = effort.value;
+        // Pour temps/amrap : combiner min + sec en "M:SS"
+        if (ex.type_effort === 'temps' || ex.type_effort === 'amrap') {
+          const minEl = document.getElementById(`exmin_${si}_${ei}`);
+          const secEl = document.getElementById(`exsec_${si}_${ei}`);
+          if (minEl && secEl) {
+            const m = parseInt(minEl.value) || 0;
+            const s2 = parseInt(secEl.value) || 0;
+            ex.reps_cible = m + ':' + String(s2).padStart(2, '0');
+          }
+        }
       });
     });
   },
@@ -239,6 +249,15 @@ const CoachProgTemplateEditPage = {
       </div>`;
   },
 
+  _parseMinSec(val) {
+    if (!val) return [0, 0];
+    const colon = String(val).match(/^(\d+):(\d+)$/);
+    if (colon) return [parseInt(colon[1]), parseInt(colon[2])];
+    const m = String(val).match(/(\d+)\s*min/);
+    const s = String(val).match(/(\d+)\s*s\b/);
+    return [m ? parseInt(m[1]) : 0, s ? parseInt(s[1]) : 0];
+  },
+
   _renderExoRow(ex, si, ei) {
     const effort  = ex.type_effort || ex.exercice?.type_effort || 'reps';
     const ytUrl   = ex.exercice?.youtube_url || null;
@@ -299,18 +318,50 @@ const CoachProgTemplateEditPage = {
                            font-size:12px;padding:0;font-family:var(--font);">
                   <span style="font-size:11px;color:var(--gray-muted);">s repos</span>
                 </div>`
-              /* ── MODE TEMPS / AMRAP / DISTANCE : valeur seule ── */
-              : `<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+              /* ── MODE TEMPS / AMRAP : min + sec ── */
+              : (effort === 'temps' || effort === 'amrap')
+              ? (() => { const [mn, sc] = this._parseMinSec(ex.reps_cible); return `
+                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                      <input id="exmin_${si}_${ei}" type="number" min="0" max="99"
+                        value="${mn}"
+                        style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
+                               border-radius:6px;background:var(--card-bg);color:var(--black);
+                               font-size:12px;padding:0;font-family:var(--font);">
+                      <span style="font-size:9px;color:var(--gray-muted);">min</span>
+                    </div>
+                    <span style="font-size:14px;font-weight:700;color:var(--gray-muted);margin-bottom:12px;">:</span>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                      <input id="exsec_${si}_${ei}" type="number" min="0" max="59"
+                        value="${sc}"
+                        style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
+                               border-radius:6px;background:var(--card-bg);color:var(--black);
+                               font-size:12px;padding:0;font-family:var(--font);">
+                      <span style="font-size:9px;color:var(--gray-muted);">sec</span>
+                    </div>
+                    <!-- champ hidden pour sync reps_cible -->
+                    <input id="exreps_${si}_${ei}" type="hidden" value="${ex.reps_cible}">
+                    <input id="exser_${si}_${ei}" type="hidden" value="${ex.series}">
+                  </div>
+                  <!-- Récup -->
+                  <div style="display:flex;gap:5px;align-items:center;margin-top:5px;">
+                    <span style="font-size:14px;">💤</span>
+                    <input id="exrest_${si}_${ei}" type="number" min="0" max="600"
+                      value="${ex.repos_secondes}" title="Repos (s)"
+                      style="width:50px;height:26px;text-align:center;border:1px solid var(--border-solid);
+                             border-radius:6px;background:var(--card-bg);color:var(--black);
+                             font-size:12px;padding:0;font-family:var(--font);">
+                    <span style="font-size:11px;color:var(--gray-muted);">s</span>
+                  </div>`; })()
+              /* ── MODE DISTANCE : valeur seule ── */
+              : `<div style="display:flex;gap:5px;align-items:center;">
                   <input id="exreps_${si}_${ei}" type="text"
-                    value="${ex.reps_cible}"
-                    placeholder="${repsPlaceholder[effort] || 'val.'}"
+                    value="${ex.reps_cible}" placeholder="ex: 100m"
                     style="width:80px;height:30px;text-align:center;border:1px solid var(--border-solid);
                            border-radius:6px;background:var(--card-bg);color:var(--black);
                            font-size:12px;padding:0 4px;font-family:var(--font);">
-                  <!-- champ series caché pour sync DOM -->
                   <input id="exser_${si}_${ei}" type="hidden" value="${ex.series}">
                 </div>
-                <!-- Récup -->
                 <div style="display:flex;gap:5px;align-items:center;margin-top:5px;">
                   <span style="font-size:14px;">💤</span>
                   <input id="exrest_${si}_${ei}" type="number" min="0" max="600"
