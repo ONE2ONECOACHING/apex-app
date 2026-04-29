@@ -132,6 +132,7 @@ const Router = {
       case 'coach-bilan-client': app.innerHTML = CoachBilanClientPage.render(); CoachBilanClientPage.init(); break;
       case 'mesure': app.innerHTML = MesurePage.render(); MesurePage.init(); break;
       case 'entrainement': app.innerHTML = EntrainementPage.render(); EntrainementPage.init(); break;
+      case 'seance-active': app.innerHTML = SeanceActivePage.render(); SeanceActivePage.init(); break;
       case 'coach-mesure-client': app.innerHTML = CoachMesureClientPage.render(); CoachMesureClientPage.init(); break;
       case 'coach-exercices': app.innerHTML = CoachExercicesPage.render(); CoachExercicesPage.init(); break;
       case 'coach-prog-templates': app.innerHTML = CoachProgTemplatesPage.render(); CoachProgTemplatesPage.init(); break;

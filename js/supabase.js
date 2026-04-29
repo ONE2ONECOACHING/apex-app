@@ -905,6 +905,19 @@ const db = {
     }));
   },
 
+  async getClientSeance(seanceId) {
+    const { data, error } = await getSupabase()
+      .from('client_prog_seances')
+      .select('*, client_prog_exercices(*, exercices_bdd(*))')
+      .eq('id', seanceId)
+      .single();
+    if (error) throw error;
+    return {
+      ...data,
+      exercices: (data.client_prog_exercices || []).sort((a, b) => a.ordre - b.ordre),
+    };
+  },
+
   async getClientProgrammeActif(clientId) {
     const { data, error } = await getSupabase()
       .from('client_programmes')
