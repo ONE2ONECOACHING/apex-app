@@ -124,6 +124,7 @@ const SeanceActivePage = {
     const nom      = ex.exercices_bdd?.nom || '?';
     const muscle   = ex.exercices_bdd?.muscle_principal || '';
     const ytUrl    = ex.exercices_bdd?.youtube_url || null;
+    const ytId     = ytUrl ? (ytUrl.match(/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/) || [])[1] : null;
     const effort   = ex.type_effort || 'reps';
     const nbSer    = this._nbSeries(ex);
     const nbEx     = this._seance.exercices.length;
@@ -145,9 +146,17 @@ const SeanceActivePage = {
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           ${muscle ? `<span style="font-size:11px;padding:2px 10px;border-radius:12px;
             background:var(--gold-bg,#fffbeb);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
-          ${ytUrl ? `<a href="${ytUrl}" target="_blank" rel="noopener"
-            style="font-size:11px;color:#FF0000;text-decoration:none;font-weight:600;">▶ Vidéo</a>` : ''}
         </div>
+        ${ytId ? `
+        <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:10px;
+                    overflow:hidden;background:#000;margin-top:10px;">
+          <iframe src="https://www.youtube.com/embed/${ytId}?rel=0"
+            frameborder="0" loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+            style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
+          </iframe>
+        </div>` : ''}
 
         <!-- Objectif de la série -->
         <div style="margin-top:14px;padding:12px 14px;background:var(--card-bg);border-radius:12px;

@@ -112,12 +112,11 @@ const CoachExercicesPage = {
   },
 
   _exoCard(ex) {
-    const color      = this._muscleColors[ex.muscle_principal] || '#666';
-    const muscleLabel  = this._muscles.find(m => m.key === ex.muscle_principal)?.label || ex.muscle_principal;
-    const equipLabel   = this._equipements.find(e => e.key === ex.equipement)?.label || ex.equipement;
-    const effortLabel  = this._efforts.find(e => e.key === ex.type_effort)?.label || ex.type_effort;
-    const ytId       = ex.youtube_url ? this._ytId(ex.youtube_url) : null;
-    const safeEx     = JSON.stringify(ex).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const color       = this._muscleColors[ex.muscle_principal] || '#666';
+    const muscleLabel = this._muscles.find(m => m.key === ex.muscle_principal)?.label || ex.muscle_principal;
+    const equipLabel  = this._equipements.find(e => e.key === ex.equipement)?.label || ex.equipement;
+    const effortLabel = this._efforts.find(e => e.key === ex.type_effort)?.label || ex.type_effort;
+    const ytId        = ex.youtube_url ? this._ytId(ex.youtube_url) : null;
 
     return `<div class="card" style="padding:14px;margin:0;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -135,15 +134,22 @@ const CoachExercicesPage = {
         <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--card-bg);color:var(--gray-light);">${effortLabel}</span>
       </div>
       ${ex.description ? `<div style="font-size:12px;color:var(--gray);margin-top:4px;line-height:1.5;">${ex.description}</div>` : ''}
-      ${ex.youtube_url ? `<a href="${ex.youtube_url}" target="_blank" rel="noopener"
-        style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#FF0000;
-               margin-top:8px;text-decoration:none;font-weight:600;">
-        ▶ Voir sur YouTube</a>` : ''}
+      ${ytId ? `
+        <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:8px;
+                    overflow:hidden;background:#000;margin-top:10px;">
+          <iframe src="https://www.youtube.com/embed/${ytId}?rel=0"
+            frameborder="0" loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+            style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
+          </iframe>
+        </div>` : ''}
     </div>`;
   },
 
   _ytId(url) {
-    const m = url.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (!url) return null;
+    const m = url.match(/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/);
     return m ? m[1] : null;
   },
 
