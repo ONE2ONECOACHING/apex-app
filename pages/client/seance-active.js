@@ -25,6 +25,7 @@ const SeanceActivePage = {
   async init() {
     clearInterval(this._sessionTimer);
     clearInterval(this._restTimer);
+    this._removeBanner();
 
     const profile = Router.userProfile;
     if (!profile || profile.role === 'coach') { window.location.hash = '#entrainement'; return; }
@@ -90,8 +91,9 @@ const SeanceActivePage = {
   _draw() {
     const wrap = document.getElementById('saWrap');
     if (!wrap) return;
-    if (this._phase === 'done')  { this._drawDone(wrap);  return; }
-    if (this._phase === 'repos') { this._drawRest(wrap);  return; }
+    if (this._phase === 'done') { this._drawDone(wrap); return; }
+    // Both 'exercice' and 'repos' phases show the exercise view.
+    // The rest timer is an independent floating banner.
     this._drawExo(wrap);
   },
 
@@ -117,6 +119,62 @@ const SeanceActivePage = {
       </div>`;
   },
 
+  // Returns HTML for the all-series grid (reps mode only)
+  _renderSeriesGrid(ex, nbSer, prevSets) {
+    return Array.from({ length: nbSer }, (_, k) => {
+      const tgt       = this._target(ex, k);
+      const logged    = prevSets[k];
+      const isDone    = k < this._serieIdx;
+      const isCurrent = k === this._serieIdx;
+
+      if (isDone) {
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
+                            background:var(--card-bg);border-radius:10px;">
+          <div style="font-size:13px;color:#10b981;font-weight:700;width:22px;text-align:center;">✓</div>
+          <div style="font-size:12px;font-weight:700;color:var(--gray);min-width:24px;">S${k + 1}</div>
+          <div style="font-size:14px;color:var(--gray);">
+            ${logged?.reps || tgt.reps} reps${logged?.charge ? ' · ' + logged.charge + ' kg' : ''}
+          </div>
+        </div>`;
+      }
+
+      if (isCurrent) {
+        return `<div style="padding:10px 12px;background:var(--gold-bg,#fffbeb);border-radius:10px;
+                            border:2px solid var(--gold);">
+          <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:8px;">Série ${k + 1}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;
+                          letter-spacing:.5px;margin-bottom:4px;">Reps</div>
+              <input id="saReps" type="number" inputmode="numeric" min="0" value="${tgt.reps}"
+                style="width:100%;height:54px;text-align:center;font-size:26px;font-weight:800;
+                       border:2px solid var(--border-solid);border-radius:10px;
+                       background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;
+                          letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
+              <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
+                value="${tgt.charge || ''}" placeholder="0"
+                style="width:100%;height:54px;text-align:center;font-size:26px;font-weight:800;
+                       border:2px solid var(--border-solid);border-radius:10px;
+                       background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
+            </div>
+          </div>
+        </div>`;
+      }
+
+      // Upcoming series — greyed target
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
+                          background:var(--card-bg);border-radius:10px;opacity:0.38;">
+        <div style="font-size:12px;font-weight:700;color:var(--gray-muted);min-width:24px;">S${k + 1}</div>
+        <div style="font-size:14px;color:var(--gray-muted);">
+          ${tgt.reps} reps${tgt.charge ? ' · ' + tgt.charge + ' kg' : ''}
+        </div>
+      </div>`;
+    }).join('');
+  },
+
   _drawExo(wrap) {
     const ex = this._exo();
     if (!ex) { this._phase = 'done'; this._drawDone(wrap); return; }
@@ -132,6 +190,26 @@ const SeanceActivePage = {
     const prevSets = this._logs[this._exoIdx]?.sets_data || [];
     const isLast   = this._serieIdx + 1 >= nbSer && this._exoIdx + 1 >= nbEx;
 
+    // Button state: disabled during rest phase
+    const inRest  = this._phase === 'repos';
+    const btnText = inRest ? '⏳ Récupération…' : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
+
+    // Effort label for non-reps Objectif card
+    const effortLabel = effort === 'amrap' ? `AMRAP ${target.reps}`
+                      : effort === 'temps' ? `⏱ ${target.reps}`
+                      : effort === 'distance' ? `📏 ${target.reps}`
+                      : `${target.reps} reps${target.charge ? ' · ' + target.charge + ' kg' : ''}`;
+
+    // Placeholder / label for non-reps result field
+    const resultLabel = effort === 'amrap'    ? 'Résultat (reps, tours…)'
+                      : effort === 'temps'    ? 'Résultat (temps, rounds…)'
+                      : effort === 'distance' ? 'Résultat (distance…)'
+                      : 'Note';
+    const resultPlaceholder = effort === 'amrap'    ? 'ex : 47 reps, 5 tours…'
+                            : effort === 'temps'    ? 'ex : 3:45, 5 rounds…'
+                            : effort === 'distance' ? 'ex : 500m, 1.2 km…'
+                            : '';
+
     wrap.innerHTML = `
       ${this._header()}
 
@@ -142,11 +220,13 @@ const SeanceActivePage = {
       </div>
 
       <div style="padding:10px 16px 0;">
+
         <div style="font-size:22px;font-weight:800;color:var(--black);line-height:1.2;margin-bottom:6px;">${nom}</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           ${muscle ? `<span style="font-size:11px;padding:2px 10px;border-radius:12px;
             background:var(--gold-bg,#fffbeb);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
         </div>
+
         ${ytId ? `
         <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:10px;
                     overflow:hidden;background:#000;margin-top:10px;">
@@ -158,64 +238,65 @@ const SeanceActivePage = {
           </iframe>
         </div>` : ''}
 
-        <!-- Objectif de la série -->
-        <div style="margin-top:14px;padding:12px 14px;background:var(--card-bg);border-radius:12px;
-                    border-left:3px solid var(--gold);">
-          <div style="font-size:10px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Objectif</div>
-          <div style="font-size:16px;font-weight:700;color:var(--black);">
-            ${effort === 'reps'
-              ? `${target.reps} reps${target.charge ? ' · ' + target.charge + ' kg' : ''}`
-              : effort === 'amrap' ? `AMRAP ${target.reps}`
-              : effort === 'temps' ? `⏱ ${target.reps}`
-              : `📏 ${target.reps}`}
+        <!-- Objectif + récup -->
+        <div style="margin-top:14px;padding:10px 14px;background:var(--card-bg);border-radius:12px;
+                    border-left:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div>
+            <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Objectif</div>
+            <div style="font-size:15px;font-weight:700;color:var(--black);">${effortLabel}</div>
           </div>
-          <div style="font-size:11px;color:var(--gray-muted);margin-top:2px;">💤 ${ex.repos_secondes || 90} s récup</div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Récup</div>
+            <div style="font-size:14px;font-weight:700;color:var(--gray);">💤 ${ex.repos_secondes || 90} s</div>
+          </div>
         </div>
 
-        <!-- Séries déjà faites -->
-        ${prevSets.length > 0 ? `
-          <div style="margin-top:10px;padding:10px 12px;background:var(--card-bg);border-radius:10px;">
-            <div style="font-size:10px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Déjà validées</div>
-            ${prevSets.map((s, i) => `
-              <div style="font-size:12px;color:var(--gray);padding:1px 0;">
-                ${i + 1}. ${s.reps}${effort === 'reps' ? ' reps' : ''}${s.charge ? ' · ' + s.charge + ' kg' : ''}
-              </div>`).join('')}
-          </div>` : ''}
-
-        <!-- Saisie -->
+        <!-- Saisie reps : grille toutes séries -->
         ${effort === 'reps' ? `
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;">
-            <div>
-              <div style="font-size:10px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Reps réalisées</div>
-              <input id="saReps" type="number" inputmode="numeric" min="0" value="${target.reps}"
-                style="width:100%;height:64px;text-align:center;font-size:30px;font-weight:800;
-                       border:2px solid var(--border-solid);border-radius:14px;
-                       background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;">
+            ${this._renderSeriesGrid(ex, nbSer, prevSets)}
+          </div>
+        ` : `
+        <!-- Saisie non-reps : charge + résultat + notes -->
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div>
+                <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
+                <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5" placeholder="0"
+                  style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
+                         border:2px solid var(--border-solid);border-radius:12px;
+                         background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
+              </div>
+              <div>
+                <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Reps / score</div>
+                <input id="saReps" type="text" inputmode="text" placeholder="—"
+                  style="width:100%;height:58px;text-align:center;font-size:22px;font-weight:800;
+                         border:2px solid var(--border-solid);border-radius:12px;
+                         background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
+              </div>
             </div>
             <div>
-              <div style="font-size:10px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Charge (kg)</div>
-              <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
-                value="${target.charge || ''}" placeholder="0"
-                style="width:100%;height:64px;text-align:center;font-size:30px;font-weight:800;
-                       border:2px solid var(--border-solid);border-radius:14px;
-                       background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
+              <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${resultLabel}</div>
+              <input id="saNote" type="text" placeholder="${resultPlaceholder}"
+                style="width:100%;height:48px;padding:0 14px;border:2px solid var(--border-solid);
+                       border-radius:12px;background:var(--white);color:var(--black);
+                       font-family:var(--font);font-size:15px;box-sizing:border-box;">
             </div>
-          </div>` : `
-          <div style="margin-top:16px;">
-            <div style="font-size:10px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Note (optionnel)</div>
-            <input id="saNote" type="text" placeholder="ex: 5 tours, 500m…"
-              style="width:100%;height:50px;padding:0 14px;border:2px solid var(--border-solid);
-                     border-radius:12px;background:var(--white);color:var(--black);
-                     font-family:var(--font);font-size:15px;box-sizing:border-box;">
-          </div>`}
+          </div>
+        `}
+
       </div>
 
       <!-- Boutons -->
       <div style="padding:16px;margin-top:auto;">
-        <button onclick="SeanceActivePage._validate()"
-          style="width:100%;height:58px;background:var(--gold);color:#fff;border:none;
-                 border-radius:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:var(--font);">
-          ${isLast ? '🏁 Terminer la séance' : '✓ Série validée'}
+        <button id="saValidateBtn" onclick="SeanceActivePage._validate()"
+          ${inRest ? 'disabled' : ''}
+          style="width:100%;height:58px;
+                 background:${inRest ? 'var(--border-solid)' : 'var(--gold)'};
+                 color:${inRest ? 'var(--gray-muted)' : '#fff'};
+                 border:none;border-radius:16px;font-size:18px;font-weight:700;
+                 cursor:${inRest ? 'default' : 'pointer'};font-family:var(--font);">
+          ${btnText}
         </button>
         <button onclick="SeanceActivePage._skipExo()"
           style="width:100%;height:38px;background:none;border:none;color:var(--gray-muted);
@@ -225,51 +306,10 @@ const SeanceActivePage = {
       </div>`;
   },
 
-  _drawRest(wrap) {
-    const ex    = this._exo();
-    const nom   = ex?.exercices_bdd?.nom || '';
-    const nbSer = this._nbSeries(ex);
-    const pct   = this._restTotal > 0
-      ? (this._restRemaining / this._restTotal * 100).toFixed(1)
-      : 0;
-
-    wrap.innerHTML = `
-      ${this._header()}
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;
-                  justify-content:center;padding:32px 16px;text-align:center;">
-
-        <div style="font-size:12px;font-weight:700;color:var(--gray-muted);letter-spacing:1px;
-                    text-transform:uppercase;margin-bottom:20px;">💤 Récupération</div>
-
-        <div id="saRestSecs" style="font-size:86px;font-weight:900;color:var(--black);
-                                     font-family:var(--font);line-height:1;">
-          ${this._fmt(this._restRemaining)}
-        </div>
-
-        <div style="width:240px;height:6px;background:var(--border-solid);border-radius:3px;margin:20px 0 28px;">
-          <div id="saRestBar" style="height:100%;background:var(--gold);border-radius:3px;
-               transition:width 1s linear;width:${pct}%;"></div>
-        </div>
-
-        <div style="font-size:13px;color:var(--gray-muted);margin-bottom:36px;line-height:1.5;">
-          Prochain : <b style="color:var(--black);">${nom}</b>
-          ${this._serieIdx < nbSer
-            ? `<br>Série ${this._serieIdx + 1} / ${nbSer}`
-            : ''}
-        </div>
-
-        <button onclick="SeanceActivePage._skipRest()"
-          style="padding:16px 52px;background:var(--card-bg);border:2px solid var(--border-solid);
-                 border-radius:16px;font-size:16px;font-weight:600;cursor:pointer;
-                 color:var(--black);font-family:var(--font);">
-          ⏭ Passer
-        </button>
-      </div>`;
-  },
-
   _drawDone(wrap) {
     clearInterval(this._sessionTimer);
     clearInterval(this._restTimer);
+    this._removeBanner();
     const totalSets = this._logs.reduce((a, l) => a + l.sets_data.length, 0);
 
     wrap.innerHTML = `
@@ -311,11 +351,22 @@ const SeanceActivePage = {
     const ex = this._exo();
     if (!ex) return;
     const effort = ex.type_effort || 'reps';
-    const set = effort === 'reps'
-      ? { reps: document.getElementById('saReps')?.value   || '0',
-          charge: document.getElementById('saCharge')?.value || '' }
-      : { reps: document.getElementById('saNote')?.value   || ex.reps_cible || '',
-          charge: '' };
+
+    let set;
+    if (effort === 'reps') {
+      set = {
+        reps:   document.getElementById('saReps')?.value   || '0',
+        charge: document.getElementById('saCharge')?.value || '',
+      };
+    } else {
+      // For AMRAP/Temps/Distance: store charge + combined result from note fields
+      const score  = document.getElementById('saReps')?.value || '';
+      const note   = document.getElementById('saNote')?.value || '';
+      set = {
+        reps:   [score, note].filter(Boolean).join(' — ') || ex.reps_cible || '',
+        charge: document.getElementById('saCharge')?.value || '',
+      };
+    }
 
     this._logs[this._exoIdx].sets_data.push(set);
 
@@ -333,10 +384,59 @@ const SeanceActivePage = {
   },
 
   _startRest(secs) {
-    this._phase = 'repos';
-    this._restTotal = secs;
-    this._restRemaining = secs;
+    this._phase          = 'repos';
+    this._restTotal      = secs;
+    this._restRemaining  = secs;
+
+    // Show the next exercise/series with the validate button disabled
     this._draw();
+
+    // Inject the floating rest banner and start the countdown
+    this._startRestBanner();
+  },
+
+  _startRestBanner() {
+    this._removeBanner();
+
+    // Extra bottom padding so content isn't hidden behind the banner
+    const wrap = document.getElementById('saWrap');
+    if (wrap) wrap.style.paddingBottom = '120px';
+
+    const banner = document.createElement('div');
+    banner.id = 'saRestBanner';
+    banner.style.cssText = [
+      'position:fixed;bottom:0;left:0;right:0;z-index:1000;',
+      'background:rgba(12,12,12,0.96);',
+      'backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);',
+      'border-top:1px solid rgba(255,255,255,0.07);',
+      'padding:12px 16px calc(14px + env(safe-area-inset-bottom));',
+    ].join('');
+
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:22px;line-height:1;">💤</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;
+                      letter-spacing:.8px;margin-bottom:1px;">Récupération</div>
+          <div id="saRestSecs" style="font-size:30px;font-weight:900;color:#fff;
+                                      font-family:var(--font);line-height:1.1;">
+            ${this._fmt(this._restRemaining)}
+          </div>
+        </div>
+        <button onclick="SeanceActivePage._skipRest()"
+          style="padding:10px 20px;background:rgba(255,255,255,0.1);
+                 border:1.5px solid rgba(255,255,255,0.18);border-radius:12px;
+                 font-size:14px;font-weight:600;cursor:pointer;color:#fff;
+                 font-family:var(--font);white-space:nowrap;flex-shrink:0;">
+          ⏭ Passer
+        </button>
+      </div>
+      <div style="margin-top:9px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;">
+        <div id="saRestBar" style="height:100%;background:var(--gold);border-radius:2px;
+             transition:width 1s linear;width:100%;"></div>
+      </div>`;
+
+    document.body.appendChild(banner);
 
     clearInterval(this._restTimer);
     this._restTimer = setInterval(() => {
@@ -345,26 +445,50 @@ const SeanceActivePage = {
       const b = document.getElementById('saRestBar');
       if (d) d.textContent = this._fmt(this._restRemaining);
       if (b) b.style.width = (this._restTotal > 0
-        ? this._restRemaining / this._restTotal * 100 : 0).toFixed(1) + '%';
+        ? (this._restRemaining / this._restTotal * 100) : 0).toFixed(1) + '%';
+
       if (this._restRemaining <= 0) {
         clearInterval(this._restTimer);
         this._phase = 'exercice';
-        this._draw();
+        this._removeBanner();
+        this._enableValidateBtn();
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       }
     }, 1000);
+  },
+
+  _removeBanner() {
+    document.getElementById('saRestBanner')?.remove();
+    const wrap = document.getElementById('saWrap');
+    if (wrap) wrap.style.paddingBottom = '';
+  },
+
+  _enableValidateBtn() {
+    const btn = document.getElementById('saValidateBtn');
+    if (!btn) return;
+    btn.disabled = false;
+    btn.style.background = 'var(--gold)';
+    btn.style.color = '#fff';
+    btn.style.cursor = 'pointer';
+    const ex   = this._exo();
+    const isLast = ex
+      ? (this._serieIdx + 1 >= this._nbSeries(ex) && this._exoIdx + 1 >= (this._seance?.exercices?.length || 1))
+      : true;
+    btn.textContent = isLast ? '🏁 Terminer la séance' : '✓ Série validée';
   },
 
   _skipRest() {
     clearInterval(this._restTimer);
     this._restRemaining = 0;
     this._phase = 'exercice';
-    this._draw();
+    this._removeBanner();
+    this._enableValidateBtn();
   },
 
   _skipExo() {
     if (!confirm('Passer cet exercice ?')) return;
     clearInterval(this._restTimer);
+    this._removeBanner();
     this._exoIdx++;
     this._serieIdx = 0;
     this._phase = this._exoIdx >= (this._seance?.exercices?.length || 0) ? 'done' : 'exercice';
@@ -401,6 +525,7 @@ const SeanceActivePage = {
     if (!confirm('Quitter ? La séance en cours ne sera pas enregistrée.')) return;
     clearInterval(this._sessionTimer);
     clearInterval(this._restTimer);
+    this._removeBanner();
     window.location.hash = '#entrainement';
   },
 };
