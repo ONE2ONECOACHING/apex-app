@@ -85,10 +85,10 @@ const CoachPlanEditPage = {
     html += `<div class="card">
       <div class="card-title">Objectifs macros</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">
-        <div class="field"><label class="field-label">Kcal</label><input class="input" type="number" id="peKcal" value="${cal}"></div>
-        <div class="field"><label class="field-label">Prot (g)</label><input class="input" type="number" id="peProt" value="${prot}"></div>
-        <div class="field"><label class="field-label">Gluc (g)</label><input class="input" type="number" id="peGluc" value="${gluc}"></div>
-        <div class="field"><label class="field-label">Lip (g)</label><input class="input" type="number" id="peLip" value="${lip}"></div>
+        <div class="field"><label class="field-label">Kcal</label><input class="input" type="number" id="peKcal" value="${cal}" oninput="CoachPlanEditPage._onKcalInput()"></div>
+        <div class="field"><label class="field-label">Prot (g)</label><input class="input" type="number" id="peProt" value="${prot}" oninput="CoachPlanEditPage._onMacroInput()"></div>
+        <div class="field"><label class="field-label">Gluc (g)</label><input class="input" type="number" id="peGluc" value="${gluc}" oninput="CoachPlanEditPage._onMacroInput()"></div>
+        <div class="field"><label class="field-label">Lip (g)</label><input class="input" type="number" id="peLip" value="${lip}" oninput="CoachPlanEditPage._onMacroInput()"></div>
       </div>
       <div class="field"><label class="field-label">Notes coach</label><textarea class="input" id="peNotes" rows="2">${p ? (p.notes || '') : ''}</textarea></div>
     </div>`;
@@ -285,6 +285,28 @@ const CoachPlanEditPage = {
   removeItem(idx) {
     this.repas.splice(idx, 1);
     this.renderEditor();
+  },
+
+  // ── Synchronisation kcal ↔ macros ───────────────────────────────────────
+
+  _onMacroInput() {
+    const p = +document.getElementById('peProt').value || 0;
+    const g = +document.getElementById('peGluc').value || 0;
+    const l = +document.getElementById('peLip').value  || 0;
+    document.getElementById('peKcal').value = Math.round(p * 4 + g * 4 + l * 9);
+  },
+
+  _onKcalInput() {
+    const newKcal = +document.getElementById('peKcal').value || 0;
+    const p = +document.getElementById('peProt').value || 0;
+    const g = +document.getElementById('peGluc').value || 0;
+    const l = +document.getElementById('peLip').value  || 0;
+    const curKcal = p * 4 + g * 4 + l * 9;
+    if (!curKcal || !newKcal) return;
+    const ratio = newKcal / curKcal;
+    document.getElementById('peProt').value = Math.round(p * ratio);
+    document.getElementById('peGluc').value = Math.round(g * ratio);
+    document.getElementById('peLip').value  = Math.round(l * ratio);
   },
 
   showGeneratorModal() {
