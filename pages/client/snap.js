@@ -385,19 +385,40 @@ const SnapPage = {
     } catch (e) { alert('Erreur : ' + e.message); }
   },
 
+  // ── UTILITAIRE : redimensionner + compresser une image avant envoi API ───────
+
+  _resizeImage(file, maxPx = 1600, quality = 0.82) {
+    return new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width: w, height: h } = img;
+        if (w > maxPx || h > maxPx) {
+          if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+          else        { w = Math.round(w * maxPx / h); h = maxPx; }
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', quality).split(',')[1]);
+      };
+      img.src = url;
+    });
+  },
+
   // ── MODE PHOTO ───────────────────────────────────────────────────────────────
 
   onFile(e) {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      this.base64 = ev.target.result.split(',')[1];
-      document.getElementById('snapPreviewImg').src = ev.target.result;
-      document.getElementById('snapPreview').style.display = 'block';
-      document.getElementById('snapUploadZone').style.display = 'none';
-    };
-    reader.readAsDataURL(file);
+    // Aperçu immédiat
+    const previewUrl = URL.createObjectURL(file);
+    document.getElementById('snapPreviewImg').src = previewUrl;
+    document.getElementById('snapPreview').style.display = 'block';
+    document.getElementById('snapUploadZone').style.display = 'none';
+    // Compression avant envoi API (limite 5 MB)
+    this._resizeImage(file).then(b64 => { this.base64 = b64; });
   },
 
   resetPhoto() {
@@ -719,16 +740,15 @@ const SnapPage = {
   onLabelFile(e) {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      this._labelBase64 = ev.target.result.split(',')[1];
-      document.getElementById('labelPreviewImg').src = ev.target.result;
-      document.getElementById('labelPreview').style.display  = 'block';
-      document.getElementById('labelUploadZone').style.display = 'none';
-      document.getElementById('labelResultDiv').style.display = 'none';
-      document.getElementById('labelError').innerHTML = '';
-    };
-    reader.readAsDataURL(file);
+    // Aperçu immédiat
+    const previewUrl = URL.createObjectURL(file);
+    document.getElementById('labelPreviewImg').src = previewUrl;
+    document.getElementById('labelPreview').style.display    = 'block';
+    document.getElementById('labelUploadZone').style.display = 'none';
+    document.getElementById('labelResultDiv').style.display  = 'none';
+    document.getElementById('labelError').innerHTML          = '';
+    // Compression avant envoi API (limite 5 MB)
+    this._resizeImage(file).then(b64 => { this._labelBase64 = b64; });
   },
 
   resetLabel() {
