@@ -14,6 +14,9 @@ const SnapPage = {
   _cart: [],
   _savedMeals: [],
   _offDebounce: null,
+  _labelBase64: null,
+  _labelData: null,
+  _barcodeStream: null,
   contexts: ['Restaurant', 'Maison', 'Travail / Traiteur', 'Fast-food', 'Sport'],
 
   render() {
@@ -41,17 +44,21 @@ const SnapPage = {
       <div class="tabs" id="snapTabs">
         <button class="tab active" onclick="SnapPage.setMode('base', this)">🔍 Base</button>
         <button class="tab" onclick="SnapPage.setMode('photo', this)">📷 Photo</button>
+        <button class="tab" onclick="SnapPage.setMode('label', this)">📊 Étiquette</button>
         <button class="tab" onclick="SnapPage.setMode('saved', this)">⭐ Enregistrés</button>
       </div>
 
       <!-- MODE BASE -->
       <div id="snapModeBase">
-        <div class="search-wrap" style="margin-bottom:0.75rem;">
+        <div class="search-wrap" style="margin-bottom:0.5rem;">
           <span class="search-icon">🔍</span>
           <input class="input search-input" id="baseSearchInput" placeholder="Chercher un aliment…"
             oninput="SnapPage.baseSearch(this)" autocomplete="off">
           <div class="search-results" id="baseResults"></div>
         </div>
+        <button onclick="SnapPage.startBarcode()" style="width:100%;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:center;gap:7px;height:38px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;font-size:13px;color:var(--gray);cursor:pointer;">
+          <span>📷</span> Scanner un code-barre
+        </button>
 
         <div id="baseSelected" style="display:none;">
           <div class="card" style="margin-bottom:0.5rem;">
@@ -105,6 +112,29 @@ const SnapPage = {
           <div id="snapError"></div>
           <button class="btn btn-primary" id="snapBtn" onclick="SnapPage.analyze()">Analyser ce plat →</button>
         </div>
+      </div>
+
+      <!-- MODE ÉTIQUETTE -->
+      <div id="snapModeLabel" style="display:none;">
+        <div id="labelUploadZone" class="upload-zone">
+          <input type="file" id="labelFile" accept="image/*" onchange="SnapPage.onLabelFile(event)">
+          <div class="upload-icon">📊</div>
+          <div class="upload-title">Photo du tableau nutritionnel</div>
+          <div class="upload-sub">Étiquette, emballage, plat préparé type PrepmyMeal…</div>
+        </div>
+        <div id="labelPreview" style="display:none;">
+          <div class="preview-wrap">
+            <img id="labelPreviewImg" class="preview-img" src="" alt="">
+            <button class="preview-remove" onclick="SnapPage.resetLabel()">×</button>
+          </div>
+          <div id="labelError"></div>
+          <button class="btn btn-primary" id="labelBtn" onclick="SnapPage.analyzeLabel()">📊 Lire les valeurs →</button>
+        </div>
+        <div id="labelLoading" style="display:none;text-align:center;padding:2.5rem 1rem;">
+          <div class="spinner"></div>
+          <div class="loading-text">Lecture du tableau nutritionnel…</div>
+        </div>
+        <div id="labelResultDiv" style="display:none;"></div>
       </div>
 
       <!-- MODE ENREGISTRÉS -->
@@ -167,6 +197,7 @@ const SnapPage = {
     btn.classList.add('active');
     document.getElementById('snapModeBase').style.display  = mode === 'base'  ? 'block' : 'none';
     document.getElementById('snapModePhoto').style.display = mode === 'photo' ? 'block' : 'none';
+    document.getElementById('snapModeLabel').style.display = mode === 'label' ? 'block' : 'none';
     document.getElementById('snapModeSaved').style.display = mode === 'saved' ? 'block' : 'none';
     document.getElementById('snapResult').style.display = 'none';
     if (mode === 'saved') this.loadSaved();
@@ -572,6 +603,219 @@ const SnapPage = {
   closeSaveModal() {
     document.getElementById('saveModal').style.display = 'none';
     Router.navigate('logbook');
+  },
+
+  // ── CODE-BARRE ────────────────────────────────────────────────────────────────
+
+  startBarcode() {
+    const hasBD = 'BarcodeDetector' in window;
+    const modal = document.createElement('div');
+    modal.id = 'barcodeModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;';
+    modal.innerHTML = `
+      <div style="color:white;text-align:center;width:100%;max-width:400px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:1rem;">📷 Scanner un code-barre</div>
+        ${hasBD ? `
+          <video id="barcodeVideo" autoplay playsinline muted
+            style="width:100%;border-radius:10px;margin-bottom:0.75rem;max-height:260px;object-fit:cover;background:#000;"></video>
+          <div id="barcodeScanStatus" style="font-size:13px;color:#aaa;margin-bottom:0.75rem;">Pointez la caméra sur le code-barre</div>
+        ` : `
+          <div style="font-size:13px;color:#aaa;margin-bottom:0.75rem;">Caméra non supportée sur ce navigateur.</div>
+        `}
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:0.75rem;">
+          <input class="input" id="barcodeManualInput" placeholder="Code-barre manuel (EAN-13…)" type="text" inputmode="numeric"
+            style="flex:1;" onkeydown="if(event.key==='Enter')SnapPage._onManualBarcode()">
+          <button class="btn btn-primary" style="height:44px;white-space:nowrap;" onclick="SnapPage._onManualBarcode()">OK</button>
+        </div>
+        <div id="barcodeError" style="color:#E05252;font-size:13px;min-height:20px;margin-bottom:0.75rem;"></div>
+        <button class="btn btn-secondary" style="width:100%;" onclick="SnapPage.stopBarcode()">Fermer</button>
+      </div>`;
+    document.body.appendChild(modal);
+
+    if (hasBD) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+          this._barcodeStream = stream;
+          const video = document.getElementById('barcodeVideo');
+          if (!video) { this.stopBarcode(); return; }
+          video.srcObject = stream;
+          const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
+          const scan = async () => {
+            if (!document.getElementById('barcodeModal')) return;
+            try {
+              const codes = await detector.detect(video);
+              if (codes.length > 0) { await this._onBarcodeDetected(codes[0].rawValue); return; }
+            } catch (_) {}
+            requestAnimationFrame(scan);
+          };
+          video.onloadeddata = () => requestAnimationFrame(scan);
+        })
+        .catch(() => {
+          const s = document.getElementById('barcodeScanStatus');
+          if (s) s.textContent = '⚠️ Accès caméra refusé — utilise la saisie manuelle.';
+        });
+    }
+  },
+
+  stopBarcode() {
+    if (this._barcodeStream) {
+      this._barcodeStream.getTracks().forEach(t => t.stop());
+      this._barcodeStream = null;
+    }
+    const modal = document.getElementById('barcodeModal');
+    if (modal) modal.remove();
+  },
+
+  async _onManualBarcode() {
+    const code = document.getElementById('barcodeManualInput')?.value.trim();
+    if (!code) return;
+    await this._onBarcodeDetected(code);
+  },
+
+  async _onBarcodeDetected(code) {
+    const errEl    = document.getElementById('barcodeError');
+    const statusEl = document.getElementById('barcodeScanStatus');
+    if (statusEl) statusEl.textContent = `Code : ${code} — Recherche…`;
+    if (errEl)    errEl.textContent = '';
+    try {
+      const resp = await fetch(
+        `https://world.openfoodfacts.org/api/v0/product/${code}.json`,
+        { signal: AbortSignal.timeout(7000) }
+      );
+      const data = await resp.json();
+      if (data.status !== 1 || !data.product) {
+        if (errEl) errEl.textContent = 'Produit introuvable dans Open Food Facts.';
+        if (statusEl) statusEl.textContent = 'Pointez la caméra sur le code-barre';
+        return;
+      }
+      const p = data.product;
+      const n = p.nutriments || {};
+      const product = {
+        nom: p.product_name || p.product_name_fr || 'Produit',
+        calories:  Math.round(n['energy-kcal_100g'] || 0),
+        proteines: Math.round(n['proteins_100g']       || 0),
+        glucides:  Math.round(n['carbohydrates_100g']  || 0),
+        lipides:   Math.round(n['fat_100g']            || 0),
+        mode: 'weight', source: 'off'
+      };
+      this.stopBarcode();
+      // Injecter dans le mode Base
+      this._baseSelected = product;
+      this._baseCache.unshift(product);
+      document.getElementById('baseSearchInput').value = product.nom;
+      document.getElementById('baseQty').value = 100;
+      document.getElementById('baseQtyUnit').textContent = 'g';
+      document.getElementById('baseSelectedName').textContent = product.nom;
+      document.getElementById('baseSelected').style.display = 'block';
+      this.updateBasePreview();
+    } catch (e) {
+      if (errEl) errEl.textContent = 'Erreur de recherche. Vérifie ta connexion.';
+      if (statusEl) statusEl.textContent = 'Pointez la caméra sur le code-barre';
+    }
+  },
+
+  // ── MODE ÉTIQUETTE ────────────────────────────────────────────────────────────
+
+  onLabelFile(e) {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      this._labelBase64 = ev.target.result.split(',')[1];
+      document.getElementById('labelPreviewImg').src = ev.target.result;
+      document.getElementById('labelPreview').style.display  = 'block';
+      document.getElementById('labelUploadZone').style.display = 'none';
+      document.getElementById('labelResultDiv').style.display = 'none';
+      document.getElementById('labelError').innerHTML = '';
+    };
+    reader.readAsDataURL(file);
+  },
+
+  resetLabel() {
+    this._labelBase64 = null;
+    this._labelData   = null;
+    document.getElementById('labelPreview').style.display    = 'none';
+    document.getElementById('labelUploadZone').style.display = 'block';
+    document.getElementById('labelResultDiv').style.display  = 'none';
+    document.getElementById('labelFile').value               = '';
+    document.getElementById('labelError').innerHTML          = '';
+    const btn = document.getElementById('labelBtn');
+    if (btn) btn.disabled = false;
+  },
+
+  async analyzeLabel() {
+    if (!this._labelBase64) return;
+    const btn = document.getElementById('labelBtn');
+    btn.disabled = true;
+    document.getElementById('labelPreview').style.display  = 'none';
+    document.getElementById('labelLoading').style.display  = 'block';
+    try {
+      this._labelData = await SnapCalories.analyzeLabel(this._labelBase64);
+      document.getElementById('labelLoading').style.display  = 'none';
+      document.getElementById('labelResultDiv').style.display = 'block';
+      this._renderLabelResult(this._labelData);
+    } catch (err) {
+      document.getElementById('labelLoading').style.display = 'none';
+      document.getElementById('labelPreview').style.display = 'block';
+      btn.disabled = false;
+      document.getElementById('labelError').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  },
+
+  _renderLabelResult(d) {
+    document.getElementById('labelResultDiv').innerHTML = `
+      <div class="card">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px;">${d.product_name || 'Produit'}</div>
+        <div style="font-size:11px;color:var(--gray-muted);margin-bottom:12px;">Valeurs pour 100 g</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin-bottom:16px;">
+          <div><div style="font-size:17px;font-weight:700;color:var(--gold);">${d.calories_100g}</div><div style="font-size:10px;color:var(--gray-muted);">kcal</div></div>
+          <div><div style="font-size:17px;font-weight:700;color:#3B82F6;">${d.proteins_100g}g</div><div style="font-size:10px;color:var(--gray-muted);">Prot</div></div>
+          <div><div style="font-size:17px;font-weight:700;color:#C4820A;">${d.carbs_100g}g</div><div style="font-size:10px;color:var(--gray-muted);">Gluc</div></div>
+          <div><div style="font-size:17px;font-weight:700;color:#E05252;">${d.fats_100g}g</div><div style="font-size:10px;color:var(--gray-muted);">Lip</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <label class="field-label" style="margin:0;white-space:nowrap;">Quantité consommée</label>
+          <input class="input" type="number" id="labelQtyInput" value="100" step="1" inputmode="numeric"
+            style="width:90px;" oninput="SnapPage._updateLabelPreview()">
+          <span style="font-size:13px;color:var(--gray-light);">g</span>
+        </div>
+        <div id="labelQtyPreview" style="font-size:13px;color:var(--gray);margin-bottom:14px;"></div>
+        <button class="btn btn-primary" onclick="SnapPage.addLabelToCart()">Ajouter au panier</button>
+        <button class="btn btn-ghost btn-small" style="margin-top:8px;width:100%;" onclick="SnapPage.resetLabel()">⟳ Autre photo</button>
+      </div>`;
+    this._updateLabelPreview();
+  },
+
+  _updateLabelPreview() {
+    const d = this._labelData;
+    if (!d) return;
+    const qty = +document.getElementById('labelQtyInput')?.value || 0;
+    const f = qty / 100;
+    const el = document.getElementById('labelQtyPreview');
+    if (el) el.innerHTML = `<strong>${Math.round(d.calories_100g * f)} kcal</strong> · <span style="color:#3B82F6;">P ${Math.round(d.proteins_100g * f)}g</span> · <span style="color:#C4820A;">G ${Math.round(d.carbs_100g * f)}g</span> · <span style="color:#E05252;">L ${Math.round(d.fats_100g * f)}g</span>`;
+  },
+
+  addLabelToCart() {
+    const d = this._labelData;
+    if (!d) return;
+    const qty = +document.getElementById('labelQtyInput')?.value || 0;
+    if (qty <= 0) { alert('Quantité invalide.'); return; }
+    const f = qty / 100;
+    this._cart.push({
+      nom: d.product_name || 'Produit',
+      quantite: qty, unite: 'g',
+      calories:  Math.round(d.calories_100g  * f),
+      proteines: Math.round(d.proteins_100g  * f),
+      glucides:  Math.round(d.carbs_100g     * f),
+      lipides:   Math.round(d.fats_100g      * f)
+    });
+    // Retour sur Base pour voir le panier
+    document.querySelectorAll('#snapTabs .tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#snapTabs .tab')[0].classList.add('active');
+    document.getElementById('snapModeBase').style.display  = 'block';
+    document.getElementById('snapModeLabel').style.display = 'none';
+    this.mode = 'base';
+    this.renderCart();
   },
 
   async confirmSave() {

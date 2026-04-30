@@ -71,6 +71,43 @@ const SnapCalories = {
     return parsed;
   },
 
+  // Lire un tableau de valeurs nutritionnelles sur une étiquette/emballage
+  async analyzeLabel(base64Image) {
+    const prompt = `Tu es un expert en nutrition. Analyse ce tableau de valeurs nutritionnelles (étiquette, emballage, plat préparé).
+Extrais les valeurs POUR 100g (ou 100ml si boisson). Utilise la colonne "pour 100g" si plusieurs colonnes existent.
+
+Réponds UNIQUEMENT en JSON valide, sans texte autour, sans backticks :
+{"product_name":"Nom du produit","calories_100g":350,"proteins_100g":25,"carbs_100g":40,"fats_100g":8}
+
+Si le tableau n'est pas lisible ou absent : {"error":"Tableau nutritionnel illisible ou absent."}`;
+
+    const res = await fetch(APP_CONFIG.PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: APP_CONFIG.AI_MODEL,
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Image } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!res.ok) {
+      const ed = await res.json();
+      throw new Error(ed.error?.message || 'Erreur ' + res.status);
+    }
+    const data = await res.json();
+    const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const parsed = extractJSON(raw);
+    if (parsed.error) throw new Error(parsed.error);
+    return parsed;
+  },
+
   // Générer le récap de fin de journée
   async generateDailyRecap(planMacros, consumed, entries) {
     const prompt = `Tu es un coach nutrition bienveillant et direct. Fais le récap de la journée de ton client.
