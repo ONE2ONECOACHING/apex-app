@@ -47,33 +47,20 @@ const CoachPlanEditPage = {
       }
 
       this.renderEditor();
-      this.updatePhaseTitle();
     } catch (e) {
       document.getElementById('peContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
     }
   },
 
-  updatePhaseTitle() {
-    const sel = document.getElementById('pePhase');
-    if (!sel) return;
-    const label = sel.value.charAt(0).toUpperCase() + sel.value.slice(1);
-    document.getElementById('peTitle').textContent = label + ' — ' + (this.client?.prenom || '');
-  },
-
   renderEditor() {
     const c = this.client;
     const p = this.currentPlan;
-    const phases = ['relance', 'transformation', 'stabilisation'];
 
     let html = '';
 
-    // Sélecteur de phase + bouton générateur
-    html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
-      <label class="field-label" style="margin:0;">Phase</label>
-      <select class="input" style="width:180px;" id="pePhase" onchange="CoachPlanEditPage.updatePhaseTitle()">
-        ${phases.map(ph => `<option value="${ph}" ${(p && p.phase === ph) || (!p && c.phase === ph) ? 'selected' : ''}>${ph.charAt(0).toUpperCase() + ph.slice(1)}</option>`).join('')}
-      </select>
-      <button class="btn" style="margin-left:auto;height:36px;padding:0 12px;font-size:13px;white-space:nowrap;" onclick="CoachPlanEditPage.showGeneratorModal()">⚡ Générer</button>
+    // Bouton générateur
+    html += `<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+      <button class="btn" style="height:36px;padding:0 12px;font-size:13px;white-space:nowrap;" onclick="CoachPlanEditPage.showGeneratorModal()">⚡ Générer</button>
     </div>`;
 
     // Macros cibles
@@ -399,11 +386,10 @@ const CoachPlanEditPage = {
   },
 
   async save() {
-    const phase = document.getElementById('pePhase').value;
     const plan = {
       profile_id: this.clientId,
       semaine: this.semaine,
-      phase: phase,
+      phase: this.currentPlan?.phase || this.client?.phase || 'relance',
       calories_cible: +document.getElementById('peKcal').value || 2000,
       proteines_cible: +document.getElementById('peProt').value || 160,
       glucides_cible: +document.getElementById('peGluc').value || 200,
