@@ -278,5 +278,5 @@ INSERT INTO aliments_bdd (nom, calories, proteines, glucides, lipides, fibres, m
 ('Canard (magret, sans peau)', 158, 27.0,  0.0,  4.5, 0.0, NULL, 'viande'),
 ('Canard (cuisse)',            265, 20.0,  0.0, 20.0, 0.0, NULL, 'viande'),
 ('Maquereaux en boîte (nature)',  186, 19.0,  0.5, 12.0, 0.0, NULL, 'poisson'),
-('Maquereaux en boîte (sauce)',   155, 14.0,  5.0,  8.5, 0.5, NULL, 'poisson'),
+('Maquereaux en boîte (sauce)',   170, 14.0,  4.0, 11.0, 0.5, NULL, 'poisson'),
 ('Porc (rôti)',                215, 21.0,  0.0, 14.0, 0.0, NULL, 'viande');
