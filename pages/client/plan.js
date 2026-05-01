@@ -165,6 +165,10 @@ const PlanPage = {
           <div class="creneau-kcal">${crKcal} kcal</div>
         </div>`;
 
+      // Mapper petit_dejeuner_sale/sucre → petit_dejeuner pour le logbook
+      const crLogbook = (cr === 'petit_dejeuner_sale' || cr === 'petit_dejeuner_sucre')
+        ? 'petit_dejeuner' : cr;
+
       items.forEach(r => {
         const repl  = this._replacements[r.id];
         const nom   = repl ? repl.nom      : r.aliment_nom;
@@ -207,10 +211,60 @@ const PlanPage = {
           </button></div>` : ''}`;
       });
 
-      html += `</div>`;
+      html += `
+        <button class="add-meal-btn" id="logBtn-${cr}"
+          onclick="PlanPage.addCreneauToJournal('${cr}','${crLogbook}')">
+          📖 Ajouter au journal
+        </button>
+      </div>`;
     });
 
     el.innerHTML = html;
+  },
+
+  // ── Ajouter repas au journal ─────────────────────────────────────────
+
+  async addCreneauToJournal(cr, crLogbook) {
+    const profile = Router.userProfile;
+    if (!profile) return;
+    const items = this.repas.filter(r => r.creneau === cr);
+    if (!items.length) return;
+
+    const btn = document.getElementById('logBtn-' + cr);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Ajout…'; }
+
+    try {
+      for (const r of items) {
+        const repl = this._replacements[r.id];
+        await db.addJournalEntry({
+          profile_id:  profile.id,
+          date_entree: todayStr(),
+          creneau:     crLogbook,
+          nom:         repl ? repl.nom      : r.aliment_nom,
+          quantite:    repl ? repl.quantite : r.quantite,
+          unite:       repl ? 'g'           : (r.unite || 'g'),
+          calories:    Math.round(repl ? repl.calories  : r.calories),
+          proteines:   Math.round(repl ? repl.proteines : r.proteines),
+          glucides:    Math.round(repl ? repl.glucides  : r.glucides),
+          lipides:     Math.round(repl ? repl.lipides   : r.lipides),
+          source:      'plan'
+        });
+      }
+
+      if (btn) {
+        btn.textContent = '✓ Ajouté au journal !';
+        btn.style.cssText += ';color:var(--gold);cursor:default;';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = '📖 Ajouter au journal';
+          btn.style.color = '';
+          btn.style.cursor = '';
+        }, 3000);
+      }
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = '📖 Ajouter au journal'; }
+      alert('Erreur : ' + e.message);
+    }
   },
 
   // ── Remplacement ────────────────────────────────────────────────────
