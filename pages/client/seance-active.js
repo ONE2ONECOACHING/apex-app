@@ -527,12 +527,9 @@ const SeanceActivePage = {
 
       const log = await db.upsertSeanceLog({
         client_id:      profile.id,
-        programme_id:   this._progId || null,
-        seance_id:      this._seance.id,
         nom_seance:     this._seance.nom,
         date_seance:    dateStr,
         duree_secondes: this._sessionSeconds,
-        statut:         'complete',
       });
 
       await db.saveSeanceSets(log.id, this._logs);
