@@ -247,7 +247,7 @@ const PlanPage = {
           proteines:   Math.round(repl ? repl.proteines : r.proteines),
           glucides:    Math.round(repl ? repl.glucides  : r.glucides),
           lipides:     Math.round(repl ? repl.lipides   : r.lipides),
-          source:      'plan'
+          source:      'base'
         });
       }
 
