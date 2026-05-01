@@ -12,6 +12,7 @@ const SeanceActivePage = {
   _restRemaining:   0,
   _sessionTimer:    null,
   _sessionSeconds:  0,
+  _lastSets:        {}, // { exercice_id: sets_data[] } — dernière séance connue
 
   render() {
     return `<div id="saWrap" style="min-height:100vh;background:var(--bg);
@@ -46,6 +47,10 @@ const SeanceActivePage = {
         type_effort:             ex.type_effort || 'reps',
         sets_data:               [],
       }));
+
+      // Charger les dernières valeurs par exercice (silencieux si erreur)
+      const exoIds = (this._seance.exercices || []).map(e => e.exercice_id).filter(Boolean);
+      this._lastSets = await db.getLastSetsPerExo(profile.id, exoIds).catch(() => ({}));
 
       this._startSessionTimer();
       this._draw();
@@ -121,11 +126,28 @@ const SeanceActivePage = {
 
   // Returns HTML for the all-series grid (reps mode only)
   _renderSeriesGrid(ex, nbSer, prevSets) {
-    return Array.from({ length: nbSer }, (_, k) => {
+    const lastExoSets = this._lastSets[ex.exercice_id] || [];
+
+    // Ligne "Dernière séance" si données disponibles
+    const lastHint = lastExoSets.length > 0 ? (() => {
+      const parts = lastExoSets.map((s, i) => {
+        const ch = s.charge ? ` · ${s.charge}kg` : '';
+        return `S${i + 1}: ${s.reps}${ch}`;
+      }).join(' &nbsp;');
+      return `<div style="font-size:11px;color:var(--gray-muted);background:var(--card-bg);
+                border-radius:8px;padding:6px 10px;margin-bottom:4px;">
+        📅 Dernière séance : ${parts}
+      </div>`;
+    })() : '';
+
+    const rows = Array.from({ length: nbSer }, (_, k) => {
       const tgt       = this._target(ex, k);
       const logged    = prevSets[k];
       const isDone    = k < this._serieIdx;
       const isCurrent = k === this._serieIdx;
+
+      // Charge pré-remplie : dernière séance série k, sinon série 0, sinon cible coach
+      const lastCharge = lastExoSets[k]?.charge ?? lastExoSets[0]?.charge ?? tgt.charge ?? '';
 
       if (isDone) {
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
@@ -155,7 +177,7 @@ const SeanceActivePage = {
               <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;
                           letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
               <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
-                value="${tgt.charge || ''}" placeholder="0"
+                value="${lastCharge}" placeholder="0"
                 style="width:100%;height:54px;text-align:center;font-size:26px;font-weight:800;
                        border:2px solid var(--border-solid);border-radius:10px;
                        background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
@@ -164,15 +186,18 @@ const SeanceActivePage = {
         </div>`;
       }
 
-      // Upcoming series — greyed target
+      // Upcoming — affiche la charge dernière séance en grisé
+      const upcomingCharge = lastExoSets[k]?.charge ?? lastExoSets[0]?.charge ?? tgt.charge ?? '';
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
                           background:var(--card-bg);border-radius:10px;opacity:0.38;">
         <div style="font-size:12px;font-weight:700;color:var(--gray-muted);min-width:24px;">S${k + 1}</div>
         <div style="font-size:14px;color:var(--gray-muted);">
-          ${tgt.reps} reps${tgt.charge ? ' · ' + tgt.charge + ' kg' : ''}
+          ${tgt.reps} reps${upcomingCharge ? ' · ' + upcomingCharge + ' kg' : ''}
         </div>
       </div>`;
     }).join('');
+
+    return lastHint + rows;
   },
 
   _drawExo(wrap) {
@@ -250,10 +275,16 @@ const SeanceActivePage = {
         ` : `
         <!-- Saisie non-reps : charge + résultat + notes -->
           <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
+            ${(this._lastSets[ex.exercice_id]||[]).length > 0 ? `
+            <div style="font-size:11px;color:var(--gray-muted);background:var(--card-bg);
+                border-radius:8px;padding:6px 10px;">
+              📅 Dernière séance : ${(this._lastSets[ex.exercice_id]||[]).map((s,i)=>`S${i+1}: ${s.reps}${s.charge?' · '+s.charge+'kg':''}`).join(' &nbsp;')}
+            </div>` : ''}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <div>
                 <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
-                <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5" placeholder="0"
+                <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
+                  value="${this._lastSets[ex.exercice_id]?.[0]?.charge ?? target.charge ?? ''}" placeholder="0"
                   style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
                          border:2px solid var(--border-solid);border-radius:12px;
                          background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">

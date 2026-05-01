@@ -1016,6 +1016,28 @@ const db = {
     return data || [];
   },
 
+  // Retourne { exercice_id: sets_data[] } pour la séance la plus récente par exercice
+  async getLastSetsPerExo(profileId, exerciceIds) {
+    if (!exerciceIds?.length) return {};
+    const { data, error } = await getSupabase()
+      .from('seances_log')
+      .select('date_seance, seances_log_sets(exercice_id, sets_data)')
+      .eq('client_id', profileId)
+      .order('date_seance', { ascending: false })
+      .limit(20);
+    if (error) return {};
+    const result = {};
+    for (const log of (data || [])) {
+      for (const s of (log.seances_log_sets || [])) {
+        if (exerciceIds.includes(s.exercice_id) && !result[s.exercice_id]) {
+          result[s.exercice_id] = s.sets_data || [];
+        }
+      }
+      if (Object.keys(result).length === exerciceIds.length) break;
+    }
+    return result;
+  },
+
   async upsertSeanceLog(log) {
     const { data, error } = await getSupabase()
       .from('seances_log')
