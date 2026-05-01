@@ -13,6 +13,7 @@ const SeanceActivePage = {
   _sessionTimer:    null,
   _sessionSeconds:  0,
   _lastSets:        {}, // { exercice_id: sets_data[] } — dernière séance connue
+  _noteRessenti:    null, // 'dur' | 'bien' | 'feu' — note obligatoire avant save
 
   render() {
     return `<div id="saWrap" style="min-height:100vh;background:var(--bg);
@@ -41,6 +42,7 @@ const SeanceActivePage = {
       this._serieIdx       = 0;
       this._phase          = 'exercice';
       this._sessionSeconds = 0;
+      this._noteRessenti   = null;
       this._logs = (this._seance.exercices || []).map(ex => ({
         exercice_id:             ex.exercice_id,
         client_prog_exercice_id: ex.id,
@@ -334,14 +336,20 @@ const SeanceActivePage = {
     this._removeBanner();
     const totalSets = this._logs.reduce((a, l) => a + l.sets_data.length, 0);
 
+    const notes = [
+      { key: 'dur',  emoji: '😓', label: 'Difficile' },
+      { key: 'bien', emoji: '😊', label: 'Bien'      },
+      { key: 'feu',  emoji: '🔥', label: 'En feu !'  },
+    ];
+
     wrap.innerHTML = `
       <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
                   justify-content:center;padding:32px 20px;text-align:center;">
         <div style="font-size:64px;margin-bottom:12px;">🏆</div>
         <div style="font-size:26px;font-weight:800;color:var(--black);margin-bottom:6px;">Séance terminée !</div>
-        <div style="font-size:14px;color:var(--gray-muted);margin-bottom:32px;">${this._seance?.nom || ''}</div>
+        <div style="font-size:14px;color:var(--gray-muted);margin-bottom:24px;">${this._seance?.nom || ''}</div>
 
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:340px;margin-bottom:40px;">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:340px;margin-bottom:32px;">
           ${[
             { val: this._fmt(this._sessionSeconds), lbl: 'Durée' },
             { val: this._seance?.exercices?.length || 0, lbl: 'Exercices' },
@@ -353,18 +361,62 @@ const SeanceActivePage = {
             </div>`).join('')}
         </div>
 
-        <button id="saSaveBtn" onclick="SeanceActivePage._save()"
-          style="width:100%;max-width:340px;height:58px;background:var(--gold);color:#fff;border:none;
-                 border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;
-                 font-family:var(--font);margin-bottom:10px;">
+        <!-- Note de séance obligatoire -->
+        <div style="width:100%;max-width:340px;margin-bottom:28px;">
+          <div style="font-size:15px;font-weight:700;color:var(--black);margin-bottom:14px;">
+            Comment s'est passée ta séance ?
+          </div>
+          <div style="display:flex;gap:10px;justify-content:center;">
+            ${notes.map(n => `
+              <button id="saNote_${n.key}" onclick="SeanceActivePage._selectNote('${n.key}')"
+                style="flex:1;padding:14px 8px;border-radius:14px;border:2px solid var(--border-solid);
+                       background:var(--card-bg);cursor:pointer;transition:all .15s;
+                       font-family:var(--font);">
+                <div style="font-size:32px;margin-bottom:4px;">${n.emoji}</div>
+                <div style="font-size:11px;font-weight:600;color:var(--gray);">${n.label}</div>
+              </button>`).join('')}
+          </div>
+        </div>
+
+        <button id="saSaveBtn" onclick="SeanceActivePage._save()" disabled
+          style="width:100%;max-width:340px;height:58px;
+                 background:var(--border-solid);color:var(--gray-muted);
+                 border:none;border-radius:16px;font-size:17px;font-weight:700;
+                 cursor:default;font-family:var(--font);margin-bottom:10px;transition:all .2s;">
           ✓ Enregistrer la séance
         </button>
-        <button onclick="window.location.hash='#entrainement'"
-          style="background:none;border:none;color:var(--gray-muted);font-size:14px;
+        <button onclick="SeanceActivePage._quit()"
+          style="background:none;border:none;color:var(--gray-muted);font-size:13px;
                  cursor:pointer;font-family:var(--font);">
-          Retour sans enregistrer
+          Abandonner sans enregistrer
         </button>
       </div>`;
+  },
+
+  _selectNote(key) {
+    this._noteRessenti = key;
+    const notes = ['dur', 'bien', 'feu'];
+    notes.forEach(k => {
+      const btn = document.getElementById('saNote_' + k);
+      if (!btn) return;
+      if (k === key) {
+        btn.style.borderColor = 'var(--gold)';
+        btn.style.background  = 'var(--gold-bg,#fffbeb)';
+        btn.style.transform   = 'scale(1.06)';
+      } else {
+        btn.style.borderColor = 'var(--border-solid)';
+        btn.style.background  = 'var(--card-bg)';
+        btn.style.transform   = 'scale(1)';
+      }
+    });
+    // Activer le bouton save
+    const saveBtn = document.getElementById('saSaveBtn');
+    if (saveBtn) {
+      saveBtn.disabled          = false;
+      saveBtn.style.background  = 'var(--gold)';
+      saveBtn.style.color       = '#fff';
+      saveBtn.style.cursor      = 'pointer';
+    }
   },
 
   // ── Actions ──────────────────────────────────────────────────────────────────
@@ -530,6 +582,7 @@ const SeanceActivePage = {
         nom_seance:     this._seance.nom,
         date_seance:    dateStr,
         duree_secondes: this._sessionSeconds,
+        note_ressenti:  this._noteRessenti,
       });
 
       await db.saveSeanceSets(log.id, this._logs);
@@ -541,10 +594,15 @@ const SeanceActivePage = {
   },
 
   _quit() {
-    if (!confirm('Quitter ? La séance en cours ne sera pas enregistrée.')) return;
+    if (!confirm('Abandonner la séance ? Ta progression ne sera pas enregistrée.')) return;
     clearInterval(this._sessionTimer);
     clearInterval(this._restTimer);
     this._removeBanner();
+    this._seance        = null;
+    this._logs          = [];
+    this._phase         = 'exercice';
+    this._sessionSeconds = 0;
+    this._noteRessenti  = null;
     window.location.hash = '#entrainement';
   },
 };
