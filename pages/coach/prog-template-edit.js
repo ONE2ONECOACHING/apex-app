@@ -5,7 +5,8 @@ const CoachProgTemplateEditPage = {
   templateData:        { nom: '', description: '', nb_semaines: 4 },
   seances:             [],
   _allExos:            [],
-  _picking:            null,
+  _picking:            null,  // index séance pour ajout
+  _swapTarget:         null,  // { si, ei } pour remplacement
   _pickSearch:         '',
   _pickMuscle:         'all',
   _saving:             false,
@@ -567,9 +568,13 @@ const CoachProgTemplateEditPage = {
                      border-radius:6px;background:var(--card-bg);color:var(--black);
                      font-size:11px;padding:0 6px;font-family:var(--font);">` : ''}
           </div>
-          <!-- Supprimer exercice -->
-          <button class="icon-btn" style="flex-shrink:0;margin-top:2px;"
-            onclick="CoachProgTemplateEditPage.removeExo(${si},${ei})">×</button>
+          <!-- Actions exercice -->
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;margin-top:2px;">
+            <button class="icon-btn" title="Remplacer l'exercice"
+              onclick="CoachProgTemplateEditPage.openSwapPicker(${si},${ei})">↔</button>
+            <button class="icon-btn" title="Supprimer"
+              onclick="CoachProgTemplateEditPage.removeExo(${si},${ei})">×</button>
+          </div>
         </div>
       </div>`;
   },
@@ -636,24 +641,34 @@ const CoachProgTemplateEditPage = {
   openPicker(seanceIdx) {
     this._syncFromDOM();
     this._picking     = seanceIdx;
+    this._swapTarget  = null;
+    this._pickSearch  = '';
+    this._pickMuscle  = 'all';
+    this._renderPicker();
+  },
+
+  openSwapPicker(si, ei) {
+    this._syncFromDOM();
+    this._picking     = null;
+    this._swapTarget  = { si, ei };
     this._pickSearch  = '';
     this._pickMuscle  = 'all';
     this._renderPicker();
   },
 
   _renderPicker() {
-    // Construit la modale UNE SEULE FOIS — l'input n'est jamais recréé ensuite
+    const isSwap = !!this._swapTarget;
+    const title  = isSwap
+      ? 'Remplacer l\'exercice'
+      : `Ajouter un exercice à "${this.seances[this._picking]?.nom || 'la séance'}"`;
+    const closeJs = `document.getElementById('tplExoPicker').innerHTML='';CoachProgTemplateEditPage._picking=null;CoachProgTemplateEditPage._swapTarget=null;`;
+
     document.getElementById('tplExoPicker').innerHTML = `
-      <div class="modal-overlay"
-        onclick="if(event.target===this){
-          document.getElementById('tplExoPicker').innerHTML='';
-          CoachProgTemplateEditPage._picking=null;}">
+      <div class="modal-overlay" onclick="if(event.target===this){${closeJs}}">
         <div class="modal" style="max-width:560px;padding-bottom:1.5rem;">
           <div class="modal-title">
-            Ajouter un exercice à "${this.seances[this._picking]?.nom || 'la séance'}"
-            <button class="modal-close"
-              onclick="document.getElementById('tplExoPicker').innerHTML='';
-                       CoachProgTemplateEditPage._picking=null;">×</button>
+            ${title}
+            <button class="modal-close" onclick="${closeJs}">×</button>
           </div>
 
           <input class="input" id="pickerSearch" placeholder="🔍 Rechercher…"
@@ -704,6 +719,7 @@ const CoachProgTemplateEditPage = {
     }
     const equips = { poids_corps:'Poids du corps', halteres:'Haltères', barre:'Barre',
       machine:'Machine', cables:'Câbles', elastiques:'Élastiques', autres:'Autres' };
+    const isSwap = !!this._swapTarget;
     el.innerHTML = exos.length === 0
       ? '<div style="text-align:center;color:var(--gray-muted);padding:24px 0;">Aucun exercice trouvé</div>'
       : exos.map(e => {
@@ -719,32 +735,46 @@ const CoachProgTemplateEditPage = {
             </div>
             <button class="btn btn-primary btn-small"
               onclick="CoachProgTemplateEditPage.addExoToSeance('${e.id}')">
-              + Ajouter
+              ${isSwap ? '↔ Remplacer' : '+ Ajouter'}
             </button>
           </div>`;
         }).join('');
   },
 
   addExoToSeance(exoId) {
-    if (this._picking === null) return;
     const exo = this._allExos.find(e => e.id === exoId);
-    if (!exo || !this.seances[this._picking]) return;
+    if (!exo) return;
 
-    const effort = exo.type_effort || 'reps';
+    if (this._swapTarget !== null) {
+      // ── Mode remplacement : garder tous les réglages, changer seulement l'exercice ──
+      const { si, ei } = this._swapTarget;
+      const current = this.seances[si]?.exercices[ei];
+      if (current) {
+        current.exercice_id = exoId;
+        current.exercice    = exo;
+        // id reste null pour forcer une ré-insertion si nécessaire
+      }
+      document.getElementById('tplExoPicker').innerHTML = '';
+      this._swapTarget = null;
+      this.renderContent();
+      return;
+    }
+
+    // ── Mode ajout normal ──
+    if (this._picking === null || !this.seances[this._picking]) return;
+    const effort = 'reps';
     this.seances[this._picking].exercices.push({
       id:              null,
       exercice_id:     exoId,
       exercice:        exo,
       type_effort:     effort,
-      series:          effort === 'reps' ? 3 : 1,
-      reps_cible:      effort === 'temps' ? '0:30' : effort === 'distance' ? '100m' : '10',
+      series:          3,
+      reps_cible:      '10',
       charge_cible:    '',
       repos_secondes:  90,
       superset_groupe: null,
       notes:           '',
-      series_data:     effort === 'reps'
-        ? [{reps:'10',charge:''},{reps:'10',charge:''},{reps:'10',charge:''}]
-        : null,
+      series_data:     [{reps:'10',charge:''},{reps:'10',charge:''},{reps:'10',charge:''}],
     });
 
     document.getElementById('tplExoPicker').innerHTML = '';
