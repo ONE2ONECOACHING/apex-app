@@ -339,7 +339,7 @@ const SeanceActivePage = {
     const notes = [
       { key: 'dur',  emoji: '😓', label: 'Difficile' },
       { key: 'bien', emoji: '😊', label: 'Bien'      },
-      { key: 'feu',  emoji: '🔥', label: 'En feu !'  },
+      { key: 'feu',  emoji: '🤩', label: 'En feu !'  },
     ];
 
     wrap.innerHTML = `
