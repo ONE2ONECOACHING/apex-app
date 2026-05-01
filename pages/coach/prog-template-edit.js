@@ -1,14 +1,19 @@
 // APEX APP — Coach : Éditeur de template de programme (desktop — colonnes)
 
 const CoachProgTemplateEditPage = {
-  templateId:   null,
-  templateData: { nom: '', description: '', nb_semaines: 4 },
-  seances:      [],   // [{ id, nom, jour, notes_coach, exercices: [{...}] }]
-  _allExos:     [],   // bibliothèque complète
-  _picking:     null, // index séance pour laquelle on choisit un exercice
-  _pickSearch:  '',
-  _pickMuscle:  'all',
-  _saving:      false,
+  templateId:          null,
+  templateData:        { nom: '', description: '', nb_semaines: 4 },
+  seances:             [],
+  _allExos:            [],
+  _picking:            null,
+  _pickSearch:         '',
+  _pickMuscle:         'all',
+  _saving:             false,
+  // ── Mode client (édition programme assigné, sans modifier le template) ──
+  _clientMode:         false,
+  _clientProgrammeId:  null,
+  _clientId:           null,
+  _clientPrenom:       '',
 
   _jourLabels: ['Non défini', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
 
@@ -54,7 +59,30 @@ const CoachProgTemplateEditPage = {
   },
 
   _goBack() {
-    window.location.hash = '#coach-prog-templates';
+    if (this._clientMode) {
+      Router.navigate('coach-client-programme', { clientId: this._clientId });
+    } else {
+      window.location.hash = '#coach-prog-templates';
+    }
+  },
+
+  _mapExo(ex) {
+    const te = ex.type_effort || ex.exercices_bdd?.type_effort || 'reps';
+    return {
+      id:              ex.id,
+      exercice_id:     ex.exercice_id,
+      exercice:        ex.exercices_bdd,
+      type_effort:     te,
+      series:          ex.series ?? 3,
+      reps_cible:      ex.reps_cible || '10',
+      charge_cible:    ex.charge_cible || '',
+      repos_secondes:  ex.repos_secondes ?? 90,
+      superset_groupe: ex.superset_groupe || null,
+      notes:           ex.notes || '',
+      series_data:     ex.series_data || (te === 'reps'
+        ? Array.from({length: ex.series ?? 3}, () => ({reps: ex.reps_cible || '10', charge: ex.charge_cible || ''}))
+        : null),
+    };
   },
 
   async init() {
@@ -62,15 +90,35 @@ const CoachProgTemplateEditPage = {
     if (!profile || profile.role !== 'coach') { window.location.hash = '#login'; return; }
 
     const params = Router.getParams();
-    this.templateId = params.templateId || null;
-    this.seances    = [];
-    this._allExos   = [];
-    this._saving    = false;
+    this.templateId         = params.templateId || null;
+    this._clientMode        = !!params.clientProgrammeId;
+    this._clientProgrammeId = params.clientProgrammeId || null;
+    this._clientId          = params.clientId || null;
+    this._clientPrenom      = params.clientPrenom || '';
+    this.seances            = [];
+    this._allExos           = [];
+    this._saving            = false;
 
     try {
       this._allExos = await db.getExercicesBdd();
 
-      if (this.templateId) {
+      if (this._clientMode) {
+        // ── Mode client : charge depuis les tables client_prog_* ──
+        const prog = await db.getClientProgrammeActif(this._clientId);
+        if (!prog) throw new Error('Aucun programme actif pour ce client.');
+        this._clientProgrammeId = prog.id;
+        this.templateData = { nom: prog.nom, description: '', nb_semaines: 1 };
+        this.seances = (prog.seances || []).map(s => ({
+          id:          s.id,
+          nom:         s.nom,
+          jour:        s.jour ?? 0,
+          notes_coach: s.notes_coach || '',
+          exercices:   (s.exercices || []).map(ex => this._mapExo(ex)),
+        }));
+        document.getElementById('tplEditTitle').textContent = prog.nom;
+
+      } else if (this.templateId) {
+        // ── Mode template ──
         const tpl = await db.getProgTemplateWithSeances(this.templateId);
         this.templateData = {
           nom:         tpl.nom,
@@ -82,26 +130,10 @@ const CoachProgTemplateEditPage = {
           nom:         s.nom,
           jour:        s.jour ?? 0,
           notes_coach: s.notes_coach || '',
-          exercices:   (s.exercices || []).map(ex => {
-            const te = ex.type_effort || ex.exercices_bdd?.type_effort || 'reps';
-            return {
-              id:              ex.id,
-              exercice_id:     ex.exercice_id,
-              exercice:        ex.exercices_bdd,
-              type_effort:     te,
-              series:          ex.series ?? 3,
-              reps_cible:      ex.reps_cible || '10',
-              charge_cible:    ex.charge_cible || '',
-              repos_secondes:  ex.repos_secondes ?? 90,
-              superset_groupe: ex.superset_groupe || null,
-              notes:           ex.notes || '',
-              series_data:     ex.series_data || (te === 'reps'
-                ? Array.from({length: ex.series ?? 3}, () => ({reps: ex.reps_cible || '10', charge: ex.charge_cible || ''}))
-                : null),
-            };
-          }),
+          exercices:   (s.exercices || []).map(ex => this._mapExo(ex)),
         }));
         document.getElementById('tplEditTitle').textContent = tpl.nom;
+
       } else {
         this.templateData = { nom: '', description: '', nb_semaines: 4 };
         document.getElementById('tplEditTitle').textContent = 'Nouveau programme';
@@ -185,9 +217,15 @@ const CoachProgTemplateEditPage = {
     const d  = this.templateData;
 
     el.innerHTML = `
-      <!-- Métadonnées template -->
+      <!-- Métadonnées -->
       <div class="card" style="margin-bottom:1.25rem;padding:14px 18px;">
         <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
+          ${this._clientMode ? `
+          <div style="flex:1;min-width:200px;">
+            <div style="font-size:12px;color:var(--gray-muted);margin-bottom:2px;">Programme de ${this._clientPrenom}</div>
+            <div style="font-size:16px;font-weight:700;">${d.nom}</div>
+            <div style="font-size:11px;color:var(--gold);margin-top:3px;">✏️ Modifications pour ce client uniquement — le template n'est pas modifié</div>
+          </div>` : `
           <div style="flex:2;min-width:220px;">
             <div class="form-label">Nom du programme</div>
             <input class="input" id="tplNom" value="${d.nom.replace(/"/g,'&quot;')}"
@@ -203,7 +241,7 @@ const CoachProgTemplateEditPage = {
             <div class="form-label">Description (optionnel)</div>
             <input class="input" id="tplDesc" value="${d.description.replace(/"/g,'&quot;')}"
               placeholder="ex : Hypertrophie, 3 séances/semaine">
-          </div>
+          </div>`}
           <button class="btn btn-primary" id="tplSaveBtn"
             onclick="CoachProgTemplateEditPage.save()"
             style="height:44px;padding:0 24px;flex-shrink:0;white-space:nowrap;">
@@ -718,67 +756,62 @@ const CoachProgTemplateEditPage = {
 
   async save() {
     this._syncFromDOM();
-    const nom = this.templateData.nom.trim();
-    if (!nom) { alert('Le nom du programme est requis.'); return; }
     if (this._saving) return;
-
     this._saving = true;
     const btn = document.getElementById('tplSaveBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement…'; }
 
     try {
-      const profile = Router.userProfile;
-      const tplPayload = {
-        nom,
-        description: this.templateData.description.trim() || null,
-        nb_semaines: parseInt(this.templateData.nb_semaines) || 4,
-        coach_id:    profile.id,
-        actif:       true,
-      };
-      if (this.templateId) tplPayload.id = this.templateId;
+      if (this._clientMode) {
+        // ── Sauvegarde dans les tables client (sans modifier le template) ──
+        await db.saveClientProgrammeSeances(this._clientProgrammeId, this.seances);
 
-      const saved = await db.upsertProgTemplate(tplPayload);
-      this.templateId = saved.id;
+        // Recharger pour obtenir les vrais IDs
+        const prog = await db.getClientProgrammeActif(this._clientId);
+        this.seances = (prog.seances || []).map(s => ({
+          id:          s.id,
+          nom:         s.nom,
+          jour:        s.jour ?? 0,
+          notes_coach: s.notes_coach || '',
+          exercices:   (s.exercices || []).map(ex => this._mapExo(ex)),
+        }));
 
-      // Supprimer et recréer toutes les séances + exercices
-      await db.saveTemplateSeances(this.templateId, this.seances);
+      } else {
+        // ── Sauvegarde template ──
+        const nom = this.templateData.nom.trim();
+        if (!nom) { alert('Le nom du programme est requis.'); this._saving = false; if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer'; } return; }
 
-      // Recharger pour obtenir les vrais IDs
-      const tpl = await db.getProgTemplateWithSeances(this.templateId);
-      this.seances = (tpl.seances || []).map(s => ({
-        id:          s.id,
-        nom:         s.nom,
-        jour:        s.jour ?? 0,
-        notes_coach: s.notes_coach || '',
-        exercices:   (s.exercices || []).map(ex => {
-          const te = ex.type_effort || ex.exercices_bdd?.type_effort || 'reps';
-          return {
-            id:              ex.id,
-            exercice_id:     ex.exercice_id,
-            exercice:        ex.exercices_bdd,
-            type_effort:     te,
-            series:          ex.series ?? 3,
-            reps_cible:      ex.reps_cible || '10',
-            charge_cible:    ex.charge_cible || '',
-            repos_secondes:  ex.repos_secondes ?? 90,
-            superset_groupe: ex.superset_groupe || null,
-            notes:           ex.notes || '',
-            series_data:     ex.series_data || (te === 'reps'
-              ? Array.from({length: ex.series ?? 3}, () => ({reps: ex.reps_cible || '10', charge: ex.charge_cible || ''}))
-              : null),
-          };
-        }),
-      }));
+        const profile = Router.userProfile;
+        const tplPayload = {
+          nom,
+          description: this.templateData.description.trim() || null,
+          nb_semaines: parseInt(this.templateData.nb_semaines) || 4,
+          coach_id:    profile.id,
+          actif:       true,
+        };
+        if (this.templateId) tplPayload.id = this.templateId;
 
-      document.getElementById('tplEditTitle').textContent = nom;
+        const saved = await db.upsertProgTemplate(tplPayload);
+        this.templateId = saved.id;
+        await db.saveTemplateSeances(this.templateId, this.seances);
+
+        const tpl = await db.getProgTemplateWithSeances(this.templateId);
+        this.seances = (tpl.seances || []).map(s => ({
+          id:          s.id,
+          nom:         s.nom,
+          jour:        s.jour ?? 0,
+          notes_coach: s.notes_coach || '',
+          exercices:   (s.exercices || []).map(ex => this._mapExo(ex)),
+        }));
+        document.getElementById('tplEditTitle').textContent = nom;
+      }
+
       this._saving = false;
       this.renderContent();
 
-      // Flash succès
       const flash = document.createElement('div');
       flash.className = 'alert alert-success';
-      flash.style.cssText =
-        'position:fixed;top:80px;right:20px;z-index:9999;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.15);';
+      flash.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.15);';
       flash.textContent = '✓ Programme enregistré !';
       document.body.appendChild(flash);
       setTimeout(() => flash.remove(), 2500);

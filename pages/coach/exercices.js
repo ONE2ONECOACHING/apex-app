@@ -115,7 +115,6 @@ const CoachExercicesPage = {
     const color       = this._muscleColors[ex.muscle_principal] || '#666';
     const muscleLabel = this._muscles.find(m => m.key === ex.muscle_principal)?.label || ex.muscle_principal;
     const equipLabel  = this._equipements.find(e => e.key === ex.equipement)?.label || ex.equipement;
-    const effortLabel = this._efforts.find(e => e.key === ex.type_effort)?.label || ex.type_effort;
     const ytId        = ex.youtube_url ? this._ytId(ex.youtube_url) : null;
 
     return `<div class="card" style="padding:14px;margin:0;">
@@ -131,7 +130,6 @@ const CoachExercicesPage = {
       <div style="margin:8px 0 6px;display:flex;flex-wrap:wrap;gap:4px;">
         <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:${color}22;color:${color};font-weight:600;">${muscleLabel}</span>
         <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--card-bg);color:var(--gray-light);">${equipLabel}</span>
-        <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--card-bg);color:var(--gray-light);">${effortLabel}</span>
       </div>
       ${ex.description ? `<div style="font-size:12px;color:var(--gray);margin-top:4px;line-height:1.5;">${ex.description}</div>` : ''}
       ${ytId ? `
@@ -201,18 +199,6 @@ const CoachExercicesPage = {
             </div>
 
             <div>
-              <div class="form-label">Type d'effort</div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                ${this._efforts.map(e => `
-                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;
-                    padding:6px 12px;border-radius:8px;background:var(--card-bg);font-size:13px;">
-                    <input type="radio" name="exoEffort" value="${e.key}"
-                      ${(ex.type_effort||'reps')===e.key?' checked':''}> ${e.label}
-                  </label>`).join('')}
-              </div>
-            </div>
-
-            <div>
               <div class="form-label">Lien YouTube (optionnel)</div>
               <input class="input" id="exoYT" value="${ex.youtube_url || ''}"
                 placeholder="https://youtu.be/…">
@@ -245,7 +231,6 @@ const CoachExercicesPage = {
       nom,
       muscle_principal: document.getElementById('exoMuscle').value,
       equipement:       document.getElementById('exoEquip').value,
-      type_effort:      document.querySelector('input[name="exoEffort"]:checked')?.value || 'reps',
       youtube_url:      document.getElementById('exoYT').value.trim() || null,
       description:      document.getElementById('exoDesc').value.trim() || null,
     };

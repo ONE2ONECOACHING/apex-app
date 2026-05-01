@@ -58,10 +58,17 @@ const CoachClientProgrammePage = {
     const p = this.programme;
 
     el.innerHTML = tabsHtml + (p ? this._programmeCard(p) : this._emptyCard()) + `
-      <button class="btn btn-primary" style="margin-top:1rem;width:100%;"
-        onclick="CoachClientProgrammePage.openAssignModal()">
-        ${p ? '🔄 Changer de programme' : '+ Assigner un programme'}
-      </button>`;
+      <div style="display:flex;gap:10px;margin-top:1rem;flex-wrap:wrap;">
+        ${p ? `
+        <button class="btn btn-secondary" style="flex:1;"
+          onclick="CoachClientProgrammePage.openEditor()">
+          ✏️ Modifier le programme
+        </button>` : ''}
+        <button class="btn btn-primary" style="flex:1;"
+          onclick="CoachClientProgrammePage.openAssignModal()">
+          ${p ? '🔄 Changer de programme' : '+ Assigner un programme'}
+        </button>
+      </div>`;
   },
 
   _programmeCard(p) {
@@ -117,6 +124,15 @@ const CoachClientProgrammePage = {
           Aucun programme actif pour ce client.
         </div>
       </div>`;
+  },
+
+  openEditor() {
+    if (!this.programme) return;
+    Router.navigate('coach-prog-template-edit', {
+      clientProgrammeId: this.programme.id,
+      clientId:          this.client.id,
+      clientPrenom:      this.client.prenom || '',
+    });
   },
 
   openAssignModal() {

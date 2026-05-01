@@ -995,6 +995,62 @@ const db = {
     return prog;
   },
 
+  // Sauvegarde les séances/exercices d'un programme client sans toucher le template
+  // Préserve les IDs des séances existantes pour ne pas casser l'historique (seances_log)
+  async saveClientProgrammeSeances(programmeId, seances) {
+    const sb = getSupabase();
+    const { data: existing } = await sb
+      .from('client_prog_seances').select('id').eq('programme_id', programmeId);
+    const existingIds = new Set((existing || []).map(s => s.id));
+    const keepIds     = new Set();
+
+    for (let i = 0; i < seances.length; i++) {
+      const s = seances[i];
+      let seanceId;
+
+      if (s.id && existingIds.has(s.id)) {
+        await sb.from('client_prog_seances')
+          .update({ nom: s.nom, jour: s.jour ?? 0, ordre: i, notes_coach: s.notes_coach || null })
+          .eq('id', s.id);
+        seanceId = s.id;
+      } else {
+        const { data: ns, error } = await sb.from('client_prog_seances')
+          .insert({ programme_id: programmeId, nom: s.nom, jour: s.jour ?? 0,
+                    ordre: i, notes_coach: s.notes_coach || null })
+          .select().single();
+        if (error) throw error;
+        seanceId = ns.id;
+      }
+      keepIds.add(seanceId);
+
+      // Exercices : delete + recreate (pas de FK externe sur client_prog_exercices)
+      await sb.from('client_prog_exercices').delete().eq('seance_id', seanceId);
+      for (let j = 0; j < s.exercices.length; j++) {
+        const ex = s.exercices[j];
+        const { error: ee } = await sb.from('client_prog_exercices').insert({
+          seance_id:       seanceId,
+          exercice_id:     ex.exercice_id,
+          ordre:           j,
+          type_effort:     ex.type_effort || 'reps',
+          series:          ex.series ?? 3,
+          reps_cible:      ex.reps_cible || '10',
+          charge_cible:    ex.charge_cible || null,
+          repos_secondes:  ex.repos_secondes ?? 90,
+          superset_groupe: ex.superset_groupe || null,
+          series_data:     ex.series_data || null,
+          notes:           ex.notes || null,
+        });
+        if (ee) throw ee;
+      }
+    }
+    // Supprimer les séances retirées
+    for (const id of existingIds) {
+      if (!keepIds.has(id)) {
+        await sb.from('client_prog_seances').delete().eq('id', id);
+      }
+    }
+  },
+
   async deactivateClientProgramme(programmeId) {
     const { error } = await getSupabase()
       .from('client_programmes')
