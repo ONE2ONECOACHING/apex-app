@@ -39,12 +39,15 @@ const Router = {
   },
 
   async route() {
-    // Nettoyer les classes de layout desktop avant chaque navigation
-    document.body.classList.remove('coach-wide');
-
     // Extraire la route sans les query params du hash (ex: #invite?t=xxx → 'invite')
     const fullHash = window.location.hash.slice(1) || 'login';
     const hash = fullHash.split('?')[0];
+
+    // Retirer coach-wide seulement si on quitte les pages coach (évite le flash de layout)
+    const coachHashes = ['coach-clients','coach-client-edit','coach-plan-edit','coach-journal','coach-habits-edit','coach-bilan-templates','coach-bilan-client','coach-mesure-client','coach-exercices','coach-prog-templates','coach-prog-template-edit','coach-client-programme','coach-training-client'];
+    if (!coachHashes.includes(hash)) {
+      document.body.classList.remove('coach-wide');
+    }
     const user = await db.getUser();
 
     // Non connecté → login (sauf page invite qui est publique)
