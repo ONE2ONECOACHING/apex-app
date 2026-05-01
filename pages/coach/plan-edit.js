@@ -262,12 +262,13 @@ const CoachPlanEditPage = {
 
     if (a) {
       // Aliment connu (ajouté pendant cette session) → recalcul depuis les valeurs /100g
-      const factor = a.mode === 'unit' ? qty : qty / 100;
-      r.calories  = Math.round(a.calories          * factor * 10) / 10;
-      r.proteines = Math.round(a.proteines         * factor * 10) / 10;
-      r.glucides  = Math.round(a.glucides          * factor * 10) / 10;
-      r.lipides   = Math.round(a.lipides           * factor * 10) / 10;
-      r.fibres    = Math.round((a.fibres || 0)     * factor * 10) / 10;
+      // Pour mode 'unit' : 1 unité = perG grammes (ex: 1 oeuf = 60g)
+      const factor = a.mode === 'unit' ? qty * ((a.perG || 100) / 100) : qty / 100;
+      r.calories  = Math.round((a.calories  || 0) * factor * 10) / 10;
+      r.proteines = Math.round((a.proteines || 0) * factor * 10) / 10;
+      r.glucides  = Math.round((a.glucides  || 0) * factor * 10) / 10;
+      r.lipides   = Math.round((a.lipides   || 0) * factor * 10) / 10;
+      r.fibres    = Math.round((a.fibres    || 0) * factor * 10) / 10;
     } else if (r.quantite > 0) {
       // Plan chargé depuis la DB : recalcul par ratio nouvelle/ancienne quantité
       const ratio = qty / r.quantite;

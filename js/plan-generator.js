@@ -72,7 +72,8 @@ const PlanGenerator = {
       glucides:  Math.round(f.g   * factor * 10) / 10,
       lipides:   Math.round(f.l   * factor * 10) / 10,
       fibres:    Math.round((f.f || 0) * factor * 10) / 10,
-      _aliment: { ...f, nom, mode: f.mode }
+      _aliment: { nom, mode: f.mode, perG: f.perG,
+                  calories: f.cal, proteines: f.p, glucides: f.g, lipides: f.l, fibres: f.f || 0 }
     };
   },
 
