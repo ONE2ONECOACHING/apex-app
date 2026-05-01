@@ -44,7 +44,7 @@ const CoachHabitsEditPage = {
     try {
       this.client = await db.getProfile(this.clientId);
       this.habitudes = await db.getHabitudes(this.clientId);
-      document.getElementById('habTitle').textContent = (this.client.prenom || 'Client') + ' — Habitudes';
+      document.getElementById('habTitle').textContent = 'Habitudes — ' + (this.client.prenom || 'Client');
       const habNav = document.getElementById('habNav');
       if (habNav) habNav.innerHTML = coachClientNav(this.clientId, 'coach-habits-edit');
       this.renderList();

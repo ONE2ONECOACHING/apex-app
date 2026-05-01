@@ -30,7 +30,7 @@ const CoachMesureClientPage = {
     if (!this.clientId) { window.location.hash = '#coach-clients'; return; }
 
     const title = document.getElementById('mesureCoachTitle');
-    if (title) title.textContent = this.clientName;
+    if (title) title.textContent = 'Mesures — ' + this.clientName;
     const mesureNav = document.getElementById('mesureNav');
     if (mesureNav) mesureNav.innerHTML = coachClientNav(this.clientId, 'coach-mesure-client');
 

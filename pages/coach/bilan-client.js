@@ -35,7 +35,7 @@ const CoachBilanClientPage = {
         db.getBilanAssignation(this.clientId).catch(() => null),
         db.getBilanInstancesForCoach(this.clientId).catch(() => [])
       ]);
-      document.getElementById('bcTitle').textContent = (this.client.prenom || 'Client') + ' — Bilan';
+      document.getElementById('bcTitle').textContent = 'Bilans — ' + (this.client.prenom || 'Client');
       // Marquer les bilans complétés comme lus en base (sync multi-appareils)
       db.markBilansAsRead(this.clientId).catch(() => {});
       this.renderContent();

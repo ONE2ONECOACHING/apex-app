@@ -39,7 +39,7 @@ const CoachClientProgrammePage = {
       ]);
 
       const prenom = this.client?.prenom || 'Client';
-      document.getElementById('cpTitle').textContent = `${prenom} — Programme`;
+      document.getElementById('cpTitle').textContent = 'Programmes — ' + prenom;
 
       // Tabs cohérents avec les autres pages coach
       const clientId = params.clientId;

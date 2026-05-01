@@ -30,7 +30,7 @@ const CoachTrainingClientPage = {
     try {
       this.client = await db.getProfile(params.clientId);
       document.getElementById('ctcTitle').textContent =
-        (this.client.prenom || 'Client') + ' — Entraînement';
+        'Entraînement — ' + (this.client.prenom || 'Client');
 
       this._logs = await db.getCoachClientSeancesLog(params.clientId, 50);
       this._renderContent();

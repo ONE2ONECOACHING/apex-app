@@ -32,7 +32,7 @@ const CoachPlanEditPage = {
     try {
       this.client = await db.getProfile(this.clientId);
       this.plans = await db.getPlansForClient(this.clientId);
-      document.getElementById('peTitle').textContent = 'Plan — ' + (this.client.prenom || 'Client');
+      document.getElementById('peTitle').textContent = 'Plan alimentaire — ' + (this.client.prenom || 'Client');
       const peNav = document.getElementById('peNav');
       if (peNav) peNav.innerHTML = coachClientNav(this.clientId, 'coach-plan-edit');
 

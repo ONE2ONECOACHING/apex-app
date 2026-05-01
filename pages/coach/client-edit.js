@@ -26,7 +26,7 @@ const CoachClientEditPage = {
       this.client = await db.getProfile(params.clientId);
       this.activites = await db.getActivites(params.clientId);
       this.selectedTag = this.client.coach_tag || null;
-      document.getElementById('ceTitle').textContent = this.client.prenom || 'Client';
+      document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
       this.renderForm();
     } catch (e) {
       document.getElementById('ceContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
