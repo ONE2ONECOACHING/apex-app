@@ -224,11 +224,6 @@ function coachClientNav(clientId, activeTab) {
     { key: 'coach-training-client',  label: '🏋️ Entraînement' },
   ];
   return `
-    <button onclick="window.location.hash='#coach-clients'"
-      style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
-             color:var(--gray);background:none;border:none;cursor:pointer;padding:0;margin-bottom:10px;">
-      ‹ Clients
-    </button>
     <div class="tabs" style="margin-bottom:1.25rem;">${
       tabs.map(t => `<button class="tab${activeTab === t.key ? ' active' : ''}"
         onclick="Router.navigate('${t.key}',{clientId:'${clientId}'})">${t.label}</button>`).join('')

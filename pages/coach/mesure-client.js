@@ -14,7 +14,7 @@ const CoachMesureClientPage = {
           <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title" id="mesureCoachTitle">Mesures</div>
         </div>
-        <button class="header-btn" onclick="history.back()">←</button>
+        <button class="header-btn" onclick="window.location.hash='#coach-clients'">←</button>
       </div>
       <div id="mesureNav"></div>
       <div id="mesureCoachContent"><div class="spinner" style="margin-top:3rem;"></div></div>`;

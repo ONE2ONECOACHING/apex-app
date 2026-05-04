@@ -13,7 +13,7 @@ const CoachTrainingClientPage = {
           <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title" id="ctcTitle">Suivi entraînement</div>
         </div>
-        <button class="header-btn" onclick="history.back()">←</button>
+        <button class="header-btn" onclick="window.location.hash='#coach-clients'">←</button>
       </div>
       <div id="ctcContent"><div class="spinner" style="margin-top:2rem;"></div></div>`;
   },
