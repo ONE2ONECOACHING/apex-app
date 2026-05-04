@@ -132,7 +132,7 @@ const CoachClientsPage = {
       if (!client) continue;
       actions.push({
         icon: '📋',
-        label: `Bilan répondu — ${client.prenom}`,
+        label: `Bilan répondu — ${client.prenom} ${client.nom || ''}`,
         sub: this._timeAgo(bilan.completed_at),
         onclick: `Router.navigate('coach-bilan-client', { clientId: '${client.id}' })`
       });
@@ -143,7 +143,7 @@ const CoachClientsPage = {
       if (!planMap.has(client.id)) {
         actions.push({
           icon: '📝',
-          label: `Sans plan — ${client.prenom}`,
+          label: `Sans plan — ${client.prenom} ${client.nom || ''}`,
           sub: 'Créer un plan nutritionnel',
           onclick: `Router.navigate('coach-plan-edit', { clientId: '${client.id}' })`
         });
@@ -180,7 +180,7 @@ const CoachClientsPage = {
     // Couleur selon adhérence
     const pct   = totalDays > 0 ? daysLogged / totalDays : 0;
     const color = pct >= 0.71 ? 'var(--success)' : pct >= 0.43 ? '#F59E0B' : 'var(--error)';
-    const initials = (client.prenom || 'C')[0].toUpperCase();
+    const initials = ((client.prenom || 'C')[0] + (client.nom ? client.nom[0] : '')).toUpperCase();
 
     // Sous-texte calories
     let calLine = '';
@@ -200,7 +200,7 @@ const CoachClientsPage = {
       <div class="client-avatar" style="width:36px;height:36px;font-size:13px;flex-shrink:0;">${initials}</div>
       <div style="flex:1;min-width:0;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <div style="font-size:13px;font-weight:700;">${client.prenom}</div>
+          <div style="font-size:13px;font-weight:700;">${client.prenom} ${client.nom || ''}</div>
           <div style="font-size:12px;color:${color};font-weight:700;">${daysLogged}/${totalDays}j</div>
         </div>
         <div style="height:5px;background:var(--border-solid);border-radius:3px;overflow:hidden;margin-bottom:4px;">
@@ -216,7 +216,7 @@ const CoachClientsPage = {
     const pendingBilan  = this._pendingBilans.find(b  => b.client_id === client.id);
     const completedBilan = this._completedBilans.find(b => b.client_id === client.id);
 
-    const initials = (client.prenom || 'C')[0].toUpperCase();
+    const initials = ((client.prenom || 'C')[0] + (client.nom ? client.nom[0] : '')).toUpperCase();
     const tagHtml = client.coach_tag
       ? `<span class="coach-tag coach-tag-${client.coach_tag}">${client.coach_tag === 'ben' ? 'Ben' : 'Chris'}</span>`
       : '';
@@ -230,7 +230,7 @@ const CoachClientsPage = {
       <div class="client-avatar">${initials}</div>
       <div class="client-info">
         <div class="client-name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          ${client.prenom} ${tagHtml}${badges}
+          ${client.prenom} ${client.nom || ''} ${tagHtml}${badges}
         </div>
         <div class="client-meta">Semaine ${client.semaine_courante || 1}</div>
       </div>
