@@ -1,4 +1,4 @@
-// APEX APP — Client : Recettes
+﻿// APEX APP — Client : Recettes
 
 const RecettesPage = {
   recettes: [],
@@ -11,7 +11,7 @@ const RecettesPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Recettes</div>
         </div>
         <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>

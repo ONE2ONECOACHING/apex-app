@@ -1,4 +1,4 @@
-// APEX APP — Coach : Bilan hebdo d'un client (assignation + historique)
+﻿// APEX APP — Coach : Bilan hebdo d'un client (assignation + historique)
 
 const CoachBilanClientPage = {
   clientId: null,
@@ -13,7 +13,7 @@ const CoachBilanClientPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX · COACH</div>
+          <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title" id="bcTitle">Bilan client</div>
         </div>
         <button class="header-btn" onclick="history.back()">

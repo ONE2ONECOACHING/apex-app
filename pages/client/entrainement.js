@@ -1,4 +1,4 @@
-// APEX APP — Client : Module Entraînement (Programme + Historique)
+﻿// APEX APP — Client : Module Entraînement (Programme + Historique)
 
 const EntrainementPage = {
   programme:    null,
@@ -13,7 +13,7 @@ const EntrainementPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Entraînement</div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-// APEX APP — Historique Client (7 / 30 jours)
+﻿// APEX APP — Historique Client (7 / 30 jours)
 
 const HistoriquePage = {
   range: 7,
@@ -11,7 +11,7 @@ const HistoriquePage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Historique</div>
         </div>
       </div>

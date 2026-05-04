@@ -1,4 +1,4 @@
-// APEX APP — Client : Remplir un bilan hebdo
+﻿// APEX APP — Client : Remplir un bilan hebdo
 
 const ClientBilanPage = {
   instance: null,
@@ -8,7 +8,7 @@ const ClientBilanPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Bilan hebdo</div>
         </div>
         <button class="header-btn" onclick="history.back()">

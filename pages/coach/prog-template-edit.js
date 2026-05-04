@@ -1,4 +1,4 @@
-// APEX APP — Coach : Éditeur de template de programme (desktop — colonnes)
+﻿// APEX APP — Coach : Éditeur de template de programme (desktop — colonnes)
 
 const CoachProgTemplateEditPage = {
   templateId:          null,
@@ -45,7 +45,7 @@ const CoachProgTemplateEditPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX · COACH</div>
+          <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title" id="tplEditTitle">Programme</div>
         </div>
         <button class="header-btn" onclick="CoachProgTemplateEditPage._goBack()">←</button>

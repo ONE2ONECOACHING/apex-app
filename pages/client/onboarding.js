@@ -1,4 +1,4 @@
-// APEX APP — Client : Onboarding (premier login)
+﻿// APEX APP — Client : Onboarding (premier login)
 
 const OnboardingPage = {
   profile: null,
@@ -40,7 +40,7 @@ const OnboardingPage = {
     const prenom = this.profile.prenom || '';
     return `
       <div class="onb-screen">
-        <div class="onb-logo">ONE2ONE — APEX</div>
+        <div class="onb-logo">ONE2ONE</div>
         ${this._dots()}
         <div class="onb-welcome-icon">👊</div>
         <div class="onb-title">Bienvenue${prenom ? ',<br>' + prenom : ''} !</div>
@@ -53,7 +53,7 @@ const OnboardingPage = {
     const p = this.profile;
     return `
       <div class="onb-screen">
-        <div class="onb-logo">ONE2ONE — APEX</div>
+        <div class="onb-logo">ONE2ONE</div>
         ${this._dots()}
         <div class="onb-title">Ton profil</div>
         <div class="onb-form">
@@ -82,7 +82,7 @@ const OnboardingPage = {
     const p = this.profile;
     return `
       <div class="onb-screen">
-        <div class="onb-logo">ONE2ONE — APEX</div>
+        <div class="onb-logo">ONE2ONE</div>
         ${this._dots()}
         <div class="onb-title">Tes mesures</div>
         <div class="onb-form">

@@ -1,4 +1,4 @@
-// APEX APP — Plan Alimentaire Client (lecture + équivalences)
+﻿// APEX APP — Plan Alimentaire Client (lecture + équivalences)
 
 const PlanPage = {
   plan: null,
@@ -76,7 +76,7 @@ const PlanPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Mon plan alimentaire</div>
         </div>
         <button class="header-btn" onclick="Router.logout()">⏻</button>

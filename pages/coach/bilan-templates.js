@@ -1,4 +1,4 @@
-// APEX APP — Coach : Gestion des templates de bilan
+﻿// APEX APP — Coach : Gestion des templates de bilan
 
 const CoachBilanTemplatesPage = {
   templates: [],
@@ -10,7 +10,7 @@ const CoachBilanTemplatesPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX · COACH</div>
+          <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Templates bilan</div>
         </div>
         <button class="header-btn" onclick="history.back()">

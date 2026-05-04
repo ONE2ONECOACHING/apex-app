@@ -1,4 +1,4 @@
-// APEX APP — Coach : Dashboard
+﻿// APEX APP — Coach : Dashboard
 
 const CoachClientsPage = {
   clients: [],
@@ -13,7 +13,7 @@ const CoachClientsPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX · COACH</div>
+          <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Dashboard</div>
         </div>
         <button class="header-btn" onclick="Router.logout()">⏻</button>
@@ -300,7 +300,7 @@ const CoachClientsPage = {
     try {
       await db.createClientAccount(email, prenom, nom);
       const appUrl  = APP_CONFIG.APP_URL;
-      const message = `Bonjour ${prenom} 👊\n\nTon espace APEX ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 Apex2026!\n\nConnecte-toi et choisis ton nouveau mot de passe.`;
+      const message = `Bonjour ${prenom} 👊\n\nTon espace ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 Apex2026!\n\nConnecte-toi et choisis ton nouveau mot de passe.`;
       document.getElementById('createForm').style.display = 'none';
       document.getElementById('inviteResult').style.display = 'block';
       document.getElementById('inviteResult').innerHTML = `

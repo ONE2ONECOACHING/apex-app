@@ -1,4 +1,4 @@
-// APEX APP — Coach : Bibliothèque d'exercices (desktop-optimized)
+﻿// APEX APP — Coach : Bibliothèque d'exercices (desktop-optimized)
 
 const CoachExercicesPage = {
   exercices: [],
@@ -51,7 +51,7 @@ const CoachExercicesPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX · COACH</div>
+          <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Bibliothèque d'exercices</div>
         </div>
         <button class="header-btn" onclick="window.location.hash='#coach-clients'">←</button>

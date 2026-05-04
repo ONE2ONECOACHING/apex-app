@@ -1,4 +1,4 @@
-// APEX APP — Coach : Habitudes client (cases à cocher uniquement)
+﻿// APEX APP — Coach : Habitudes client (cases à cocher uniquement)
 
 const HABITS_LIBRARY = [
   { type: 'pas',       label: '🚶 Marche 10 000 pas/jour',           tips: 'Marche, vélo, cardio léger… 10 000 pas = ~90 min. Tu peux marcher en téléphonant ou entre tes séries.' },
@@ -27,7 +27,7 @@ const CoachHabitsEditPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX · COACH</div>
+          <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title" id="habTitle">Habitudes</div>
         </div>
         <button class="header-btn" onclick="history.back()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>

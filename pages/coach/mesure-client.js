@@ -1,4 +1,4 @@
-// APEX APP — Coach : Mesures d'un client
+﻿// APEX APP — Coach : Mesures d'un client
 
 const CoachMesureClientPage = {
   clientId: null,
@@ -11,7 +11,7 @@ const CoachMesureClientPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX · COACH</div>
+          <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title" id="mesureCoachTitle">Mesures</div>
         </div>
         <button class="header-btn" onclick="history.back()">←</button>

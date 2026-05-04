@@ -1,4 +1,4 @@
-// APEX APP — Coach : Templates de programme (liste)
+﻿// APEX APP — Coach : Templates de programme (liste)
 
 const CoachProgTemplatesPage = {
   templates: [],
@@ -8,7 +8,7 @@ const CoachProgTemplatesPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX · COACH</div>
+          <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Programmes d'entraînement</div>
         </div>
         <button class="header-btn" onclick="window.location.hash='#coach-clients'">←</button>

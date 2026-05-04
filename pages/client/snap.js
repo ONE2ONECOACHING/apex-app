@@ -1,4 +1,4 @@
-// APEX APP — Ajouter un repas (Base / Photo / Enregistrés)
+﻿// APEX APP — Ajouter un repas (Base / Photo / Enregistrés)
 
 const SnapPage = {
   base64: null,
@@ -23,7 +23,7 @@ const SnapPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Ajouter un repas</div>
         </div>
         <button class="header-btn" onclick="history.back()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
@@ -629,6 +629,42 @@ const SnapPage = {
   // ── CODE-BARRE ────────────────────────────────────────────────────────────────
 
   startBarcode() {
+    if ('BarcodeDetector' in window) {
+      this._openBarcodeModal();
+      return;
+    }
+    // iOS/Safari : charger le polyfill ZXing avant d'ouvrir la modal
+    const tip = document.createElement('div');
+    tip.id = 'barcodeLoadingTip';
+    tip.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 22px;border-radius:20px;font-size:13px;z-index:3000;white-space:nowrap;';
+    tip.textContent = '⏳ Chargement du scanner…';
+    document.body.appendChild(tip);
+    this._loadBarcodePolyfill().then(() => {
+      tip.remove();
+      this._openBarcodeModal();
+    });
+  },
+
+  _loadBarcodePolyfill() {
+    if ('BarcodeDetector' in window) return Promise.resolve();
+    return new Promise(resolve => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@undecaf/barcode-detector-polyfill@0.9.21/dist/iife/index.js';
+      s.onload = () => {
+        try {
+          // Le bundle IIFE expose le namespace global `barcodeDetectorPolyfill`
+          if (typeof barcodeDetectorPolyfill !== 'undefined' && barcodeDetectorPolyfill.BarcodeDetectorPolyfill) {
+            window.BarcodeDetector = barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
+          }
+        } catch (_) {}
+        resolve();
+      };
+      s.onerror = () => resolve(); // Si le CDN échoue, on continue en mode dégradé
+      document.head.appendChild(s);
+    });
+  },
+
+  _openBarcodeModal() {
     const hasBD = 'BarcodeDetector' in window;
     const modal = document.createElement('div');
     modal.id = 'barcodeModal';
@@ -641,10 +677,19 @@ const SnapPage = {
             style="width:100%;border-radius:10px;margin-bottom:0.75rem;max-height:260px;object-fit:cover;background:#000;"></video>
           <div id="barcodeScanStatus" style="font-size:13px;color:#aaa;margin-bottom:0.75rem;">Pointez la caméra sur le code-barre</div>
         ` : `
-          <div style="font-size:13px;color:#aaa;margin-bottom:0.75rem;">Caméra non supportée sur ce navigateur.</div>
+          <div style="font-size:13px;color:#aaa;margin-bottom:1rem;">
+            Scanne via l'appareil photo ou saisis le code manuellement ↓
+          </div>
+          <label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:46px;
+            background:rgba(255,255,255,0.1);border:1.5px dashed rgba(255,255,255,0.35);border-radius:10px;
+            font-size:13px;color:white;cursor:pointer;margin-bottom:0.85rem;">
+            📷 Photographier le code-barre
+            <input type="file" accept="image/*" capture="environment" id="barcodeCaptureInput"
+              style="display:none;" onchange="SnapPage._onBarcodeCaptureFile(event)">
+          </label>
         `}
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:0.75rem;">
-          <input class="input" id="barcodeManualInput" placeholder="Code-barre manuel (EAN-13…)" type="text" inputmode="numeric"
+          <input class="input" id="barcodeManualInput" placeholder="Code-barre (EAN-13…)" type="text" inputmode="numeric"
             style="flex:1;" onkeydown="if(event.key==='Enter')SnapPage._onManualBarcode()">
           <button class="btn btn-primary" style="height:44px;white-space:nowrap;" onclick="SnapPage._onManualBarcode()">OK</button>
         </div>
@@ -673,8 +718,36 @@ const SnapPage = {
         })
         .catch(() => {
           const s = document.getElementById('barcodeScanStatus');
-          if (s) s.textContent = '⚠️ Accès caméra refusé — utilise la saisie manuelle.';
+          if (s) s.textContent = '⚠️ Accès caméra refusé — utilise la saisie manuelle ci-dessous.';
         });
+    } else {
+      // Auto-focus le champ manuel si pas de caméra
+      setTimeout(() => document.getElementById('barcodeManualInput')?.focus(), 400);
+    }
+  },
+
+  async _onBarcodeCaptureFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const errEl = document.getElementById('barcodeError');
+    if (errEl) errEl.textContent = '⏳ Décodage en cours…';
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      URL.revokeObjectURL(url);
+      if ('BarcodeDetector' in window) {
+        const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
+        const codes = await detector.detect(img);
+        if (codes.length > 0) {
+          if (errEl) errEl.textContent = '';
+          await this._onBarcodeDetected(codes[0].rawValue);
+          return;
+        }
+      }
+      if (errEl) errEl.textContent = 'Code-barre non reconnu — essaie la saisie manuelle.';
+    } catch (_) {
+      if (errEl) errEl.textContent = 'Erreur de décodage — essaie la saisie manuelle.';
     }
   },
 

@@ -1,4 +1,4 @@
-// APEX APP — Dashboard Client (progression poids + habitudes)
+﻿// APEX APP — Dashboard Client (progression poids + habitudes)
 
 const DashboardPage = {
   profile: null,
@@ -10,7 +10,7 @@ const DashboardPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title" id="dashGreeting">Dashboard</div>
         </div>
         <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>

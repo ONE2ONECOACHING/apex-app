@@ -5,7 +5,11 @@ const LoginPage = {
     return `
       <div style="display:flex;flex-direction:column;justify-content:center;min-height:90vh;">
         <div style="text-align:center;margin-bottom:2rem;">
-          <div class="app-logo" style="font-size:13px;margin-bottom:0.5rem;">ONE2ONE — APEX</div>
+          <div style="margin-bottom:1.25rem;">
+            <img src="img/logo.svg" alt="ONE2ONE" style="width:80px;height:80px;display:block;margin:0 auto;
+              filter:drop-shadow(0 6px 18px rgba(0,74,173,0.35));border-radius:22px;">
+          </div>
+          <div class="app-logo" style="font-size:13px;margin-bottom:0.5rem;letter-spacing:0.2em;">ONE2ONE</div>
           <div style="font-size:24px;font-weight:700;color:var(--black);margin-bottom:0.25rem;">Bienvenue</div>
           <div style="font-size:14px;color:var(--gray-light);">Connecte-toi pour accéder à ton espace</div>
         </div>

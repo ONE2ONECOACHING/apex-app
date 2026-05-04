@@ -1,11 +1,11 @@
-// APEX APP — Reset Password (mot de passe oublié — flow existants uniquement)
+﻿// APEX APP — Reset Password (mot de passe oublié — flow existants uniquement)
 
 const ResetPasswordPage = {
   render() {
     return `
       <div style="display:flex;flex-direction:column;justify-content:center;min-height:90vh;">
         <div style="text-align:center;margin-bottom:2rem;">
-          <div class="app-logo" style="font-size:13px;margin-bottom:0.5rem;">ONE2ONE — APEX</div>
+          <div class="app-logo" style="font-size:13px;margin-bottom:0.5rem;">ONE2ONE</div>
           <div style="font-size:24px;font-weight:700;color:var(--black);margin-bottom:0.25rem;">Nouveau mot de passe</div>
           <div style="font-size:14px;color:var(--gray-light);">Choisis ton nouveau mot de passe</div>
         </div>

@@ -1,4 +1,4 @@
-// APEX APP — Client : Mesures (poids, mensurations, photos)
+﻿// APEX APP — Client : Mesures (poids, mensurations, photos)
 
 const MesurePage = {
   currentDate: todayStr(),
@@ -12,7 +12,7 @@ const MesurePage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Mes mesures</div>
         </div>
         <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>

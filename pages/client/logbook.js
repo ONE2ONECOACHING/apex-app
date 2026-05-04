@@ -1,4 +1,4 @@
-// APEX APP — Logbook Client (suivi alimentaire)
+﻿// APEX APP — Logbook Client (suivi alimentaire)
 
 const LogbookPage = {
   currentDate: todayStr(),
@@ -10,7 +10,7 @@ const LogbookPage = {
     return `
       <div class="app-header">
         <div>
-          <div class="app-logo">ONE2ONE — APEX</div>
+          <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Logbook</div>
         </div>
         <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>

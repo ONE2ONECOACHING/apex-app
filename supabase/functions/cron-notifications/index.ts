@@ -45,7 +45,7 @@ Deno.serve(async (_req) => {
   const localDay    = now.getDay(); // 0=Dim, 1=Lun ... 6=Sam
   const todayStr    = now.toISOString().split("T")[0];
 
-  const results = { bilan: 0, logbook: 0, habitudes: 0 };
+  const results = { bilan: 0, logbook: 0, habitudes: 0, bilan_rappel: 0 };
 
   // ── 1. BILAN ─────────────────────────────────────────────────────────────
   const { data: assignations } = await sb
@@ -131,6 +131,34 @@ Deno.serve(async (_req) => {
       await sendPush(client.id, "✅ Habitudes", `${done}/${total} habitudes cochées — encore un effort !`, "#dashboard");
       await logSent(sb, client.id, "habitudes", todayStr);
       results.habitudes++;
+    }
+  }
+
+  // ── 4. RAPPEL BILAN — DIMANCHE 21H ───────────────────────────────────────
+  // Notifie tous les clients ayant un bilan encore en attente cette semaine
+  if (localDay === 0 && localHour === 21) {
+    // Calculer le lundi de la semaine en cours (UTC)
+    const monday = new Date(now);
+    monday.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7));
+    const semaineStr = monday.toISOString().split("T")[0];
+
+    const { data: pendingInstances } = await sb
+      .from("bilan_instances")
+      .select("client_id")
+      .eq("statut", "en_attente")
+      .eq("semaine", semaineStr);
+
+    for (const inst of (pendingInstances || [])) {
+      if (await alreadySent(sb, inst.client_id, "bilan_rappel_dimanche", semaineStr)) continue;
+
+      await sendPush(
+        inst.client_id,
+        "⏰ Bilan de la semaine",
+        "Tu n'as pas encore complété ton bilan — il reste ce soir !",
+        "#client-bilan"
+      );
+      await logSent(sb, inst.client_id, "bilan_rappel_dimanche", semaineStr);
+      results.bilan_rappel++;
     }
   }
 
