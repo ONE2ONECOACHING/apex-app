@@ -69,14 +69,16 @@ const CoachClientsPage = {
   renderFilters() {
     const hasBen   = this.clients.some(c => c.coach_tag === 'ben');
     const hasChris = this.clients.some(c => c.coach_tag === 'chris');
+    const hasLola  = this.clients.some(c => c.coach_tag === 'lola');
     const el = document.getElementById('tagFilters');
     if (!el) return;
-    if (!hasBen && !hasChris) { el.innerHTML = ''; return; }
+    if (!hasBen && !hasChris && !hasLola) { el.innerHTML = ''; return; }
     const f = this.activeFilter;
     el.innerHTML = `
       <button class="tag-filter-btn ${f === 'all' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('all')">Tous</button>
       ${hasBen   ? `<button class="tag-filter-btn tag-filter-ben   ${f === 'ben'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('ben')">Ben</button>`   : ''}
       ${hasChris ? `<button class="tag-filter-btn tag-filter-chris ${f === 'chris' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('chris')">Chris</button>` : ''}
+      ${hasLola  ? `<button class="tag-filter-btn tag-filter-lola  ${f === 'lola'  ? 'active' : ''}" onclick="CoachClientsPage.setFilter('lola')">Lola</button>`  : ''}
     `;
   },
 
@@ -218,7 +220,7 @@ const CoachClientsPage = {
 
     const initials = ((client.prenom || 'C')[0] + (client.nom ? client.nom[0] : '')).toUpperCase();
     const tagHtml = client.coach_tag
-      ? `<span class="coach-tag coach-tag-${client.coach_tag}">${client.coach_tag === 'ben' ? 'Ben' : 'Chris'}</span>`
+      ? `<span class="coach-tag coach-tag-${client.coach_tag}">${client.coach_tag === 'ben' ? 'Ben' : client.coach_tag === 'chris' ? 'Chris' : 'Lola'}</span>`
       : '';
 
     let badges = '';

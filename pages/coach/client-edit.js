@@ -54,6 +54,7 @@ const CoachClientEditPage = {
           <div style="display:flex;gap:8px;">
             <button type="button" id="tagBtnBen" class="tag-pill-btn ${this.selectedTag === 'ben' ? 'active-ben' : ''}" onclick="CoachClientEditPage.setTag('ben')">Ben</button>
             <button type="button" id="tagBtnChris" class="tag-pill-btn ${this.selectedTag === 'chris' ? 'active-chris' : ''}" onclick="CoachClientEditPage.setTag('chris')">Chris</button>
+            <button type="button" id="tagBtnLola" class="tag-pill-btn ${this.selectedTag === 'lola' ? 'active-lola' : ''}" onclick="CoachClientEditPage.setTag('lola')">Lola</button>
           </div>
         </div>
         <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -133,6 +134,7 @@ const CoachClientEditPage = {
     this.selectedTag = (this.selectedTag === tag) ? null : tag;
     document.getElementById('tagBtnBen').className = 'tag-pill-btn' + (this.selectedTag === 'ben' ? ' active-ben' : '');
     document.getElementById('tagBtnChris').className = 'tag-pill-btn' + (this.selectedTag === 'chris' ? ' active-chris' : '');
+    document.getElementById('tagBtnLola').className = 'tag-pill-btn' + (this.selectedTag === 'lola' ? ' active-lola' : '');
   },
 
   async confirmDelete() {
