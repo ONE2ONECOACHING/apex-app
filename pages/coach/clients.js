@@ -230,7 +230,7 @@ const CoachClientsPage = {
         <div class="client-name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           ${client.prenom} ${client.nom || ''} ${tagHtml}${badges}
         </div>
-        <div class="client-meta">Semaine ${client.semaine_courante || 1}</div>
+        <div class="client-meta">Semaine ${clientCurrentWeek(client)}</div>
       </div>
       <div style="display:flex;gap:5px;align-items:center;">
         <button class="icon-btn" title="Journal"

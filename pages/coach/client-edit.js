@@ -91,7 +91,12 @@ const CoachClientEditPage = {
           <select class="input" id="ceObjectif">${objectifs.map(o => `<option value="${o.v}" ${c.objectif === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
         </div>
         <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Semaine courante</label><input class="input" type="number" id="ceSemaine" value="${c.semaine_courante || 1}" min="1" max="16"></div>
+          <div class="field">
+            <label class="field-label">Date de début du programme</label>
+            <input class="input" type="date" id="ceDateDebut" value="${c.date_debut || ''}">
+            ${c.date_debut ? `<div style="font-size:11px;color:var(--gray-muted);margin-top:4px;">→ Semaine ${clientCurrentWeek(c)} automatiquement</div>` : ''}
+          </div>
+          <div class="field"><label class="field-label">Semaine courante (manuel si pas de date)</label><input class="input" type="number" id="ceSemaine" value="${c.semaine_courante || 1}" min="1"></div>
           <div class="field"><label class="field-label">Masse grasse %</label><input class="input" type="number" id="ceFat" value="${c.masse_grasse_pct || ''}" step="0.1"></div>
         </div>
       </div>
@@ -200,6 +205,7 @@ const CoachClientEditPage = {
       type_metier: document.getElementById('ceMetier').value,
       pas_par_jour: +document.getElementById('cePas').value || 5000,
       objectif: document.getElementById('ceObjectif').value,
+      date_debut: document.getElementById('ceDateDebut').value || null,
       semaine_courante: +document.getElementById('ceSemaine').value || 1,
       masse_grasse_pct: +document.getElementById('ceFat').value || null,
       coach_tag: this.selectedTag

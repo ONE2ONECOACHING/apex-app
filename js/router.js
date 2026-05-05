@@ -230,6 +230,15 @@ function coachClientNav(clientId, activeTab) {
     }</div>`;
 }
 
+function clientCurrentWeek(client) {
+  if (client.date_debut) {
+    const start = new Date(client.date_debut + 'T00:00:00');
+    const diff = Math.floor((new Date() - start) / (7 * 24 * 3600 * 1000));
+    return Math.max(1, diff + 1);
+  }
+  return client.semaine_courante || 1;
+}
+
 function lastSaturdayStr(date) {
   const d = new Date(date || new Date());
   const back = (d.getDay() + 1) % 7; // sam=0, dim=1, lun=2 …
