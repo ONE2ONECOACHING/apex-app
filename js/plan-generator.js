@@ -55,6 +55,7 @@ const PlanGenerator = {
     'Amandes':            { cal: 579, p: 21,  g: 22,  l: 50, f: 12, mode: 'g' },
     'Chocolat noir 70%':  { cal: 598, p: 8,   g: 46,  l: 43, f: 11, mode: 'g' },
     'Beurre de cacahuète':{ cal: 588, p: 25,  g: 20,  l: 50, f: 6,  mode: 'g' },
+    "Huile d'olive":      { cal: 884, p: 0,   g: 0,   l: 100, f: 0, mode: 'g' },
   },
 
   // Calcule les macros d'un item à une quantité donnée
@@ -80,29 +81,32 @@ const PlanGenerator = {
   // Arrondit à un multiple propre
   round(qty, step) { return Math.max(step, Math.round(qty / step) * step); },
 
-  // Génère un repas principal (déjeuner ou dîner) pour atteindre les macros cibles
+  // Génère un repas principal (déjeuner ou dîner) — cible macros précisément
   mainMeal(targetP, targetG, creneau, opts, isLunch) {
     const items = [];
 
-    // Source de protéine
+    // Huile d'olive pour la cuisson (toujours 10g)
+    items.push(this.item("Huile d'olive", 10, creneau));
+
+    // Source de protéine — 90% de targetP depuis la source principale (10% vient des légumes)
     const proteinSrc = opts.vegetarien
       ? (isLunch ? 'Tofu ferme' : 'Lentilles cuites')
       : (isLunch ? 'Poulet blanc cuit' : 'Saumon');
 
     const fp = this.FOODS[proteinSrc];
-    const protQty = this.round(targetP * 0.85 / (fp.p / 100), 25);
+    const protQty = this.round((targetP * 0.9) / (fp.p / 100), 10);
     items.push(this.item(proteinSrc, protQty, creneau));
 
-    // Féculent
+    // Féculent — cible targetG en déduisant glucides déjà présents (arrondi 10g)
     const starchSrc = isLunch ? 'Riz blanc cuit' : 'Patate douce cuite';
     const fs = this.FOODS[starchSrc];
-    const glucFromProt = items.reduce((s, i) => s + i.glucides, 0);
-    const starchQty = this.round(Math.max(50, (targetG - glucFromProt) * 0.85 / (fs.g / 100)), 25);
+    const usedG = items.reduce((s, i) => s + i.glucides, 0);
+    const starchQty = this.round(Math.max(50, (targetG - usedG) / (fs.g / 100)), 10);
     items.push(this.item(starchSrc, starchQty, creneau));
 
-    // Légume (portion fixe)
+    // Légume (portion fixe 150g)
     const vegSrc = isLunch ? 'Brocoli cuit' : 'Haricots verts';
-    items.push(this.item(vegSrc, 200, creneau));
+    items.push(this.item(vegSrc, 150, creneau));
 
     return items;
   },
@@ -114,7 +118,7 @@ const PlanGenerator = {
     const cal = targets.calories;
 
     // Distribution calorique
-    const hasPdej = nbRepas === 3;
+    const hasPdej  = nbRepas === 3;
     const pdejPct  = hasPdej ? 0.20 : 0;
     const snackPct = nbSnacks > 0 ? 0.15 : 0;
     const mainPct  = 1 - pdejPct - snackPct;
@@ -129,32 +133,30 @@ const PlanGenerator = {
     // ── PETIT DÉJEUNER ────────────────────────────────────────────────────
     if (hasPdej) {
       const pdejKcal = cal * pdejPct;
-      const scale    = Math.max(0.5, pdejKcal / 420); // base ≈ 420 kcal
 
-      // Salé
-      const nbOeufs  = Math.max(1, Math.round(3 * scale));
-      const painQty  = this.round(60 * scale, 10);
-      const useAvoc  = !vegetarien || true; // toujours avocat en salé végé
-      const avoSrc   = (vegetarien || pdejKcal < 450) ? 'Avocat' : 'Bacon';
-      const avoQty   = avoSrc === 'Avocat' ? this.round(80 * scale, 10) : this.round(30 * scale, 5);
+      // Salé — base calorie réelle ≈ 599 kcal (3 oeufs + 60g pain + 80g avocat + 1 banane)
+      const scaleSale = Math.max(0.5, pdejKcal / 599);
+      const nbOeufs = Math.max(1, Math.round(3 * scaleSale));
+      const painQty = this.round(60 * scaleSale, 10);
+      const avoQty  = this.round(80 * scaleSale, 10);
 
       add([
-        this.item('Oeuf entier',  nbOeufs,  'petit_dejeuner_sale'),
-        this.item('Pain complet', painQty,  'petit_dejeuner_sale'),
-        this.item(avoSrc,         avoQty,   'petit_dejeuner_sale'),
-        this.item('Banane',       1,        'petit_dejeuner_sale'),
+        this.item('Oeuf entier',  nbOeufs, 'petit_dejeuner_sale'),
+        this.item('Pain complet', painQty, 'petit_dejeuner_sale'),
+        this.item('Avocat',       avoQty,  'petit_dejeuner_sale'),
+        this.item('Banane',       1,       'petit_dejeuner_sale'),
       ]);
 
-      // Sucré
-      const fbQty    = this.round(150 * scale, 25);
-      const avoineQty = this.round(50 * scale, 10);
-      const sucreQty = this.round(15 * scale, 5);
-      const sucreSrc = pdejKcal > 450 ? 'Confiture' : 'Miel';
+      // Sucré — base calorie réelle ≈ 361 kcal (150g FB + 50g avoine + 15g miel + 1 pomme)
+      const scaleSucre = Math.max(0.5, pdejKcal / 361);
+      const fbQty     = this.round(150 * scaleSucre, 25);
+      const avoineQty = this.round(50  * scaleSucre, 10);
+      const sucreQty  = this.round(15  * scaleSucre, 5);
 
       add([
         this.item('Fromage blanc 0%', fbQty,     'petit_dejeuner_sucre'),
-        this.item("Flocons d'avoine", avoineQty,  'petit_dejeuner_sucre'),
-        this.item(sucreSrc,           sucreQty,  'petit_dejeuner_sucre'),
+        this.item("Flocons d'avoine", avoineQty, 'petit_dejeuner_sucre'),
+        this.item('Miel',             sucreQty,  'petit_dejeuner_sucre'),
         this.item('Pomme',            1,         'petit_dejeuner_sucre'),
       ]);
     }
@@ -165,14 +167,17 @@ const PlanGenerator = {
         const wheyQty = this.round((t.proteines * (snackPct / nbSnacks) * 0.75) / (this.FOODS['Whey protéine'].p / 100), 5);
         add([
           this.item('Whey protéine', wheyQty, 'collation_matin'),
-          this.item('Banane',        1,        'collation_matin'),
-          this.item('Amandes',       20,       'collation_matin'),
+          this.item('Banane',        1,       'collation_matin'),
+          this.item('Amandes',       20,      'collation_matin'),
         ]);
       } else {
-        const fbQty = this.round((snackEach * 0.65) / (this.FOODS['Fromage blanc 0%'].cal / 100), 25);
+        // Cible : snackEach kcal — FB + amandes + fruit
+        const fbQty    = Math.min(250, this.round(snackEach * 0.55 / (this.FOODS['Fromage blanc 0%'].cal / 100), 25));
+        const amendQty = snackEach > 350 ? 25 : snackEach > 250 ? 20 : 15;
         add([
-          this.item('Fromage blanc 0%', fbQty, 'collation_matin'),
-          this.item('Pomme',            1,     'collation_matin'),
+          this.item('Fromage blanc 0%', fbQty,    'collation_matin'),
+          this.item('Pomme',            1,         'collation_matin'),
+          this.item('Amandes',          amendQty, 'collation_matin'),
         ]);
       }
     }
@@ -194,10 +199,12 @@ const PlanGenerator = {
           this.item('Amandes',       20,      'collation_apres_midi'),
         ]);
       } else {
-        const fbQty = this.round((snackEach * 0.55) / (this.FOODS['Fromage blanc 0%'].cal / 100), 25);
+        const fbQty    = Math.min(250, this.round(snackEach * 0.55 / (this.FOODS['Fromage blanc 0%'].cal / 100), 25));
+        const amendQty = snackEach > 350 ? 25 : snackEach > 250 ? 20 : 15;
         add([
-          this.item('Fromage blanc 0%', fbQty,   'collation_apres_midi'),
-          this.item('Myrtilles',        100,     'collation_apres_midi'),
+          this.item('Fromage blanc 0%', fbQty,    'collation_apres_midi'),
+          this.item('Myrtilles',        100,       'collation_apres_midi'),
+          this.item('Amandes',          amendQty, 'collation_apres_midi'),
         ]);
       }
     }
@@ -211,16 +218,16 @@ const PlanGenerator = {
 
     // ── COLLATION SOIR ────────────────────────────────────────────────────
     if (colSoir) {
-      const skyrQty  = this.round((snackEach * 0.50) / (this.FOODS['Skyr'].cal / 100), 25);
-      const mielQty  = snackEach > 200 ? 10 : 5;
-      const amendQty = snackEach > 250 ? 20 : 15;
-      const chocoQty = snackEach > 300 ? 20 : (snackEach > 200 ? 15 : 0);
+      const skyrQty  = Math.min(300, this.round(snackEach * 0.55 / (this.FOODS['Skyr'].cal / 100), 25));
+      const mielQty  = snackEach > 300 ? 15 : 10;
+      const amendQty = snackEach > 350 ? 25 : snackEach > 250 ? 20 : 15;
+      const chocoQty = snackEach > 350 ? 20 : snackEach > 250 ? 15 : 0;
 
       add([
-        this.item('Skyr',             skyrQty,  'collation_soir'),
-        this.item('Fraises',          100,      'collation_soir'),
-        this.item('Miel',             mielQty,  'collation_soir'),
-        this.item('Amandes',          amendQty, 'collation_soir'),
+        this.item('Skyr',    skyrQty,  'collation_soir'),
+        this.item('Fraises', 100,      'collation_soir'),
+        this.item('Miel',    mielQty,  'collation_soir'),
+        this.item('Amandes', amendQty, 'collation_soir'),
       ]);
       if (chocoQty > 0) add([this.item('Chocolat noir 70%', chocoQty, 'collation_soir')]);
     }
