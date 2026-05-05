@@ -67,18 +67,14 @@ const CoachClientsPage = {
   },
 
   renderFilters() {
-    const hasBen   = this.clients.some(c => c.coach_tag === 'ben');
-    const hasChris = this.clients.some(c => c.coach_tag === 'chris');
-    const hasLola  = this.clients.some(c => c.coach_tag === 'lola');
     const el = document.getElementById('tagFilters');
     if (!el) return;
-    if (!hasBen && !hasChris && !hasLola) { el.innerHTML = ''; return; }
     const f = this.activeFilter;
     el.innerHTML = `
-      <button class="tag-filter-btn ${f === 'all' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('all')">Tous</button>
-      ${hasBen   ? `<button class="tag-filter-btn tag-filter-ben   ${f === 'ben'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('ben')">Ben</button>`   : ''}
-      ${hasChris ? `<button class="tag-filter-btn tag-filter-chris ${f === 'chris' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('chris')">Chris</button>` : ''}
-      ${hasLola  ? `<button class="tag-filter-btn tag-filter-lola  ${f === 'lola'  ? 'active' : ''}" onclick="CoachClientsPage.setFilter('lola')">Lola</button>`  : ''}
+      <button class="tag-filter-btn ${f === 'all'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('all')">Tous</button>
+      <button class="tag-filter-btn tag-filter-ben   ${f === 'ben'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('ben')">Ben</button>
+      <button class="tag-filter-btn tag-filter-chris ${f === 'chris' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('chris')">Chris</button>
+      <button class="tag-filter-btn tag-filter-lola  ${f === 'lola'  ? 'active' : ''}" onclick="CoachClientsPage.setFilter('lola')">Lola</button>
     `;
   },
 
