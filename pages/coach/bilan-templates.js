@@ -34,7 +34,7 @@ const CoachBilanTemplatesPage = {
 
   renderList() {
     const el = document.getElementById('btContent');
-    let html = `<button class="btn btn-primary" style="margin-bottom:1rem;" onclick="CoachBilanTemplatesPage.openEditor()">+ Créer un template</button>`;
+    let html = `<button class="btn btn-primary" style="margin-bottom:1rem;" onclick="CoachBilanTemplatesPage.openEditor()">+ Créer un bilan</button>`;
 
     if (this.templates.length === 0) {
       html += `<div class="empty-state">
