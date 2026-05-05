@@ -329,7 +329,7 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
 }
 .coach-tag-ben   { background: #ECFEFF; color: #0E7490; border: 1.5px solid #A5F3FC; }
 .coach-tag-chris { background: #FDF2F8; color: #EC4899; border: 1.5px solid #FBCFE8; }
-.coach-tag-lola  { background: #F3F4F6; color: #4B5563; border: 1.5px solid #D1D5DB; }
+.coach-tag-lola  { background: #FEFCE8; color: #CA8A04; border: 1.5px solid #FDE68A; }
 
 .tag-filter-btn {
   padding: 5px 14px; border-radius: 99px;
@@ -340,7 +340,7 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
 .tag-filter-btn.active         { background: var(--black); color: var(--white); border-color: var(--black); }
 .tag-filter-btn.tag-filter-ben.active   { background: #0E7490; color: #fff; border-color: #0E7490; }
 .tag-filter-btn.tag-filter-chris.active { background: #EC4899; color: #fff; border-color: #EC4899; }
-.tag-filter-btn.tag-filter-lola.active  { background: #4B5563; color: #fff; border-color: #4B5563; }
+.tag-filter-btn.tag-filter-lola.active  { background: #CA8A04; color: #fff; border-color: #CA8A04; }
 
 .tag-pill-btn {
   padding: 7px 18px; border-radius: 99px;
@@ -350,7 +350,7 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
 }
 .tag-pill-btn.active-ben   { background: #ECFEFF; color: #0E7490; border-color: #0E7490; }
 .tag-pill-btn.active-chris { background: #FDF2F8; color: #EC4899; border-color: #EC4899; }
-.tag-pill-btn.active-lola  { background: #F3F4F6; color: #4B5563; border-color: #4B5563; }
+.tag-pill-btn.active-lola  { background: #FEFCE8; color: #CA8A04; border-color: #CA8A04; }
 
 /* ── RECAP CARD ── */
 .recap-card {
