@@ -81,31 +81,42 @@ const PlanGenerator = {
   // Arrondit à un multiple propre
   round(qty, step) { return Math.max(step, Math.round(qty / step) * step); },
 
-  // Génère un repas principal (déjeuner ou dîner) — cible macros précisément
+  // Génère un repas principal (déjeuner ou dîner) — calcul 2 passes
   mainMeal(targetP, targetG, creneau, opts, isLunch) {
     const items = [];
 
-    // Huile d'olive pour la cuisson (toujours 10g)
-    items.push(this.item("Huile d'olive", 10, creneau));
-
-    // Source de protéine — 90% de targetP depuis la source principale (10% vient des légumes)
     const proteinSrc = opts.vegetarien
       ? (isLunch ? 'Tofu ferme' : 'Lentilles cuites')
       : (isLunch ? 'Poulet blanc cuit' : 'Saumon');
+    const starchSrc = isLunch ? 'Riz blanc cuit'   : 'Patate douce cuite';
+    const vegSrc    = isLunch ? 'Brocoli cuit'      : 'Haricots verts';
 
     const fp = this.FOODS[proteinSrc];
-    const protQty = this.round((targetP * 0.9) / (fp.p / 100), 10);
+    const fs = this.FOODS[starchSrc];
+    const fv = this.FOODS[vegSrc];
+
+    // Passe 1 — estimer les protéines apportées par le féculent et le légume
+    // (on ne peut pas les connaître exactement avant d'avoir calculé les quantités,
+    //  donc on les estime à partir des cibles glucides)
+    const vegP         = 150 * fv.p / 100;
+    const vegG         = 150 * fv.g / 100;
+    const estStarchQty = Math.max(50, (targetG - vegG) / (fs.g / 100));
+    const estStarchP   = estStarchQty * fs.p / 100;
+
+    // Source protéique : seulement les protéines manquantes après féculent + légume
+    const protNeeded = Math.max(10, targetP - vegP - estStarchP);
+    const protQty    = this.round(protNeeded / (fp.p / 100), 10);
+
+    // Huile d'olive (cuisson, toujours 10g)
+    items.push(this.item("Huile d'olive", 10, creneau));
     items.push(this.item(proteinSrc, protQty, creneau));
 
-    // Féculent — cible targetG en déduisant glucides déjà présents (arrondi 10g)
-    const starchSrc = isLunch ? 'Riz blanc cuit' : 'Patate douce cuite';
-    const fs = this.FOODS[starchSrc];
-    const usedG = items.reduce((s, i) => s + i.glucides, 0);
-    const starchQty = this.round(Math.max(50, (targetG - usedG) / (fs.g / 100)), 10);
+    // Passe 2 — glucides réels restants → quantité exacte de féculent
+    const usedG     = items.reduce((s, i) => s + i.glucides, 0);
+    const starchQty = this.round(Math.max(50, (targetG - usedG - vegG) / (fs.g / 100)), 10);
     items.push(this.item(starchSrc, starchQty, creneau));
 
-    // Légume (portion fixe 150g)
-    const vegSrc = isLunch ? 'Brocoli cuit' : 'Haricots verts';
+    // Légume fixe 150g
     items.push(this.item(vegSrc, 150, creneau));
 
     return items;
