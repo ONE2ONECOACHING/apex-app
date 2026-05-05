@@ -2,7 +2,7 @@
 
 const CoachProgTemplateEditPage = {
   templateId:          null,
-  templateData:        { nom: '', description: '', nb_semaines: 4 },
+  templateData:        { nom: '', description: '', nb_semaines: 4, tag: null },
   seances:             [],
   _allExos:            [],
   _picking:            null,  // index séance pour ajout
@@ -125,6 +125,7 @@ const CoachProgTemplateEditPage = {
           nom:         tpl.nom,
           description: tpl.description || '',
           nb_semaines: tpl.nb_semaines,
+          tag:         tpl.tag || null,
         };
         this.seances = (tpl.seances || []).map(s => ({
           id:          s.id,
@@ -145,6 +146,14 @@ const CoachProgTemplateEditPage = {
       document.getElementById('tplEditContent').innerHTML =
         `<div class="alert alert-error">Erreur de chargement : ${e.message}</div>`;
     }
+  },
+
+  _setTag(tag) {
+    this.templateData.tag = (this.templateData.tag === tag) ? null : tag;
+    ['men','women','home'].forEach(t => {
+      const btn = document.getElementById('tplTag_' + t);
+      if (btn) btn.className = 'tag-pill-btn' + (this.templateData.tag === t ? ' active-ben' : '');
+    });
   },
 
   // ── Sync DOM → state (avant toute action structurelle et avant save) ────────
@@ -242,6 +251,15 @@ const CoachProgTemplateEditPage = {
             <div class="form-label">Description (optionnel)</div>
             <input class="input" id="tplDesc" value="${d.description.replace(/"/g,'&quot;')}"
               placeholder="ex : Hypertrophie, 3 séances/semaine">
+          </div>
+          <div style="min-width:200px;">
+            <div class="form-label">Tag</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              ${[{v:'men',l:'🔵 MEN'},{v:'women',l:'🩷 WOMEN'},{v:'home',l:'🏠 HOME'}].map(t => `
+                <button type="button" id="tplTag_${t.v}"
+                  class="tag-pill-btn${d.tag===t.v?' active-ben':''}"
+                  onclick="CoachProgTemplateEditPage._setTag('${t.v}')">${t.l}</button>`).join('')}
+            </div>
           </div>`}
           <button class="btn btn-primary" id="tplSaveBtn"
             onclick="CoachProgTemplateEditPage.save()"
@@ -816,6 +834,7 @@ const CoachProgTemplateEditPage = {
           nom,
           description: this.templateData.description.trim() || null,
           nb_semaines: parseInt(this.templateData.nb_semaines) || 4,
+          tag:         this.templateData.tag || null,
           coach_id:    profile.id,
           actif:       true,
         };
