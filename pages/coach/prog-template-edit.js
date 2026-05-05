@@ -255,7 +255,7 @@ const CoachProgTemplateEditPage = {
           <div style="min-width:200px;">
             <div class="form-label">Tag</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              ${[{v:'men',l:'🔵 MEN'},{v:'women',l:'🩷 WOMEN'},{v:'home',l:'🏠 HOME'}].map(t => `
+              ${[{v:'men',l:'MEN'},{v:'women',l:'WOMEN'},{v:'home',l:'HOME'}].map(t => `
                 <button type="button" id="tplTag_${t.v}"
                   class="tag-pill-btn${d.tag===t.v?' active-ben':''}"
                   onclick="CoachProgTemplateEditPage._setTag('${t.v}')">${t.l}</button>`).join('')}

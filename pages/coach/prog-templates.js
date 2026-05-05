@@ -51,9 +51,9 @@ const CoachProgTemplatesPage = {
     if (!el) return;
 
     const tagDefs = [
-      { v: 'men',   l: '🔵 MEN' },
-      { v: 'women', l: '🩷 WOMEN' },
-      { v: 'home',  l: '🏠 HOME' },
+      { v: 'men',   l: 'MEN' },
+      { v: 'women', l: 'WOMEN' },
+      { v: 'home',  l: 'HOME' },
     ];
 
     const filtered = this.activeTag
