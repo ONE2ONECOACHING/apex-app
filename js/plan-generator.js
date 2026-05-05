@@ -11,7 +11,7 @@ const PlanGenerator = {
     'Thon en boite':      { cal: 116, p: 26,  g: 0,   l: 1,  f: 0,  mode: 'g' },
     'Boeuf haché 5%':     { cal: 137, p: 21,  g: 0,   l: 5,  f: 0,  mode: 'g' },
     'Blanc de dinde':     { cal: 135, p: 30,  g: 0,   l: 1,  f: 0,  mode: 'g' },
-    'Oeuf entier':        { cal: 78,  p: 6,   g: 0,   l: 5,  f: 0,  mode: 'unit', perG: 60 },
+    'Oeuf entier':        { cal: 155, p: 13,  g: 1,   l: 11, f: 0,  mode: 'unit', perG: 60 },
     'Bacon':              { cal: 541, p: 37,  g: 1,   l: 42, f: 0,  mode: 'g' },
 
     // ── Protéines végétales ───────────────────────────────────────────────
@@ -39,7 +39,7 @@ const PlanGenerator = {
     'Yaourt grec 0%':     { cal: 57,  p: 10,  g: 4,   l: 0,  f: 0,  mode: 'g' },
 
     // ── Suppléments ───────────────────────────────────────────────────────
-    'Whey protéine':      { cal: 120, p: 24,  g: 3,   l: 2,  f: 0,  mode: 'g' },
+    'Whey protéine':      { cal: 400, p: 80,  g: 8,   l: 6,  f: 0,  mode: 'g' },
 
     // ── Fruits ────────────────────────────────────────────────────────────
     'Banane':             { cal: 89,  p: 1,   g: 23,  l: 0,  f: 3,  mode: 'unit', perG: 120 },
