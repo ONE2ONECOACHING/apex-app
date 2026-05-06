@@ -567,7 +567,7 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
 .onb-btn { width: 100%; max-width: 360px; height: 52px; font-size: 16px; margin-top: 0.5rem; }
 
 /* ── TUTORIAL ── */
-.tuto-screen { justify-content: flex-start; padding-top: 2rem; }
+.tuto-screen { justify-content: flex-start; padding-top: 2rem; overflow-x: hidden; }
 .tuto-title { font-size: 24px !important; margin-bottom: 0.75rem; }
 .tuto-body { width: 100%; max-width: 360px; text-align: left; margin-bottom: 1rem; }
 .tuto-text { font-size: 15px; color: var(--gray); line-height: 1.65; margin: 0; }
@@ -624,10 +624,11 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
   border-color: var(--gold); color: var(--gold); background: var(--gold-light);
 }
 .tuto-btn-row {
-  display: flex; gap: 10px; width: 100%; max-width: 360px; margin-top: 0.25rem;
+  display: flex; flex-direction: column; gap: 8px;
+  width: 100%; max-width: 360px; margin-top: 0.5rem;
 }
-.tuto-btn-secondary { flex: 0 0 auto; height: 52px; padding: 0 18px; }
-.tuto-btn-primary   { flex: 1; height: 52px; font-size: 15px; }
+.tuto-btn-primary   { width: 100%; height: 52px; font-size: 15px; order: 1; }
+.tuto-btn-secondary { width: 100%; height: 46px; order: 2; }
 
 /* ── HABITS LIBRARY ── */
 .hab-lib-scroll {
