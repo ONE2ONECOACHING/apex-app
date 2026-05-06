@@ -1,4 +1,4 @@
-const CACHE = 'apex-v10';
+const CACHE = 'apex-v11';
 
 self.addEventListener('install', e => {
   self.skipWaiting();

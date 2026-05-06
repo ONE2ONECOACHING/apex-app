@@ -26,12 +26,7 @@ const MesurePage = {
 
       <div id="mesureContent"><div class="spinner" style="margin-top:3rem;"></div></div>
 
-      <nav class="nav-bottom"><div class="nav-inner">
-        <a class="nav-item" href="#dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
-        <a class="nav-item" href="#logbook"><span class="nav-icon">🥗</span><span class="nav-label">Nutrition</span></a>
-        <a class="nav-item" href="#entrainement"><span class="nav-icon">💪</span><span class="nav-label">Entraînement</span></a>
-        <a class="nav-item active" href="#mesure"><span class="nav-icon">📏</span><span class="nav-label">Mesures</span></a>
-      </div></nav>`;
+      ${clientNav('mesure')}`;
   },
 
   async init() {

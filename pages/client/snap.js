@@ -16,7 +16,6 @@ const SnapPage = {
   _offDebounce: null,
   _labelBase64: null,
   _labelData: null,
-  _barcodeStream: null,
   contexts: ['Restaurant', 'Maison', 'Travail / Traiteur', 'Fast-food', 'Sport'],
 
   render() {
@@ -56,9 +55,6 @@ const SnapPage = {
             oninput="SnapPage.baseSearch(this)" autocomplete="off">
           <div class="search-results" id="baseResults"></div>
         </div>
-        <button onclick="SnapPage.startBarcode()" style="width:100%;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:center;gap:7px;height:38px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;font-size:13px;color:var(--gray);cursor:pointer;">
-          <span>📷</span> Scanner un code-barre
-        </button>
 
         <div id="baseSelected" style="display:none;">
           <div class="card" style="margin-bottom:0.5rem;">
@@ -164,12 +160,7 @@ const SnapPage = {
       </div>
       <div id="snapResult" style="display:none;"></div>
 
-      <nav class="nav-bottom"><div class="nav-inner">
-        <a class="nav-item" href="#dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
-        <a class="nav-item active" href="#logbook"><span class="nav-icon">🥗</span><span class="nav-label">Nutrition</span></a>
-        <a class="nav-item" href="#entrainement"><span class="nav-icon">💪</span><span class="nav-label">Entraînement</span></a>
-        <a class="nav-item" href="#mesure"><span class="nav-icon">📏</span><span class="nav-label">Mesures</span></a>
-      </div></nav>`;
+      ${clientNav('logbook')}`;
   },
 
   init() {
@@ -624,188 +615,6 @@ const SnapPage = {
   closeSaveModal() {
     document.getElementById('saveModal').style.display = 'none';
     Router.navigate('logbook');
-  },
-
-  // ── CODE-BARRE ────────────────────────────────────────────────────────────────
-
-  startBarcode() {
-    if ('BarcodeDetector' in window) {
-      this._openBarcodeModal();
-      return;
-    }
-    // iOS/Safari : charger le polyfill ZXing avant d'ouvrir la modal
-    const tip = document.createElement('div');
-    tip.id = 'barcodeLoadingTip';
-    tip.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 22px;border-radius:20px;font-size:13px;z-index:3000;white-space:nowrap;';
-    tip.textContent = '⏳ Chargement du scanner…';
-    document.body.appendChild(tip);
-    this._loadBarcodePolyfill().then(() => {
-      tip.remove();
-      this._openBarcodeModal();
-    });
-  },
-
-  _loadBarcodePolyfill() {
-    if ('BarcodeDetector' in window) return Promise.resolve();
-    return new Promise(resolve => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@undecaf/barcode-detector-polyfill@0.9.21/dist/iife/index.js';
-      s.onload = () => {
-        try {
-          // Le bundle IIFE expose le namespace global `barcodeDetectorPolyfill`
-          if (typeof barcodeDetectorPolyfill !== 'undefined' && barcodeDetectorPolyfill.BarcodeDetectorPolyfill) {
-            window.BarcodeDetector = barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
-          }
-        } catch (_) {}
-        resolve();
-      };
-      s.onerror = () => resolve(); // Si le CDN échoue, on continue en mode dégradé
-      document.head.appendChild(s);
-    });
-  },
-
-  _openBarcodeModal() {
-    const hasBD = 'BarcodeDetector' in window;
-    const modal = document.createElement('div');
-    modal.id = 'barcodeModal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;';
-    modal.innerHTML = `
-      <div style="color:white;text-align:center;width:100%;max-width:400px;">
-        <div style="font-size:16px;font-weight:700;margin-bottom:1rem;">📷 Scanner un code-barre</div>
-        ${hasBD ? `
-          <video id="barcodeVideo" autoplay playsinline muted
-            style="width:100%;border-radius:10px;margin-bottom:0.75rem;max-height:260px;object-fit:cover;background:#000;"></video>
-          <div id="barcodeScanStatus" style="font-size:13px;color:#aaa;margin-bottom:0.75rem;">Pointez la caméra sur le code-barre</div>
-        ` : `
-          <div style="font-size:13px;color:#aaa;margin-bottom:1rem;">
-            Scanne via l'appareil photo ou saisis le code manuellement ↓
-          </div>
-          <label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:46px;
-            background:rgba(255,255,255,0.1);border:1.5px dashed rgba(255,255,255,0.35);border-radius:10px;
-            font-size:13px;color:white;cursor:pointer;margin-bottom:0.85rem;">
-            📷 Photographier le code-barre
-            <input type="file" accept="image/*" capture="environment" id="barcodeCaptureInput"
-              style="display:none;" onchange="SnapPage._onBarcodeCaptureFile(event)">
-          </label>
-        `}
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:0.75rem;">
-          <input class="input" id="barcodeManualInput" placeholder="Code-barre (EAN-13…)" type="text" inputmode="numeric"
-            style="flex:1;" onkeydown="if(event.key==='Enter')SnapPage._onManualBarcode()">
-          <button class="btn btn-primary" style="height:44px;white-space:nowrap;" onclick="SnapPage._onManualBarcode()">OK</button>
-        </div>
-        <div id="barcodeError" style="color:#E05252;font-size:13px;min-height:20px;margin-bottom:0.75rem;"></div>
-        <button class="btn btn-secondary" style="width:100%;" onclick="SnapPage.stopBarcode()">Fermer</button>
-      </div>`;
-    document.body.appendChild(modal);
-
-    if (hasBD) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(stream => {
-          this._barcodeStream = stream;
-          const video = document.getElementById('barcodeVideo');
-          if (!video) { this.stopBarcode(); return; }
-          video.srcObject = stream;
-          const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
-          const scan = async () => {
-            if (!document.getElementById('barcodeModal')) return;
-            try {
-              const codes = await detector.detect(video);
-              if (codes.length > 0) { await this._onBarcodeDetected(codes[0].rawValue); return; }
-            } catch (_) {}
-            requestAnimationFrame(scan);
-          };
-          video.onloadeddata = () => requestAnimationFrame(scan);
-        })
-        .catch(() => {
-          const s = document.getElementById('barcodeScanStatus');
-          if (s) s.textContent = '⚠️ Accès caméra refusé — utilise la saisie manuelle ci-dessous.';
-        });
-    } else {
-      // Auto-focus le champ manuel si pas de caméra
-      setTimeout(() => document.getElementById('barcodeManualInput')?.focus(), 400);
-    }
-  },
-
-  async _onBarcodeCaptureFile(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const errEl = document.getElementById('barcodeError');
-    if (errEl) errEl.textContent = '⏳ Décodage en cours…';
-    try {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
-      URL.revokeObjectURL(url);
-      if ('BarcodeDetector' in window) {
-        const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
-        const codes = await detector.detect(img);
-        if (codes.length > 0) {
-          if (errEl) errEl.textContent = '';
-          await this._onBarcodeDetected(codes[0].rawValue);
-          return;
-        }
-      }
-      if (errEl) errEl.textContent = 'Code-barre non reconnu — essaie la saisie manuelle.';
-    } catch (_) {
-      if (errEl) errEl.textContent = 'Erreur de décodage — essaie la saisie manuelle.';
-    }
-  },
-
-  stopBarcode() {
-    if (this._barcodeStream) {
-      this._barcodeStream.getTracks().forEach(t => t.stop());
-      this._barcodeStream = null;
-    }
-    const modal = document.getElementById('barcodeModal');
-    if (modal) modal.remove();
-  },
-
-  async _onManualBarcode() {
-    const code = document.getElementById('barcodeManualInput')?.value.trim();
-    if (!code) return;
-    await this._onBarcodeDetected(code);
-  },
-
-  async _onBarcodeDetected(code) {
-    const errEl    = document.getElementById('barcodeError');
-    const statusEl = document.getElementById('barcodeScanStatus');
-    if (statusEl) statusEl.textContent = `Code : ${code} — Recherche…`;
-    if (errEl)    errEl.textContent = '';
-    try {
-      const resp = await fetch(
-        `https://world.openfoodfacts.org/api/v0/product/${code}.json`,
-        { signal: AbortSignal.timeout(7000) }
-      );
-      const data = await resp.json();
-      if (data.status !== 1 || !data.product) {
-        if (errEl) errEl.textContent = 'Produit introuvable dans Open Food Facts.';
-        if (statusEl) statusEl.textContent = 'Pointez la caméra sur le code-barre';
-        return;
-      }
-      const p = data.product;
-      const n = p.nutriments || {};
-      const product = {
-        nom: p.product_name || p.product_name_fr || 'Produit',
-        calories:  Math.round(n['energy-kcal_100g'] || 0),
-        proteines: Math.round(n['proteins_100g']       || 0),
-        glucides:  Math.round(n['carbohydrates_100g']  || 0),
-        lipides:   Math.round(n['fat_100g']            || 0),
-        mode: 'weight', source: 'off'
-      };
-      this.stopBarcode();
-      // Injecter dans le mode Base
-      this._baseSelected = product;
-      this._baseCache.unshift(product);
-      document.getElementById('baseSearchInput').value = product.nom;
-      document.getElementById('baseQty').value = 100;
-      document.getElementById('baseQtyUnit').textContent = 'g';
-      document.getElementById('baseSelectedName').textContent = product.nom;
-      document.getElementById('baseSelected').style.display = 'block';
-      this.updateBasePreview();
-    } catch (e) {
-      if (errEl) errEl.textContent = 'Erreur de recherche. Vérifie ta connexion.';
-      if (statusEl) statusEl.textContent = 'Pointez la caméra sur le code-barre';
-    }
   },
 
   // ── MODE ÉTIQUETTE ────────────────────────────────────────────────────────────

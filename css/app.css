@@ -566,6 +566,69 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
 }
 .onb-btn { width: 100%; max-width: 360px; height: 52px; font-size: 16px; margin-top: 0.5rem; }
 
+/* ── TUTORIAL ── */
+.tuto-screen { justify-content: flex-start; padding-top: 2rem; }
+.tuto-title { font-size: 24px !important; margin-bottom: 0.75rem; }
+.tuto-body { width: 100%; max-width: 360px; text-align: left; margin-bottom: 1rem; }
+.tuto-text { font-size: 15px; color: var(--gray); line-height: 1.65; margin: 0; }
+.tuto-alert {
+  background: var(--gold-light); border: 1.5px solid var(--gold);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 14px; color: var(--black); line-height: 1.55; margin-top: 12px;
+}
+.tuto-list {
+  list-style: none; margin: 0; padding: 0;
+}
+.tuto-list li {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; color: var(--gray); line-height: 1.45;
+}
+.tuto-list li:last-child { border-bottom: none; }
+.tuto-list-icon { font-size: 20px; line-height: 1; flex-shrink: 0; margin-top: 1px; }
+
+.tuto-nav-hint {
+  width: 100%; max-width: 360px;
+  background: var(--bg); border: 1.5px solid var(--border-solid);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  margin-bottom: 1rem;
+}
+.tuto-nav-hint-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--gray-muted); font-weight: 700; margin-bottom: 8px;
+}
+.tuto-nav-preview { display: flex; justify-content: space-around; }
+.tuto-nav-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 5px 6px; border-radius: 8px; min-width: 46px;
+  opacity: 0.3; transition: all 0.2s;
+}
+.tuto-nav-item.active {
+  opacity: 1; background: var(--gold-light);
+  box-shadow: 0 2px 8px rgba(0,74,173,0.13);
+}
+.tuto-nav-item-icon { font-size: 18px; line-height: 1; }
+.tuto-nav-item-label {
+  font-size: 10px; font-weight: 600; color: var(--gray-muted); white-space: nowrap;
+}
+.tuto-nav-item.active .tuto-nav-item-label { color: var(--gold); }
+.tuto-subnav-preview {
+  display: flex; gap: 6px; margin-top: 8px; justify-content: center;
+}
+.tuto-subnav-item {
+  font-size: 12px; font-weight: 600; padding: 4px 14px;
+  border-radius: 99px; border: 1.5px solid var(--border-solid);
+  color: var(--gray-muted); background: var(--white);
+}
+.tuto-subnav-item.active {
+  border-color: var(--gold); color: var(--gold); background: var(--gold-light);
+}
+.tuto-btn-row {
+  display: flex; gap: 10px; width: 100%; max-width: 360px; margin-top: 0.25rem;
+}
+.tuto-btn-secondary { flex: 0 0 auto; height: 52px; padding: 0 18px; }
+.tuto-btn-primary   { flex: 1; height: 52px; font-size: 15px; }
+
 /* ── HABITS LIBRARY ── */
 .hab-lib-scroll {
   display: flex; gap: 6px;

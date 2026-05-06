@@ -236,7 +236,7 @@ const OnboardingPage = {
       await db.setActivites(this.profile.id, this._activites);
       Object.assign(Router.userProfile, updates);
       await db.logPoids(this.profile.id, todayStr(), updates.poids).catch(() => {});
-      window.location.hash = '#dashboard';
+      window.location.hash = '#tutorial';
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = 'C\'est parti 🔥'; }
       document.getElementById('onbErr').innerHTML = '<div class="alert alert-error">Erreur : ' + e.message + '</div>';
