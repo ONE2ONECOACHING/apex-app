@@ -630,6 +630,21 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
 .tuto-btn-primary   { width: 100%; height: 52px; font-size: 15px; order: 1; }
 .tuto-btn-secondary { width: 100%; height: 46px; order: 2; }
 
+/* ── MENU RESTAURANT ── */
+.menu-upload-zone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 2rem 1rem;
+  border: 2px dashed var(--border-solid); border-radius: var(--radius);
+  background: var(--white); cursor: pointer; text-align: center;
+  transition: all 0.18s;
+}
+.menu-upload-zone:hover, .menu-upload-zone:active {
+  border-color: var(--gold); background: var(--gold-light);
+}
+.menu-upload-icon { font-size: 40px; line-height: 1; }
+.menu-upload-label { font-size: 15px; font-weight: 700; color: var(--black); }
+.menu-upload-sub   { font-size: 13px; color: var(--gray-muted); }
+
 /* ── HABITS LIBRARY ── */
 .hab-lib-scroll {
   display: flex; gap: 6px;

@@ -33,6 +33,17 @@ const OutilsPage = {
           </div>
         </div>
 
+        <div class="card card-tap" onclick="window.location.hash='#menu'" style="cursor:pointer;margin-top:0;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="font-size:32px;line-height:1;">🍽️</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:15px;margin-bottom:2px;">Carte restaurant</div>
+              <div style="font-size:13px;color:var(--gray-light);">Photo de la carte → l'IA te recommande les meilleurs plats</div>
+            </div>
+            <div style="color:var(--gray-muted);font-size:18px;">›</div>
+          </div>
+        </div>
+
         <div class="dash-section-title" style="margin-top:1.75rem;">Bientôt disponible</div>
 
         <div class="card" style="opacity:0.5;pointer-events:none;">

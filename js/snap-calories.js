@@ -108,6 +108,69 @@ Si le tableau n'est pas lisible ou absent : {"error":"Tableau nutritionnel illis
     return parsed;
   },
 
+  // Analyser la carte d'un restaurant et recommander les meilleurs plats
+  async analyzeMenu(base64Image, profile) {
+    let prompt = `Tu es un coach nutrition expert. Voici la photo de la carte d'un restaurant.\n\n`;
+
+    if (profile) {
+      const obj = { perte: 'perte de poids', maintien: 'maintien', masse: 'prise de masse' };
+      prompt += `PROFIL NUTRITIONNEL DU CLIENT :\n`;
+      prompt += `- Objectif : ${obj[profile.objectif] || profile.objectif || 'non défini'}\n`;
+      if (profile.calories_cible) prompt += `- Calories cible : ${profile.calories_cible} kcal/jour\n`;
+      if (profile.proteines_cible) prompt += `- Protéines : ${profile.proteines_cible}g | Glucides : ${profile.glucides_cible}g | Lipides : ${profile.lipides_cible}g\n`;
+      prompt += `\n`;
+    }
+
+    prompt += `Analyse cette carte et recommande les 2 ou 3 meilleurs plats selon l'objectif.
+Si tu ne vois pas de macros sur la carte, estime-les en fonction du type de plat.
+
+Réponds UNIQUEMENT en JSON valide, sans texte autour, sans backticks :
+{
+  "restaurant": "Type de restaurant détecté (ex: Brasserie française, Sushi, etc.)",
+  "top": [
+    {
+      "nom": "Nom exact du plat",
+      "raison": "Pourquoi c'est un bon choix (1 phrase)",
+      "macros": "Estimation courte (ex: ~500 kcal · protéines élevées)",
+      "best": true
+    }
+  ],
+  "a_eviter": {
+    "nom": "Nom d'un plat à éviter",
+    "raison": "Raison courte (ex: très riche en graisses)"
+  },
+  "conseil": "Conseil pratique pour ce repas au restaurant (1 phrase)"
+}
+
+Si la photo n'est pas une carte de restaurant : {"error": "Je ne vois pas de carte de restaurant dans cette photo."}`;
+
+    const res = await fetch(APP_CONFIG.PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: APP_CONFIG.AI_MODEL,
+        max_tokens: 900,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Image } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!res.ok) {
+      const ed = await res.json();
+      throw new Error(ed.error?.message || 'Erreur ' + res.status);
+    }
+    const data = await res.json();
+    const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const parsed = extractJSON(raw);
+    if (parsed.error) throw new Error(parsed.error);
+    return parsed;
+  },
+
   // Générer le récap de fin de journée
   async generateDailyRecap(planMacros, consumed, entries) {
     const prompt = `Tu es un coach nutrition bienveillant et direct. Fais le récap de la journée de ton client.
