@@ -24,7 +24,10 @@ const DashboardPage = {
     if (!profile) return;
     if (profile.role === 'coach') { window.location.hash = '#coach-clients'; return; }
 
-    this.profile = profile;
+    this.profile         = profile;
+    this.habitudes       = [];
+    this.habitudesJournal = [];
+    this.pendingBilans   = [];
     document.getElementById('dashGreeting').textContent = 'Salut ' + (profile.prenom || '') + ' 👊';
 
     try {

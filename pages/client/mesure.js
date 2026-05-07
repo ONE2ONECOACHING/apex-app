@@ -33,6 +33,12 @@ const MesurePage = {
     const profile = Router.userProfile;
     if (!profile) return;
     if (profile.role === 'coach') { window.location.hash = '#coach-clients'; return; }
+    // Reset pour éviter d'afficher les données d'une session précédente
+    this.currentDate   = todayStr();
+    this.mesure        = null;
+    this.history       = [];
+    this.photoUrls     = [];
+    this._selectedMens = null;
     this.profileId = profile.id;
     this.updateDateLabel();
     await this.loadAll();

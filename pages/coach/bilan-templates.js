@@ -22,6 +22,11 @@ const CoachBilanTemplatesPage = {
   },
 
   async init() {
+    // Reset état pour éviter les fuites entre sessions
+    this.templates = [];
+    this._tpl      = null;
+    this._editIdx  = null;
+
     const p = Router.userProfile;
     if (!p || p.role !== 'coach') { window.location.hash = '#coach-clients'; return; }
     try {

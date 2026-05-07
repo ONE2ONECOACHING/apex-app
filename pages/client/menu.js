@@ -30,6 +30,8 @@ const MenuPage = {
   },
 
   _renderUpload() {
+    // Révoquer l'URL blob si l'utilisateur revient à l'écran d'upload
+    if (this._previewUrl) { URL.revokeObjectURL(this._previewUrl); this._previewUrl = null; }
     document.getElementById('menuContent').innerHTML = `
       <div style="text-align:center;padding:1rem 0 0.5rem;">
         <div style="font-size:40px;margin-bottom:0.5rem;">🍽️</div>
@@ -62,6 +64,8 @@ const MenuPage = {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Bug 31 — révoquer l'URL précédente avant d'en créer une nouvelle
+    if (this._previewUrl) { URL.revokeObjectURL(this._previewUrl); this._previewUrl = null; }
     this._previewUrl = URL.createObjectURL(file);
     this._renderPreview();
 

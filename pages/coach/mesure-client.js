@@ -21,6 +21,12 @@ const CoachMesureClientPage = {
   },
 
   async init() {
+    // Reset état pour éviter les fuites entre clients
+    this.clientId      = null;
+    this.clientName    = '';
+    this.history       = [];
+    this._selectedMens = null;
+
     const profile = Router.userProfile;
     if (!profile || profile.role !== 'coach') { window.location.hash = '#login'; return; }
 

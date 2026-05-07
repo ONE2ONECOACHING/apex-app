@@ -30,6 +30,7 @@ const CoachClientsPage = {
   },
 
   async init() {
+    this.activeFilter = 'all'; // Reset filtre pour éviter un filtre persistant entre sessions
     try {
       this._mondayStr = this._getMondayStr();
 

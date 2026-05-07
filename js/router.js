@@ -44,7 +44,7 @@ const Router = {
     const hash = fullHash.split('?')[0];
 
     // Retirer coach-wide seulement si on quitte les pages coach (évite le flash de layout)
-    const coachHashes = ['coach-clients','coach-client-edit','coach-plan-edit','coach-journal','coach-habits-edit','coach-bilan-templates','coach-bilan-client','coach-mesure-client','coach-exercices','coach-prog-templates','coach-prog-template-edit','coach-client-programme','coach-training-client'];
+    const coachHashes = ['coach-clients','coach-client-edit','coach-plan-edit','coach-journal','coach-journal-view','coach-habits-edit','coach-bilan-templates','coach-bilan-client','coach-mesure-client','coach-exercices','coach-prog-templates','coach-prog-template-edit','coach-client-programme','coach-training-client'];
     if (!coachHashes.includes(hash)) {
       document.body.classList.remove('coach-wide');
     }
@@ -98,7 +98,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
         window.location.hash = '#coach-clients';
@@ -129,7 +129,8 @@ const Router = {
       case 'coach-clients': app.innerHTML = CoachClientsPage.render(); CoachClientsPage.init(); break;
       case 'coach-client-edit': app.innerHTML = CoachClientEditPage.render(); CoachClientEditPage.init(); break;
       case 'coach-plan-edit': app.innerHTML = CoachPlanEditPage.render(); CoachPlanEditPage.init(); break;
-      case 'coach-journal': app.innerHTML = CoachJournalPage.render(); CoachJournalPage.init(); break;
+      case 'coach-journal':
+      case 'coach-journal-view': app.innerHTML = CoachJournalPage.render(); CoachJournalPage.init(); break;
       case 'coach-habits-edit': app.innerHTML = CoachHabitsEditPage.render(); CoachHabitsEditPage.init(); break;
       case 'coach-bilan-templates': app.innerHTML = CoachBilanTemplatesPage.render(); CoachBilanTemplatesPage.init(); break;
       case 'coach-bilan-client': app.innerHTML = CoachBilanClientPage.render(); CoachBilanClientPage.init(); break;

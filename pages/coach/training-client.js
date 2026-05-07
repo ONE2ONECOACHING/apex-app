@@ -25,6 +25,9 @@ const CoachTrainingClientPage = {
     const params = Router.getParams();
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
 
+    // Reset état pour éviter les fuites entre clients
+    this.client    = null;
+    this._logs     = [];
     this._expanded = null;
 
     try {

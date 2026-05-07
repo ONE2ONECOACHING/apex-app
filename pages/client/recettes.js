@@ -31,6 +31,12 @@ const RecettesPage = {
     const profile = Router.userProfile;
     if (!profile) return;
     if (profile.role === 'coach') { window.location.hash = '#coach-clients'; return; }
+    // Reset pour éviter l'affichage de la dernière recette ouverte ou d'un filtre persistant
+    this.recettes      = [];
+    this.categorie     = 'all';
+    this.targetKcal    = null;
+    this.plusProteines = false;
+    this._openId       = null;
 
     try {
       this.recettes = await db.getRecettes();

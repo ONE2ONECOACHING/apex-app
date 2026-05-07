@@ -19,6 +19,11 @@ const CoachClientEditPage = {
   },
 
   async init() {
+    // Reset état pour éviter les fuites entre clients
+    this.client      = null;
+    this.activites   = [];
+    this.selectedTag = null;
+
     const params = Router.getParams();
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
 

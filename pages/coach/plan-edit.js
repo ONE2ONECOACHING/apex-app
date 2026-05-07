@@ -60,6 +60,10 @@ const CoachPlanEditPage = {
   },
 
   renderEditor() {
+    // Bug 26 — préserver les notes saisies avant chaque re-render
+    const notesEl = document.getElementById('peNotes');
+    if (notesEl && this.currentPlan) this.currentPlan.notes = notesEl.value;
+
     const c = this.client;
     const p = this.currentPlan;
 
@@ -252,7 +256,8 @@ const CoachPlanEditPage = {
   updateQty(idx, newQty) {
     const r = this.repas[idx];
     const a = r._aliment;
-    const qty = parseFloat(newQty) || 0;
+    const qty = parseFloat(newQty);
+    if (isNaN(qty) || qty < 0) return; // saisie invalide → on ignore
 
     if (a) {
       // Aliment connu (ajouté pendant cette session) → recalcul depuis les valeurs /100g
@@ -263,8 +268,9 @@ const CoachPlanEditPage = {
       r.glucides  = Math.round((a.glucides  || 0) * factor * 10) / 10;
       r.lipides   = Math.round((a.lipides   || 0) * factor * 10) / 10;
       r.fibres    = Math.round((a.fibres    || 0) * factor * 10) / 10;
-    } else if (r.quantite > 0) {
+    } else if (r.quantite > 0 && qty > 0) {
       // Plan chargé depuis la DB : recalcul par ratio nouvelle/ancienne quantité
+      // Guard : qty > 0 ET r.quantite > 0 → pas de division par zéro, pas de ratio nul
       const ratio = qty / r.quantite;
       r.calories  = Math.round(r.calories          * ratio * 10) / 10;
       r.proteines = Math.round(r.proteines         * ratio * 10) / 10;

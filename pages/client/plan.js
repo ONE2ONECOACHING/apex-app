@@ -94,7 +94,10 @@ const PlanPage = {
   async init() {
     const profile = Router.userProfile;
     if (!profile) return;
-    this._replacements = {};
+    this._replacements  = {};
+    this._replaceTarget = null;
+    this.plan           = null;
+    this.repas          = [];
     try {
       this.plan  = await db.getActivePlan(profile.id);
       if (this.plan) this.repas = await db.getPlanRepas(this.plan.id);

@@ -167,9 +167,22 @@ const SnapPage = {
     const params = Router.getParams();
     if (params.creneau) this.creneau = params.creneau;
     if (params.date) this.date = params.date;
+    else this.date = todayStr(); // reset date au cas où la page est réouverte un autre jour
     this.mode = 'base';
     this._baseSelected = null;
     this._cart = [];
+    // Bug 30 — reset de toutes les propriétés persistantes
+    this.base64       = null;
+    this.result       = null;
+    this._labelBase64 = null;
+    this._labelData   = null;
+    this._pendingSave = null;
+    this.portions     = 1;
+    // Bug 18 — nettoyage du handler click-outside s'il subsistait
+    if (this._outsideHandler) {
+      document.removeEventListener('click', this._outsideHandler);
+      this._outsideHandler = null;
+    }
 
     const select = document.getElementById('snapCreneau');
     if (select) select.value = this.creneau;
@@ -209,13 +222,17 @@ const SnapPage = {
     clearTimeout(this._offDebounce);
     this._offDebounce = setTimeout(() => this._searchOFF(q, local), 450);
 
+    // Bug 18 — un seul handler click-outside actif à la fois
+    if (this._outsideHandler) document.removeEventListener('click', this._outsideHandler);
     setTimeout(() => {
-      document.addEventListener('click', function handler(e) {
+      this._outsideHandler = (e) => {
         if (!resultsEl.contains(e.target) && e.target !== input) {
           resultsEl.classList.remove('show');
-          document.removeEventListener('click', handler);
+          document.removeEventListener('click', this._outsideHandler);
+          this._outsideHandler = null;
         }
-      });
+      };
+      document.addEventListener('click', this._outsideHandler);
     }, 100);
   },
 
@@ -403,9 +420,11 @@ const SnapPage = {
   onFile(e) {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
+    // Bug 32 — révoquer l'URL précédente avant d'en créer une nouvelle
+    if (this._photoUrl) { URL.revokeObjectURL(this._photoUrl); this._photoUrl = null; }
     // Aperçu immédiat
-    const previewUrl = URL.createObjectURL(file);
-    document.getElementById('snapPreviewImg').src = previewUrl;
+    this._photoUrl = URL.createObjectURL(file);
+    document.getElementById('snapPreviewImg').src = this._photoUrl;
     document.getElementById('snapPreview').style.display = 'block';
     document.getElementById('snapUploadZone').style.display = 'none';
     // Compression avant envoi API (limite 5 MB)
@@ -414,6 +433,7 @@ const SnapPage = {
 
   resetPhoto() {
     this.base64 = null;
+    if (this._photoUrl) { URL.revokeObjectURL(this._photoUrl); this._photoUrl = null; }
     document.getElementById('snapPreview').style.display = 'none';
     document.getElementById('snapUploadZone').style.display = 'block';
     document.getElementById('snapFile').value = '';
@@ -622,9 +642,11 @@ const SnapPage = {
   onLabelFile(e) {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
+    // Bug 32 — révoquer l'URL précédente avant d'en créer une nouvelle
+    if (this._labelUrl) { URL.revokeObjectURL(this._labelUrl); this._labelUrl = null; }
     // Aperçu immédiat
-    const previewUrl = URL.createObjectURL(file);
-    document.getElementById('labelPreviewImg').src = previewUrl;
+    this._labelUrl = URL.createObjectURL(file);
+    document.getElementById('labelPreviewImg').src = this._labelUrl;
     document.getElementById('labelPreview').style.display    = 'block';
     document.getElementById('labelUploadZone').style.display = 'none';
     document.getElementById('labelResultDiv').style.display  = 'none';
@@ -636,6 +658,7 @@ const SnapPage = {
   resetLabel() {
     this._labelBase64 = null;
     this._labelData   = null;
+    if (this._labelUrl) { URL.revokeObjectURL(this._labelUrl); this._labelUrl = null; }
     document.getElementById('labelPreview').style.display    = 'none';
     document.getElementById('labelUploadZone').style.display = 'block';
     document.getElementById('labelResultDiv').style.display  = 'none';

@@ -25,6 +25,12 @@ const CoachClientProgrammePage = {
   },
 
   async init() {
+    // Reset état pour éviter les fuites entre clients
+    this.client     = null;
+    this.programme  = null;
+    this.templates  = [];
+    this._assigning = false;
+
     const profile = Router.userProfile;
     if (!profile || profile.role !== 'coach') { window.location.hash = '#login'; return; }
 
@@ -210,7 +216,8 @@ const CoachClientProgrammePage = {
       document.getElementById('cpModal').innerHTML = '';
       this._assigning = false;
 
-      const tabsHtml = document.querySelector('#cpContent .tabs')?.outerHTML || '';
+      // Bug 21 — régénérer les tabs via coachClientNav() au lieu d'extraire du DOM
+      const tabsHtml = coachClientNav(this.client.id, 'coach-client-programme');
       this._render(tabsHtml);
 
       // Notification push au client (silencieuse si non abonné)

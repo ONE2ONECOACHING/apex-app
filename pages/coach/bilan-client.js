@@ -24,6 +24,14 @@ const CoachBilanClientPage = {
   },
 
   async init() {
+    // Reset état pour éviter les fuites entre clients
+    this.clientId       = null;
+    this.client         = null;
+    this.templates      = [];
+    this.assignation    = null;
+    this.instances      = [];
+    this._openInstanceId = null;
+
     const params = Router.getParams();
     this.clientId = params.clientId;
     if (!this.clientId) { window.location.hash = '#coach-clients'; return; }

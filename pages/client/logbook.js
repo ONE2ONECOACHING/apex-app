@@ -38,6 +38,10 @@ const LogbookPage = {
     const profile = Router.userProfile;
     if (!profile) return;
     if (profile.role === 'coach') { window.location.hash = '#coach-clients'; return; }
+    // Reset pour éviter l'affichage d'une date passée si la page est rouverte un autre jour
+    this.currentDate = todayStr();
+    this.plan        = null;
+    this.entries     = [];
     this.updateDateLabel();
     await this.loadData();
   },

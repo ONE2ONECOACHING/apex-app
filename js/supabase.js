@@ -325,10 +325,12 @@ const db = {
   },
 
   async setActivites(profileId, activites) {
-    await getSupabase().from('activites_sportives').delete().eq('profile_id', profileId);
+    const { error: delErr } = await getSupabase().from('activites_sportives').delete().eq('profile_id', profileId);
+    if (delErr) throw delErr;
     if (activites.length > 0) {
       const rows = activites.map(a => ({ profile_id: profileId, sport: a.sport, duree_minutes: a.duree_minutes, met: a.met }));
-      await getSupabase().from('activites_sportives').insert(rows);
+      const { error: insErr } = await getSupabase().from('activites_sportives').insert(rows);
+      if (insErr) throw insErr;
     }
   },
 
@@ -513,7 +515,7 @@ const db = {
       .from('bilan_assignations')
       .select('*, bilan_templates(*)')
       .eq('client_id', clientId)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
   },

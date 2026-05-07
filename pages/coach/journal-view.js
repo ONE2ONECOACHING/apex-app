@@ -27,6 +27,13 @@ const CoachJournalPage = {
   },
 
   async init() {
+    // Reset état pour éviter les fuites entre clients
+    this.clientId    = null;
+    this.client      = null;
+    this.currentDate = todayStr(); // Bug 36 — currentDate restait sur la date du client précédent
+    this.entries     = [];
+    this.plan        = null;
+
     const params = Router.getParams();
     this.clientId = params.clientId;
     if (!this.clientId) { window.location.hash = '#coach-clients'; return; }
@@ -59,8 +66,13 @@ const CoachJournalPage = {
   },
 
   async loadData() {
-    this.entries = await db.getJournalEntries(this.clientId, this.currentDate);
-    this.renderContent();
+    try {
+      this.entries = await db.getJournalEntries(this.clientId, this.currentDate);
+      this.renderContent();
+    } catch (e) {
+      const el = document.getElementById('cjContent');
+      if (el) el.innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+    }
   },
 
   renderContent() {

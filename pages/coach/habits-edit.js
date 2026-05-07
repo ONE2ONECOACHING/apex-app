@@ -38,6 +38,12 @@ const CoachHabitsEditPage = {
   },
 
   async init() {
+    // Reset état pour éviter les fuites entre clients
+    this.clientId  = null;
+    this.client    = null;
+    this.habitudes = [];
+    this._editIdx  = null;
+
     const params = Router.getParams();
     this.clientId = params.clientId;
     if (!this.clientId) { window.location.hash = '#coach-clients'; return; }

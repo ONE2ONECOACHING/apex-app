@@ -526,7 +526,8 @@ const SeanceActivePage = {
         this._phase = 'exercice';
         this._removeBanner();
         this._enableValidateBtn();
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        // Bug 28 — ne vibrer que si l'utilisateur est toujours sur cette page
+        if (navigator.vibrate && Router.currentPage === 'seance-active') navigator.vibrate([200, 100, 200]);
       }
     }, 1000);
   },
