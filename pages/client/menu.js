@@ -102,19 +102,29 @@ const MenuPage = {
     const timer = setInterval(() => { si = (si + 1) % steps.length; const el = document.getElementById('menuStep'); if (el) el.textContent = steps[si]; }, 1600);
 
     try {
-      // Charger le plan actif pour personnaliser les recommandations
+      // Charger le plan actif + logbook du jour pour personnaliser les recommandations
       const profile = Router.userProfile;
       let planProfile = null;
       if (profile) {
         try {
           const plan = await db.getActivePlan(profile.id);
           if (plan) {
+            // Ce que le client a déjà mangé aujourd'hui
+            const entries = await db.getJournalEntries(profile.id, todayStr());
+            const consumed = entries.reduce((acc, e) => ({
+              calories:  acc.calories  + (e.calories             || 0),
+              proteines: acc.proteines + (parseFloat(e.proteines) || 0),
+              glucides:  acc.glucides  + (parseFloat(e.glucides)  || 0),
+              lipides:   acc.lipides   + (parseFloat(e.lipides)   || 0),
+            }), { calories: 0, proteines: 0, glucides: 0, lipides: 0 });
+
             planProfile = {
-              objectif: profile.objectif,
+              objectif:        profile.objectif,
               calories_cible:  plan.calories_cible,
               proteines_cible: plan.proteines_cible,
               glucides_cible:  plan.glucides_cible,
-              lipides_cible:   plan.lipides_cible
+              lipides_cible:   plan.lipides_cible,
+              consumed,
             };
           } else if (profile.objectif) {
             planProfile = { objectif: profile.objectif };

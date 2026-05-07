@@ -116,8 +116,28 @@ Si le tableau n'est pas lisible ou absent : {"error":"Tableau nutritionnel illis
       const obj = { perte: 'perte de poids', maintien: 'maintien', masse: 'prise de masse' };
       prompt += `PROFIL NUTRITIONNEL DU CLIENT :\n`;
       prompt += `- Objectif : ${obj[profile.objectif] || profile.objectif || 'non défini'}\n`;
-      if (profile.calories_cible) prompt += `- Calories cible : ${profile.calories_cible} kcal/jour\n`;
-      if (profile.proteines_cible) prompt += `- Protéines : ${profile.proteines_cible}g | Glucides : ${profile.glucides_cible}g | Lipides : ${profile.lipides_cible}g\n`;
+
+      if (profile.calories_cible) {
+        prompt += `\nOBJECTIFS JOURNALIERS :\n`;
+        prompt += `- Calories : ${profile.calories_cible} kcal\n`;
+        prompt += `- Protéines : ${profile.proteines_cible}g | Glucides : ${profile.glucides_cible}g | Lipides : ${profile.lipides_cible}g\n`;
+      }
+
+      if (profile.consumed && (profile.consumed.calories > 0 || profile.consumed.proteines > 0)) {
+        const c = profile.consumed;
+        const reste = {
+          calories:  Math.max(0, (profile.calories_cible  || 0) - c.calories),
+          proteines: Math.max(0, (profile.proteines_cible || 0) - c.proteines),
+          glucides:  Math.max(0, (profile.glucides_cible  || 0) - c.glucides),
+          lipides:   Math.max(0, (profile.lipides_cible   || 0) - c.lipides),
+        };
+        prompt += `\nDÉJÀ CONSOMMÉ AUJOURD'HUI :\n`;
+        prompt += `- Calories : ${Math.round(c.calories)} kcal | Protéines : ${Math.round(c.proteines)}g | Glucides : ${Math.round(c.glucides)}g | Lipides : ${Math.round(c.lipides)}g\n`;
+        prompt += `\nRESTANT POUR CE REPAS (à couvrir) :\n`;
+        prompt += `- Calories : ~${Math.round(reste.calories)} kcal | Protéines : ~${Math.round(reste.proteines)}g | Glucides : ~${Math.round(reste.glucides)}g | Lipides : ~${Math.round(reste.lipides)}g\n`;
+        prompt += `\nBase tes recommandations sur ce qui reste à consommer pour la journée, pas sur les objectifs totaux.\n`;
+      }
+
       prompt += `\n`;
     }
 
