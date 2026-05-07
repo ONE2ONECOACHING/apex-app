@@ -25,6 +25,15 @@ const CoachPlanEditPage = {
   },
 
   async init() {
+    // Reset complet de l'état pour éviter toute fuite entre clients
+    this.clientId    = null;
+    this.client      = null;
+    this.plans       = [];
+    this.currentPlan = null;
+    this.repas       = [];
+    this.semaine     = 1;
+    this._searchCache = {};
+
     const params = Router.getParams();
     this.clientId = params.clientId;
     if (!this.clientId) { window.location.hash = '#coach-clients'; return; }
@@ -39,11 +48,9 @@ const CoachPlanEditPage = {
       // Charger le plan actif
       const activePlan = this.plans.find(p => p.actif) || this.plans[0];
       if (activePlan) {
-        this.semaine = activePlan.semaine;
+        this.semaine     = activePlan.semaine;
         this.currentPlan = activePlan;
-        this.repas = await db.getPlanRepas(activePlan.id);
-      } else {
-        this.semaine = 1;
+        this.repas       = await db.getPlanRepas(activePlan.id);
       }
 
       this.renderEditor();
