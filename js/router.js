@@ -149,10 +149,6 @@ const Router = {
       default: window.location.hash = '#login';
     }
 
-    // Transition de page — fade + slide-up sur chaque navigation
-    app.classList.remove('page-enter');
-    void app.offsetWidth; // force reflow pour reset l'animation
-    app.classList.add('page-enter');
   },
 
   navigate(page, params) {
