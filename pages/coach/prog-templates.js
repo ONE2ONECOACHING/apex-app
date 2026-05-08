@@ -42,7 +42,7 @@ const CoachProgTemplatesPage = {
   },
 
   setTag(tag) {
-    this.activeTag = (this.activeTag === tag) ? null : tag;
+    this.activeTag = tag;
     this.renderList();
   },
 
@@ -67,6 +67,8 @@ const CoachProgTemplatesPage = {
     };
 
     let html = `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <button class="tag-pill-btn${this.activeTag === null ? ' active-ben' : ''}"
+        onclick="CoachProgTemplatesPage.setTag(null)">Tous</button>
       ${tagDefs.map(t => `
         <button class="tag-pill-btn${this.activeTag === t.v ? ' active-ben' : ''}"
           onclick="CoachProgTemplatesPage.setTag('${t.v}')">${t.l}</button>`).join('')}
