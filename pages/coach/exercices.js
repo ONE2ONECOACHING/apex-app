@@ -1,8 +1,9 @@
-﻿// APEX APP — Coach : Bibliothèque d'exercices (desktop-optimized)
+// APEX APP — Coach : Bibliothèque d'exercices (desktop-optimized)
 
 const CoachExercicesPage = {
   exercices: [],
-  _filter: 'all',
+  _filter:      'all',   // filtre muscle
+  _filterEquip: 'all',   // filtre équipement
   _search: '',
   _editTarget: null,
 
@@ -18,18 +19,29 @@ const CoachExercicesPage = {
     { key: 'fessiers',   label: 'Fessiers',        icon: '🍑' },
     { key: 'abdos',      label: 'Abdominaux',      icon: '🎯' },
     { key: 'mollets',    label: 'Mollets',         icon: '🦵' },
-    { key: 'full_body',  label: 'Full Body',       icon: '🔥' },
     { key: 'cardio',     label: 'Cardio',          icon: '❤️' },
   ],
 
+  // Filtres rapides équipement (barre de filtre)
+  _equipFilters: [
+    { key: 'all',         label: 'Tous' },
+    { key: 'barre',       label: 'Barres' },
+    { key: 'halteres',    label: 'Haltères' },
+    { key: 'cables',      label: 'Câbles' },
+    { key: 'trx',         label: 'TRX' },
+    { key: 'poids_corps', label: 'Poids du corps' },
+  ],
+
+  // Options complètes dans le formulaire de création/édition
   _equipements: [
     { key: 'poids_corps', label: 'Poids du corps' },
-    { key: 'halteres',    label: 'Haltères'       },
-    { key: 'barre',       label: 'Barre'          },
-    { key: 'machine',     label: 'Machine'        },
-    { key: 'cables',      label: 'Câbles'         },
-    { key: 'elastiques',  label: 'Élastiques'     },
-    { key: 'autres',      label: 'Autres'         },
+    { key: 'halteres',    label: 'Haltères'        },
+    { key: 'barre',       label: 'Barre'           },
+    { key: 'cables',      label: 'Câbles'          },
+    { key: 'trx',         label: 'TRX'             },
+    { key: 'machine',     label: 'Machine'         },
+    { key: 'elastiques',  label: 'Élastiques'      },
+    { key: 'autres',      label: 'Autres'          },
   ],
 
   _efforts: [
@@ -40,10 +52,10 @@ const CoachExercicesPage = {
   ],
 
   _muscleColors: {
-    pectoraux: '#3B82F6', dos: '#8B5CF6',      epaules: '#EC4899',
-    biceps:    '#F59E0B', triceps: '#F97316',   quadriceps: '#10B981',
-    ischio:    '#06B6D4', fessiers: '#84CC16',  abdos: '#EF4444',
-    mollets:   '#6366F1', full_body: '#C4820A', cardio: '#EF4444',
+    pectoraux: '#3B82F6', dos: '#8B5CF6',     epaules: '#EC4899',
+    biceps:    '#F59E0B', triceps: '#F97316',  quadriceps: '#10B981',
+    ischio:    '#06B6D4', fessiers: '#84CC16', abdos: '#EF4444',
+    mollets:   '#6366F1', cardio: '#EF4444',
   },
 
   render() {
@@ -62,12 +74,25 @@ const CoachExercicesPage = {
           oninput="CoachExercicesPage._search=this.value;CoachExercicesPage.renderList()">
         <button class="btn btn-primary btn-small" onclick="CoachExercicesPage.openEdit(null)">+ Nouvel exercice</button>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+
+      <!-- Filtre par muscle -->
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin-bottom:6px;">Muscle</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
         ${this._muscles.map(m => `
           <button class="rec-kcal-btn${this._filter === m.key ? ' active' : ''}"
             onclick="CoachExercicesPage._filter='${m.key}';CoachExercicesPage.renderList()">${m.label}</button>
         `).join('')}
       </div>
+
+      <!-- Filtre par équipement -->
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin-bottom:6px;">Équipement</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+        ${this._equipFilters.map(e => `
+          <button class="rec-kcal-btn${this._filterEquip === e.key ? ' active' : ''}"
+            onclick="CoachExercicesPage._filterEquip='${e.key}';CoachExercicesPage.renderList()">${e.label}</button>
+        `).join('')}
+      </div>
+
       <div id="exoList"></div>
       <div id="exoModal"></div>
       <nav class="nav-bottom"><div class="nav-inner">
@@ -80,6 +105,9 @@ const CoachExercicesPage = {
   async init() {
     const profile = Router.userProfile;
     if (!profile || profile.role !== 'coach') { window.location.hash = '#login'; return; }
+    this._filter      = 'all';
+    this._filterEquip = 'all';
+    this._search      = '';
     try {
       this.exercices = await db.getExercicesBdd();
       this.renderList();
@@ -92,7 +120,8 @@ const CoachExercicesPage = {
     const el = document.getElementById('exoList');
     if (!el) return;
     let list = this.exercices;
-    if (this._filter !== 'all') list = list.filter(e => e.muscle_principal === this._filter);
+    if (this._filter !== 'all')      list = list.filter(e => e.muscle_principal === this._filter);
+    if (this._filterEquip !== 'all') list = list.filter(e => e.equipement === this._filterEquip);
     if (this._search.trim()) {
       const q = this._search.toLowerCase();
       list = list.filter(e => e.nom.toLowerCase().includes(q));
