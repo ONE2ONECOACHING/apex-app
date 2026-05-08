@@ -75,23 +75,7 @@ const CoachExercicesPage = {
         <button class="btn btn-primary btn-small" onclick="CoachExercicesPage.openEdit(null)">+ Nouvel exercice</button>
       </div>
 
-      <!-- Filtre par muscle -->
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin-bottom:6px;">Muscle</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
-        ${this._muscles.map(m => `
-          <button class="rec-kcal-btn${this._filter === m.key ? ' active' : ''}"
-            onclick="CoachExercicesPage._filter='${m.key}';CoachExercicesPage.renderList()">${m.label}</button>
-        `).join('')}
-      </div>
-
-      <!-- Filtre par équipement -->
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin-bottom:6px;">Équipement</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
-        ${this._equipFilters.map(e => `
-          <button class="rec-kcal-btn${this._filterEquip === e.key ? ' active' : ''}"
-            onclick="CoachExercicesPage._filterEquip='${e.key}';CoachExercicesPage.renderList()">${e.label}</button>
-        `).join('')}
-      </div>
+      <div id="exoFilters"></div>
 
       <div id="exoList"></div>
       <div id="exoModal"></div>
@@ -110,10 +94,31 @@ const CoachExercicesPage = {
     this._search      = '';
     try {
       this.exercices = await db.getExercicesBdd();
+      this.renderFilters();
       this.renderList();
     } catch (e) {
       document.getElementById('exoList').innerHTML = '<div class="alert alert-error">Erreur de chargement.</div>';
     }
+  },
+
+  renderFilters() {
+    const el = document.getElementById('exoFilters');
+    if (!el) return;
+    el.innerHTML = `
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin-bottom:6px;">Muscle</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        ${this._muscles.map(m => `
+          <button class="rec-kcal-btn${this._filter === m.key ? ' active' : ''}"
+            onclick="CoachExercicesPage._filter='${m.key}';CoachExercicesPage.renderFilters();CoachExercicesPage.renderList();">${m.label}</button>
+        `).join('')}
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin-bottom:6px;">Équipement</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+        ${this._equipFilters.map(e => `
+          <button class="rec-kcal-btn${this._filterEquip === e.key ? ' active' : ''}"
+            onclick="CoachExercicesPage._filterEquip='${e.key}';CoachExercicesPage.renderFilters();CoachExercicesPage.renderList();">${e.label}</button>
+        `).join('')}
+      </div>`;
   },
 
   renderList() {
