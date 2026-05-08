@@ -854,10 +854,10 @@ body.coach-wide .tabs .tab {
 
 /* ── TRANSITIONS DE PAGE ─────────────────────────────────────── */
 @keyframes pageIn {
-  from { opacity: 0; transform: translateY(7px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-.page-enter { animation: pageIn 0.2s cubic-bezier(0.32,0.72,0,1) both; }
+.page-enter { animation: pageIn 0.18s ease-out both; }
 
 /* ── SKELETON LOADING ────────────────────────────────────────── */
 @keyframes shimmer {
