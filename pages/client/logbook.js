@@ -28,7 +28,7 @@ const LogbookPage = {
         <button class="date-nav-btn" onclick="LogbookPage.changeDate(1)">›</button>
       </div>
 
-      <div id="logContent"><div class="spinner" style="margin-top:3rem;"></div></div>
+      <div id="logContent">${LogbookPage._skeletonHTML()}</div>
       <div id="logRecap"></div>
 
       ${clientNav('logbook')}`;
@@ -60,8 +60,30 @@ const LogbookPage = {
     await this.loadData();
   },
 
+  _skeletonHTML() {
+    return `
+      <div class="skeleton-card skeleton-card-dark">
+        <div class="skel" style="width:35%;height:12px;margin-bottom:14px;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">
+          <div class="skel" style="height:54px;border-radius:10px;"></div>
+          <div class="skel" style="height:54px;border-radius:10px;"></div>
+          <div class="skel" style="height:54px;border-radius:10px;"></div>
+          <div class="skel" style="height:54px;border-radius:10px;"></div>
+        </div>
+      </div>
+      ${[0,1,2].map(() => `
+        <div class="skeleton-card" style="margin-bottom:8px;">
+          <div class="skel" style="width:30%;height:11px;margin-bottom:10px;"></div>
+          <div class="skel" style="height:38px;margin-bottom:6px;border-radius:10px;"></div>
+          <div class="skel" style="height:38px;border-radius:10px;"></div>
+        </div>`).join('')}`;
+  },
+
   async loadData() {
     const profile = Router.userProfile;
+    // Skeleton pendant le chargement (changement de date inclus)
+    const el = document.getElementById('logContent');
+    if (el) el.innerHTML = this._skeletonHTML();
     try {
       [this.plan, this.entries] = await Promise.all([
         db.getActivePlan(profile.id),

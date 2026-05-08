@@ -6,6 +6,7 @@ const RecettesPage = {
   targetKcal: null,   // null = portion de base
   plusProteines: false,
   _openId: null,
+  _cache: null,       // { ts, recettes } — TTL 5 min (recettes ne changent pas souvent)
 
   render() {
     return `
@@ -31,16 +32,25 @@ const RecettesPage = {
     const profile = Router.userProfile;
     if (!profile) return;
     if (profile.role === 'coach') { window.location.hash = '#coach-clients'; return; }
-    // Reset pour éviter l'affichage de la dernière recette ouverte ou d'un filtre persistant
-    this.recettes      = [];
+    // Reset état UI (pas le cache — il persiste entre les navigations)
     this.categorie     = 'all';
     this.targetKcal    = null;
     this.plusProteines = false;
     this._openId       = null;
 
+    // Cache frais (5 min) — afficher immédiatement sans re-fetch
+    const now = Date.now();
+    if (this._cache && (now - this._cache.ts < 300000)) {
+      this.recettes = this._cache.recettes;
+      this.renderFilters();
+      this.renderList();
+      return;
+    }
+
     try {
       // Chargement allégé (sans ingredients) pour afficher la liste rapidement
       this.recettes = await db.getRecettesLite();
+      this._cache   = { ts: Date.now(), recettes: this.recettes };
       this.renderFilters();
       this.renderList();
     } catch (e) {
