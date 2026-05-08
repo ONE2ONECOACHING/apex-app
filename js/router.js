@@ -160,6 +160,9 @@ const Router = {
   },
 
   async logout() {
+    // Fermer le modal de confirmation avant de naviguer
+    const modal = document.getElementById('logoutModal');
+    if (modal) modal.remove();
     await db.signOut();
     this.userProfile = null;
     window.location.hash = '#login';
