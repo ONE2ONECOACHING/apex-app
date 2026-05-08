@@ -40,6 +40,11 @@ const LoginPage = {
             <input type="email" class="input" id="resetEmail" placeholder="ton@email.com">
           </div>
           <button class="btn btn-secondary" onclick="LoginPage.sendReset()">Envoyer le lien</button>
+          <p style="font-size:11px;color:var(--gray-muted);margin-top:0.75rem;line-height:1.6;margin-bottom:0;">
+            Ton adresse email est utilisée uniquement pour t'envoyer ce lien de réinitialisation, conformément à notre
+            <a href="https://one2onecoaching.fr/politique-confidentialite" target="_blank" rel="noopener"
+              style="color:var(--gray-muted);text-decoration:underline;">politique de confidentialité</a>.
+          </p>
         </div>
       </div>`;
   },

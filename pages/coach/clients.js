@@ -34,17 +34,19 @@ const CoachClientsPage = {
     try {
       this._mondayStr = this._getMondayStr();
 
-      this.clients = await db.getAllClients();
-      const clientIds = this.clients.map(c => c.id);
-
-      const [plans, completedBilans, pendingBilans, weekEntries] = await Promise.all([
+      // Les 4 premières requêtes sont indépendantes — on les lance en parallèle
+      const [clients, plans, completedBilans, pendingBilans] = await Promise.all([
+        db.getAllClients(),
         db.getAllActivePlans(),
         db.getRecentCompletedBilans(7),
-        db.getAllPendingBilans(),
-        clientIds.length > 0
-          ? db.getJournalEntriesForClients(clientIds, this._mondayStr, todayStr())
-          : Promise.resolve([])
+        db.getAllPendingBilans()
       ]);
+      this.clients = clients;
+      const clientIds = clients.map(c => c.id);
+      // getJournalEntriesForClients dépend des IDs → après le Promise.all
+      const weekEntries = clientIds.length > 0
+        ? await db.getJournalEntriesForClients(clientIds, this._mondayStr, todayStr())
+        : [];
 
       this._plans          = plans;
       this._completedBilans = completedBilans;

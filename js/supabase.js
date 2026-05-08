@@ -485,6 +485,28 @@ const db = {
     return data || [];
   },
 
+  // Version allégée (sans ingredients/preparation) pour le chargement initial de la liste
+  async getRecettesLite() {
+    const { data, error } = await getSupabase()
+      .from('recettes')
+      .select('id,nom,categorie,actif,position,base_kcal,base_proteines,base_glucides,base_lipides,protein_boost')
+      .eq('actif', true)
+      .order('position');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Détail complet d'une recette (chargé à la demande à l'ouverture du modal)
+  async getRecetteDetail(id) {
+    const { data, error } = await getSupabase()
+      .from('recettes')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   // ── Bilan hebdomadaire ────────────────────────────────────────
 
   async getBilanTemplates(coachId) {

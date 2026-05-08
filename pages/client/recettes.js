@@ -39,7 +39,8 @@ const RecettesPage = {
     this._openId       = null;
 
     try {
-      this.recettes = await db.getRecettes();
+      // Chargement allégé (sans ingredients) pour afficher la liste rapidement
+      this.recettes = await db.getRecettesLite();
       this.renderFilters();
       this.renderList();
     } catch (e) {
@@ -200,8 +201,29 @@ const RecettesPage = {
 
   // ── Détail / Modal ─────────────────────────────────────────
 
-  openDetail(id) {
+  async openDetail(id) {
     this._openId = id;
+    const r = this.recettes.find(x => x.id === id);
+    if (!r) return;
+
+    // Charger le détail complet (ingredients, preparation…) si pas encore fait
+    if (!r._detailLoaded) {
+      document.getElementById('recModal').innerHTML = `
+        <div class="modal-overlay">
+          <div class="modal" style="display:flex;align-items:center;justify-content:center;min-height:180px;">
+            <div class="spinner"></div>
+          </div>
+        </div>`;
+      try {
+        const detail = await db.getRecetteDetail(id);
+        Object.assign(r, detail);
+        r._detailLoaded = true;
+      } catch (_) {
+        document.getElementById('recModal').innerHTML = '';
+        this._openId = null;
+        return;
+      }
+    }
     this._renderModal();
   },
 
