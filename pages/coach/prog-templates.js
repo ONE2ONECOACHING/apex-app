@@ -60,10 +60,12 @@ const CoachProgTemplatesPage = {
       ? this.templates.filter(t => t.tag === this.activeTag)
       : this.templates;
 
+    const tagColors = { men: '#3B82F6', women: '#EC4899', home: '#10B981' };
     const tagBadge = (tag) => {
       if (!tag) return '';
       const found = tagDefs.find(d => d.v === tag);
-      return found ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--gray);margin-left:6px;">${found.l}</span>` : '';
+      const color = tagColors[tag] || '#666';
+      return found ? `<span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};margin-left:6px;">${found.l}</span>` : '';
     };
 
     let html = `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
