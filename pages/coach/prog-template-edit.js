@@ -206,6 +206,10 @@ const CoachProgTemplateEditPage = {
         const chg  = document.getElementById(`excharge_${si}_${ei}`);
         if (chg)  ex.charge_cible = chg.value;
 
+        // note par exercice
+        const exNote = document.getElementById(`exnote_${si}_${ei}`);
+        if (exNote) ex.notes = exNote.value;
+
         // 4. Pour temps/amrap : combiner min + sec en "M:SS"
         if (ex.type_effort === 'temps' || ex.type_effort === 'amrap') {
           const minEl = document.getElementById(`exmin_${si}_${ei}`);
@@ -585,6 +589,15 @@ const CoachProgTemplateEditPage = {
               style="width:100%;margin-top:5px;height:26px;border:1px solid var(--border-solid);
                      border-radius:6px;background:var(--card-bg);color:var(--black);
                      font-size:11px;padding:0 6px;font-family:var(--font);">` : ''}
+
+            <!-- Note par exercice -->
+            <input id="exnote_${si}_${ei}" type="text"
+              value="${(ex.notes||'').replace(/"/g,'&quot;')}"
+              placeholder="Note pour cet exercice…"
+              style="width:100%;margin-top:5px;height:26px;border:1px solid var(--border-solid);
+                     border-radius:6px;background:var(--card-bg);color:var(--black);
+                     font-size:11px;padding:0 6px;font-family:var(--font);
+                     color:var(--gray);">
           </div>
           <!-- Actions exercice -->
           <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;margin-top:2px;">
