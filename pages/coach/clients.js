@@ -16,7 +16,7 @@ const CoachClientsPage = {
           <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Dashboard</div>
         </div>
-        <button class="header-btn" onclick="Router.logout()">⏻</button>
+        <button class="header-btn" onclick="Router.confirmLogout()">⏻</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
         <button class="btn btn-primary btn-small" onclick="CoachClientsPage.showCreateModal()">+ Nouveau client</button>

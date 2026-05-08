@@ -15,7 +15,7 @@ const MesurePage = {
           <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Mes mesures</div>
         </div>
-        <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>
+        <button class="header-btn" onclick="Router.confirmLogout()" title="Déconnexion">⏻</button>
       </div>
 
       <div class="date-nav">

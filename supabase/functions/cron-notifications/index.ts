@@ -1,20 +1,39 @@
 // APEX APP — Edge Function : cron-notifications
 // Tourne toutes les heures — vérifie qui doit recevoir une notif et l'envoie
-// Heures en UTC+2 (France) — ajuster TZ_OFFSET si besoin
+// Appelable uniquement avec Authorization: Bearer CRON_SECRET
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY         = Deno.env.get("SUPABASE_ANON_KEY")!;
-const TZ_OFFSET        = 2; // UTC+2 (France heure d'été — mettre 1 en hiver)
+const CRON_SECRET      = Deno.env.get("CRON_SECRET") || "";
+
+// ── Timezone France dynamique (heure d'été / heure d'hiver) ─────────────────
+function getLastSundayUTC(year: number, month: number): Date {
+  // Dernier jour du mois
+  const d = new Date(Date.UTC(year, month + 1, 0));
+  // Reculer jusqu'au dimanche (getUTCDay() === 0)
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d;
+}
+
+function getFranceOffset(now: Date): number {
+  // Heure d'été : dernier dimanche de mars → dernier dimanche d'octobre (à 2h UTC)
+  const year        = now.getUTCFullYear();
+  const dstStart    = getLastSundayUTC(year, 2);  // Mars (mois 2, 0-indexé)
+  dstStart.setUTCHours(1); // passage à 2h locale = 1h UTC
+  const dstEnd      = getLastSundayUTC(year, 9);  // Octobre (mois 9)
+  dstEnd.setUTCHours(1);
+  return now >= dstStart && now < dstEnd ? 2 : 1;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function sendPush(profileId: string, title: string, body: string, url: string) {
   await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${ANON_KEY}`
+      "Authorization": `Bearer ${CRON_SECRET}`  // Appel interne sécurisé
     },
     body: JSON.stringify({ profileId, title, body, url })
   });
@@ -32,18 +51,31 @@ async function alreadySent(sb: any, profileId: string, type: string, dateRef: st
 }
 
 async function logSent(sb: any, profileId: string, type: string, dateRef: string) {
-  await sb.from("push_notifications_log")
-    .insert({ profile_id: profileId, type, date_ref: dateRef })
-    .catch(() => {});
+  try {
+    await sb.from("push_notifications_log")
+      .insert({ profile_id: profileId, type, date_ref: dateRef });
+  } catch (_) {}
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  // ── Guard : accès uniquement via CRON_SECRET ───────────────────────────────
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  const now         = new Date();
-  const localHour   = (now.getUTCHours() + TZ_OFFSET) % 24;
-  const localDay    = now.getDay(); // 0=Dim, 1=Lun ... 6=Sam
-  const todayStr    = now.toISOString().split("T")[0];
+  const now       = new Date();
+  const tzOffset  = getFranceOffset(now);                    // Dynamique été/hiver
+  const localHour = (now.getUTCHours() + tzOffset) % 24;
+  const localDay  = new Date(now.getTime() + tzOffset * 3600000).getDay();
+  const todayStr  = new Date(now.getTime() + tzOffset * 3600000)
+    .toISOString().split("T")[0];
 
   const results = { bilan: 0, logbook: 0, habitudes: 0, bilan_rappel: 0 };
 
@@ -137,9 +169,10 @@ Deno.serve(async (_req) => {
   // ── 4. RAPPEL BILAN — DIMANCHE 21H ───────────────────────────────────────
   // Notifie tous les clients ayant un bilan encore en attente cette semaine
   if (localDay === 0 && localHour === 21) {
-    // Calculer le lundi de la semaine en cours (UTC)
-    const monday = new Date(now);
-    monday.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7));
+    // Calculer le lundi de la semaine en cours (heure locale)
+    const localNow = new Date(now.getTime() + tzOffset * 3600000);
+    const monday   = new Date(localNow);
+    monday.setUTCDate(localNow.getUTCDate() - ((localNow.getUTCDay() + 6) % 7));
     const semaineStr = monday.toISOString().split("T")[0];
 
     const { data: pendingInstances } = await sb
@@ -162,7 +195,7 @@ Deno.serve(async (_req) => {
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, ...results }), {
+  return new Response(JSON.stringify({ ok: true, tzOffset, localHour, ...results }), {
     headers: { "Content-Type": "application/json" }
   });
 });

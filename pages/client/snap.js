@@ -76,7 +76,7 @@ const SnapPage = {
             <div id="baseCartItems"></div>
             <div id="baseCartTotal" style="font-size:13px;font-weight:600;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"></div>
           </div>
-          <button class="btn btn-secondary" onclick="SnapPage.submitCart(true)">💾 Sauvegarder ce repas</button>
+          <button class="btn btn-secondary" onclick="SnapPage.submitCart(true)">⭐ Enregistrer ce repas</button>
           <button class="btn btn-primary" style="margin-top:0.5rem;" onclick="SnapPage.submitCart(false)">Ajouter au journal →</button>
         </div>
       </div>
@@ -141,7 +141,7 @@ const SnapPage = {
       <!-- MODAL ENREGISTRER -->
       <div id="saveModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem;">
         <div style="background:var(--white);border-radius:var(--radius);padding:1.25rem;width:100%;max-width:400px;">
-          <div style="font-size:15px;font-weight:700;margin-bottom:1rem;">💾 Enregistrer ce repas</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:1rem;">⭐ Enregistrer ce repas</div>
           <div class="field">
             <label class="field-label">Nom du repas</label>
             <input class="input" id="saveModalName" placeholder="Ex : Riz + poulet">

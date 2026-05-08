@@ -13,7 +13,7 @@ const LogbookPage = {
           <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Logbook</div>
         </div>
-        <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>
+        <button class="header-btn" onclick="Router.confirmLogout()" title="Déconnexion">⏻</button>
       </div>
 
       <div class="tabs" style="margin-bottom:1rem;">

@@ -14,7 +14,7 @@ const RecettesPage = {
           <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Recettes</div>
         </div>
-        <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>
+        <button class="header-btn" onclick="Router.confirmLogout()" title="Déconnexion">⏻</button>
       </div>
       <div class="tabs" style="margin-bottom:1rem;">
         <button class="tab" onclick="window.location.hash='#logbook'">📖 Logbook</button>
@@ -131,16 +131,22 @@ const RecettesPage = {
   setKcal(kcal) {
     this.targetKcal = kcal;
     this.renderFilters();
-    this.renderList();
-    // Mettre à jour le modal si ouvert
-    if (this._openId) this._renderModal();
+    // Si le modal est ouvert, ne re-render QUE le modal (évite le tremblement de la liste derrière)
+    if (this._openId) {
+      this._renderModal();
+    } else {
+      this.renderList();
+    }
   },
 
   toggleProt() {
     this.plusProteines = !this.plusProteines;
     this.renderFilters();
-    this.renderList();
-    if (this._openId) this._renderModal();
+    if (this._openId) {
+      this._renderModal();
+    } else {
+      this.renderList();
+    }
   },
 
   // ── Liste ──────────────────────────────────────────────────
@@ -209,12 +215,12 @@ const RecettesPage = {
     const portionLabel = this.targetKcal ? `${this.targetKcal} kcal` : 'Base';
 
     document.getElementById('recModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this){document.getElementById('recModal').innerHTML='';RecettesPage._openId=null;}">
+      <div class="modal-overlay" onclick="if(event.target===this){document.getElementById('recModal').innerHTML='';RecettesPage._openId=null;RecettesPage.renderList();}">
         <div class="modal" style="padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,12px));">
 
           <div class="modal-title">
             ${r.nom}
-            <button class="modal-close" onclick="document.getElementById('recModal').innerHTML='';RecettesPage._openId=null;">×</button>
+            <button class="modal-close" onclick="document.getElementById('recModal').innerHTML='';RecettesPage._openId=null;RecettesPage.renderList();">×</button>
           </div>
           <div style="font-size:12px;color:var(--gray-muted);margin-top:-0.75rem;margin-bottom:1rem;">${cat.icon} ${cat.label}</div>
 

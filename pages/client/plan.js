@@ -79,7 +79,7 @@ const PlanPage = {
           <div class="app-logo">ONE2ONE</div>
           <div class="app-title">Mon plan alimentaire</div>
         </div>
-        <button class="header-btn" onclick="Router.logout()">⏻</button>
+        <button class="header-btn" onclick="Router.confirmLogout()">⏻</button>
       </div>
       <div class="tabs" style="margin-bottom:1rem;">
         <button class="tab" onclick="window.location.hash='#logbook'">📖 Logbook</button>

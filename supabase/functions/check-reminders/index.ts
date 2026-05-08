@@ -1,121 +1,187 @@
-// APEX APP — Edge Function : check-reminders
-// Appelée par pg_cron toutes les heures
-// Gère : bilan hebdo, rappel habitudes (21h), rappel logbook (21h)
+// APEX APP — Edge Function : check-reminders (cron)
+// Tourne toutes les heures — vérifie qui doit recevoir une notif et l'envoie
+// Appelable uniquement avec Authorization: Bearer CRON_SECRET
 
-import webpush from "npm:web-push@3";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VAPID_PUBLIC_KEY  = Deno.env.get("VAPID_PUBLIC_KEY")!;
-const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
-const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CRON_SECRET      = Deno.env.get("CRON_SECRET") || "";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-};
+// ── Timezone France dynamique (heure d'été / heure d'hiver) ─────────────────
+function getLastSundayUTC(year: number, month: number): Date {
+  // Dernier jour du mois
+  const d = new Date(Date.UTC(year, month + 1, 0));
+  // Reculer jusqu'au dimanche (getUTCDay() === 0)
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d;
+}
 
-webpush.setVapidDetails("mailto:contact@one2onecoaching.fr", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+function getFranceOffset(now: Date): number {
+  // Heure d'été : dernier dimanche de mars → dernier dimanche d'octobre (à 2h UTC)
+  const year        = now.getUTCFullYear();
+  const dstStart    = getLastSundayUTC(year, 2);  // Mars (mois 2, 0-indexé)
+  dstStart.setUTCHours(1); // passage à 2h locale = 1h UTC
+  const dstEnd      = getLastSundayUTC(year, 9);  // Octobre (mois 9)
+  dstEnd.setUTCHours(1);
+  return now >= dstStart && now < dstEnd ? 2 : 1;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
-const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+async function sendPush(profileId: string, title: string, body: string, url: string) {
+  await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${CRON_SECRET}`  // Appel interne sécurisé
+    },
+    body: JSON.stringify({ profileId, title, body, url })
+  });
+}
 
-// Envoie une push à tous les appareils d'un profil
-async function pushTo(profileId: string, title: string, body: string, url = "/") {
-  const { data: subs } = await sb.from("push_subscriptions").select("*").eq("profile_id", profileId);
-  for (const sub of subs || []) {
-    try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: sub.keys },
-        JSON.stringify({ title, body, url })
-      );
-    } catch (e: any) {
-      if (e.statusCode === 410 || e.statusCode === 404) {
-        await sb.from("push_subscriptions").delete().eq("id", sub.id);
-      }
-    }
-  }
+async function alreadySent(sb: any, profileId: string, type: string, dateRef: string) {
+  const { data } = await sb
+    .from("push_notifications_log")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("type", type)
+    .eq("date_ref", dateRef)
+    .maybeSingle();
+  return !!data;
+}
+
+async function logSent(sb: any, profileId: string, type: string, dateRef: string) {
+  try {
+    await sb.from("push_notifications_log")
+      .insert({ profile_id: profileId, type, date_ref: dateRef });
+  } catch (_) {}
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // ── Guard : accès uniquement via CRON_SECRET ───────────────────────────────
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
-  // Heure courante en France (UTC+2 en été, UTC+1 en hiver)
-  const now = new Date();
-  const hourFR = now.getUTCHours() + 2; // approximation heure française (été)
-  const todayStr = now.toISOString().slice(0, 10);
+  const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Récupérer tous les clients actifs
-  const { data: clients } = await sb
-    .from("profiles")
-    .select("id, onboarding_done")
-    .eq("role", "client")
-    .eq("onboarding_done", true);
+  const now       = new Date();
+  const tzOffset  = getFranceOffset(now);                    // Dynamique été/hiver
+  const localHour = (now.getUTCHours() + tzOffset) % 24;
+  const localDay  = new Date(now.getTime() + tzOffset * 3600000).getDay();
+  const todayStr  = new Date(now.getTime() + tzOffset * 3600000)
+    .toISOString().split("T")[0];
 
-  let bilanSent = 0, habitudesSent = 0, logbookSent = 0;
+  const results = { bilan: 0, logbook: 0, habitudes: 0 };
 
-  for (const client of clients || []) {
-    const profileId = client.id;
+  // ── 1. BILAN ─────────────────────────────────────────────────────────────
+  const { data: assignations } = await sb
+    .from("bilan_assignations")
+    .select("client_id, template_id, coach_id, jour_envoi, heure_envoi")
+    .eq("actif", true);
 
-    // ── 1. Bilan hebdomadaire ──────────────────────────────────────────────
-    // Vérifie si une instance de bilan vient d'être créée pour cette semaine
-    // (statut en_attente ET created_at dans la dernière heure)
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
-    const { data: newBilan } = await sb
+  for (const asgn of assignations || []) {
+    const jourEnvoi = asgn.jour_envoi ?? 6;
+    const [hh]      = (asgn.heure_envoi ?? "08:00").split(":").map(Number);
+    if (localDay !== jourEnvoi || localHour !== hh) continue;
+
+    if (await alreadySent(sb, asgn.client_id, "bilan", todayStr)) continue;
+
+    const { data: existing } = await sb
       .from("bilan_instances")
       .select("id")
-      .eq("client_id", profileId)
-      .eq("statut", "en_attente")
-      .gte("created_at", oneHourAgo)
-      .limit(1)
-      .single();
+      .eq("client_id", asgn.client_id)
+      .eq("semaine", todayStr)
+      .maybeSingle();
 
-    if (newBilan) {
-      await pushTo(profileId, "📝 Ton bilan hebdo t'attend !", "Prends 2 minutes pour faire le point sur ta semaine.", "/#client-bilan");
-      bilanSent++;
+    if (!existing) {
+      const { data: tmpl } = await sb
+        .from("bilan_templates")
+        .select("questions")
+        .eq("id", asgn.template_id)
+        .single();
+
+      await sb.from("bilan_instances").insert({
+        client_id:          asgn.client_id,
+        template_id:        asgn.template_id,
+        coach_id:           asgn.coach_id,
+        semaine:            todayStr,
+        statut:             "en_attente",
+        questions_snapshot: tmpl?.questions || []
+      });
     }
 
-    // ── 2. Rappel habitudes à 21h ──────────────────────────────────────────
-    if (hourFR === 21) {
-      // Récupérer les habitudes actives du client
-      const { data: habitudes } = await sb
-        .from("habitudes_config")
-        .select("id")
-        .eq("profile_id", profileId)
-        .eq("actif", true);
+    await sendPush(asgn.client_id, "📝 Bilan hebdomadaire", "Ton bilan de la semaine t'attend !", "#client-bilan");
+    await logSent(sb, asgn.client_id, "bilan", todayStr);
+    results.bilan++;
+  }
 
-      if (habitudes && habitudes.length > 0) {
-        // Compter celles cochées aujourd'hui
-        const { count: cochees } = await sb
-          .from("habitudes_journal")
-          .select("id", { count: "exact", head: true })
-          .eq("profile_id", profileId)
-          .eq("date_entree", todayStr)
-          .eq("checked", true);
+  // ── 2. LOGBOOK (20h locale) ───────────────────────────────────────────────
+  if (localHour === 20) {
+    const { data: clients } = await sb
+      .from("profiles")
+      .select("id")
+      .eq("role", "client")
+      .neq("actif", false);
 
-        if ((cochees || 0) < habitudes.length) {
-          await pushTo(profileId, "✅ Habitudes du jour", `Tu as coché ${cochees || 0}/${habitudes.length} habitudes. Termine ta journée en beauté !`, "/#dashboard");
-          habitudesSent++;
-        }
-      }
-    }
-
-    // ── 3. Rappel logbook à 21h ────────────────────────────────────────────
-    if (hourFR === 21) {
-      const { count: repas } = await sb
+    for (const client of clients || []) {
+      const { data: entries } = await sb
         .from("journal_entries")
-        .select("id", { count: "exact", head: true })
-        .eq("profile_id", profileId)
-        .eq("date_entree", todayStr);
+        .select("id")
+        .eq("profile_id", client.id)
+        .eq("date_entree", todayStr)
+        .limit(1);
+      if (entries?.length) continue;
 
-      if ((repas || 0) <= 1) {
-        await pushTo(profileId, "🍽️ Pense à ton journal", "Tu n'as pas encore enregistré tes repas d'aujourd'hui.", "/#logbook");
-        logbookSent++;
-      }
+      if (await alreadySent(sb, client.id, "logbook", todayStr)) continue;
+
+      await sendPush(client.id, "📖 Logbook", "N'oublie pas de remplir ton journal alimentaire !", "#logbook");
+      await logSent(sb, client.id, "logbook", todayStr);
+      results.logbook++;
     }
   }
 
-  return new Response(
-    JSON.stringify({ ok: true, bilanSent, habitudesSent, logbookSent }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
+  // ── 3. HABITUDES (21h locale) ─────────────────────────────────────────────
+  if (localHour === 21) {
+    const { data: clients } = await sb
+      .from("profiles")
+      .select("id")
+      .eq("role", "client")
+      .neq("actif", false);
+
+    for (const client of clients || []) {
+      const { data: habitudes } = await sb
+        .from("habitudes_config")
+        .select("id")
+        .eq("profile_id", client.id)
+        .eq("actif", true);
+      if (!habitudes?.length) continue;
+
+      const { data: journal } = await sb
+        .from("habitudes_journal")
+        .select("habitude_id, checked")
+        .eq("profile_id", client.id)
+        .eq("date_entree", todayStr);
+
+      const checkedIds = (journal || []).filter((j: any) => j.checked).map((j: any) => j.habitude_id);
+      if (habitudes.every((h: any) => checkedIds.includes(h.id))) continue;
+
+      if (await alreadySent(sb, client.id, "habitudes", todayStr)) continue;
+
+      const done  = checkedIds.length;
+      const total = habitudes.length;
+      await sendPush(client.id, "✅ Habitudes", `${done}/${total} habitudes cochées — encore un effort !`, "#dashboard");
+      await logSent(sb, client.id, "habitudes", todayStr);
+      results.habitudes++;
+    }
+  }
+
+  return new Response(JSON.stringify({ ok: true, tzOffset, localHour, ...results }), {
+    headers: { "Content-Type": "application/json" }
+  });
 });

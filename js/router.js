@@ -163,6 +163,25 @@ const Router = {
     await db.signOut();
     this.userProfile = null;
     window.location.hash = '#login';
+  },
+
+  confirmLogout() {
+    if (document.getElementById('logoutModal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'logoutModal';
+    modal.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;">
+        <div style="background:var(--white);border-radius:var(--radius);padding:1.75rem 1.5rem;width:100%;max-width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
+          <div style="font-size:2rem;margin-bottom:0.75rem;">⏻</div>
+          <div style="font-weight:700;font-size:16px;margin-bottom:0.5rem;">Se déconnecter ?</div>
+          <div style="font-size:13px;color:var(--gray-light);margin-bottom:1.5rem;line-height:1.5;">Tu devras te reconnecter pour accéder à ton espace.</div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('logoutModal').remove()">Annuler</button>
+            <button class="btn" style="flex:1;background:#E05252;color:white;border-color:#E05252;" onclick="Router.logout()">Déconnexion</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
   }
 };
 

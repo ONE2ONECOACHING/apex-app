@@ -8,6 +8,8 @@ const VAPID_PUBLIC_KEY  = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY          = Deno.env.get("SUPABASE_ANON_KEY")!;
+const CRON_SECRET       = Deno.env.get("CRON_SECRET") || "";
 
 webpush.setVapidDetails(
   "mailto:contact@one2onecoaching.fr",
@@ -15,15 +17,44 @@ webpush.setVapidDetails(
   VAPID_PRIVATE_KEY
 );
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type" }
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
+  // ── Authentification ────────────────────────────────────────────────────────
+  const authHeader = req.headers.get("Authorization") || "";
+  const token      = authHeader.replace("Bearer ", "").trim();
+
+  // 1. Appel interne depuis les crons (CRON_SECRET)
+  const isCron = CRON_SECRET && token === CRON_SECRET;
+
+  // 2. Appel depuis l'app coach (JWT utilisateur Supabase)
+  if (!isCron) {
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    const { error: authErr } = await createClient(SUPABASE_URL, ANON_KEY)
+      .auth.getUser(token);
+    if (authErr) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   const { profileId, title, body, url } = await req.json();
-  if (!profileId || !title) return new Response("Missing params", { status: 400 });
+  if (!profileId || !title) {
+    return new Response("Missing params", { status: 400, headers: corsHeaders });
+  }
 
   const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const { data: subs } = await sb
@@ -48,6 +79,6 @@ Deno.serve(async (req) => {
   }
 
   return new Response(JSON.stringify({ sent }), {
-    headers: { "Content-Type": "application/json" }
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 });

@@ -303,15 +303,21 @@ const db = {
     return data;
   },
 
-  // Aliments BDD
+  // Aliments BDD — recherche accent-insensible via RPC (unaccent)
   async searchAliments(query) {
     const { data, error } = await getSupabase()
-      .from('aliments_bdd')
-      .select('*')
-      .ilike('nom', '%' + query + '%')
-      .limit(15);
-    if (error) throw error;
-    return data;
+      .rpc('search_aliments', { q: query });
+    // Fallback ilike si le RPC n'est pas encore déployé
+    if (error) {
+      const { data: d2, error: e2 } = await getSupabase()
+        .from('aliments_bdd')
+        .select('*')
+        .ilike('nom', '%' + query + '%')
+        .limit(20);
+      if (e2) throw e2;
+      return d2 || [];
+    }
+    return data || [];
   },
 
   // Activités sportives

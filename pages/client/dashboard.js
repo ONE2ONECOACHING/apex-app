@@ -13,7 +13,7 @@ const DashboardPage = {
           <div class="app-logo">ONE2ONE</div>
           <div class="app-title" id="dashGreeting">Dashboard</div>
         </div>
-        <button class="header-btn" onclick="Router.logout()" title="Déconnexion">⏻</button>
+        <button class="header-btn" onclick="Router.confirmLogout()" title="Déconnexion">⏻</button>
       </div>
       <div id="dashContent"><div class="spinner" style="margin-top:3rem;"></div></div>
       ${clientNav('dashboard')}`;

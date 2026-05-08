@@ -17,11 +17,23 @@ const SetPasswordPage = {
 
             <div class="field">
               <label class="field-label">Mot de passe</label>
-              <input type="password" class="input" id="spPass1" placeholder="8 caractères minimum" autocomplete="new-password">
+              <div style="position:relative;">
+                <input type="password" class="input" id="spPass1" placeholder="8 caractères minimum" autocomplete="new-password" style="padding-right:44px;">
+                <button type="button" onclick="SetPasswordPage.togglePwd('spPass1','spIcon1')"
+                  style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-muted);padding:4px;line-height:1;">
+                  <svg id="spIcon1" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <div class="field">
               <label class="field-label">Confirmer le mot de passe</label>
-              <input type="password" class="input" id="spPass2" placeholder="••••••••" autocomplete="new-password">
+              <div style="position:relative;">
+                <input type="password" class="input" id="spPass2" placeholder="••••••••" autocomplete="new-password" style="padding-right:44px;">
+                <button type="button" onclick="SetPasswordPage.togglePwd('spPass2','spIcon2')"
+                  style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-muted);padding:4px;line-height:1;">
+                  <svg id="spIcon2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
 
             <button class="btn btn-primary" style="width:100%;margin-top:0.5rem;" onclick="SetPasswordPage.submit()" id="spBtn">
@@ -34,13 +46,24 @@ const SetPasswordPage = {
   },
 
   init() {
-    // Écouter la touche Entrée
     document.addEventListener('keydown', function handler(e) {
       if (e.key === 'Enter') {
         SetPasswordPage.submit();
         document.removeEventListener('keydown', handler);
       }
     });
+  },
+
+  togglePwd(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon  = document.getElementById(iconId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+    } else {
+      input.type = 'password';
+      icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    }
   },
 
   async submit() {

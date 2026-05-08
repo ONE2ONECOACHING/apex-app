@@ -57,12 +57,19 @@ const InstallPrompt = {
           <button onclick="InstallPrompt.dismiss()" style="background:none;border:none;font-size:20px;color:var(--gray-muted);cursor:pointer;padding:0;flex-shrink:0;">✕</button>
         </div>`;
     } else {
+      // Détecter si l'utilisateur est sur mobile ou desktop
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const subtext = isMobileDevice
+        ? 'Accès rapide depuis ton téléphone'
+        : 'Installe l\'app sur ton ordinateur pour un accès rapide';
+      const icon = isMobileDevice ? '📲' : '💻';
+
       banner.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;">
-          <div style="font-size:28px;flex-shrink:0;">📲</div>
+          <div style="font-size:28px;flex-shrink:0;">${icon}</div>
           <div style="flex:1;">
             <div style="font-size:14px;font-weight:700;margin-bottom:2px;">Installer l'app</div>
-            <div style="font-size:13px;color:var(--gray);">Accès rapide depuis ton téléphone</div>
+            <div style="font-size:13px;color:var(--gray);">${subtext}</div>
           </div>
           <button onclick="InstallPrompt.install()" style="background:var(--gold);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">Installer</button>
           <button onclick="InstallPrompt.dismiss()" style="background:none;border:none;font-size:20px;color:var(--gray-muted);cursor:pointer;padding:0;">✕</button>
