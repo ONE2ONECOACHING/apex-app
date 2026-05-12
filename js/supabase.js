@@ -1142,7 +1142,7 @@ const db = {
     const rows = sets.map((s, i) => ({
       log_id:                    logId,
       exercice_id:               s.exercice_id,
-      client_prog_exercice_id:   s.client_prog_exercice_id || null,
+      client_prog_exercice_id:   null, // toujours null pour éviter FK violation si programme modifié
       ordre:                     i,
       type_effort:               s.type_effort || 'reps',
       sets_data:                 s.sets_data || [],
