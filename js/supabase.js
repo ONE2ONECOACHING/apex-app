@@ -1156,7 +1156,6 @@ const db = {
       .from('seances_log')
       .select('*, seances_log_sets(*, exercices_bdd(nom,muscle_principal))')
       .eq('client_id', clientId)
-      .eq('statut', 'complete')
       .order('date_seance', { ascending: false })
       .limit(limit);
     if (error) throw error;
