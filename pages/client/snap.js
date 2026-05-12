@@ -83,11 +83,16 @@ const SnapPage = {
 
       <!-- MODE PHOTO -->
       <div id="snapModePhoto" style="display:none;">
-        <div id="snapUploadZone" class="upload-zone">
-          <input type="file" id="snapFile" accept="image/*" onchange="SnapPage.onFile(event)">
+        <div id="snapUploadZone" class="upload-zone" style="cursor:default;">
+          <input type="file" id="snapFileCamera" accept="image/*" capture="environment" style="display:none;" onchange="SnapPage.onFile(event)">
+          <input type="file" id="snapFileGallery" accept="image/*" style="display:none;" onchange="SnapPage.onFile(event)">
           <div class="upload-icon">📷</div>
-          <div class="upload-title">Prends ou importe une photo</div>
+          <div class="upload-title">Ajoute une photo de ton repas</div>
           <div class="upload-sub">Ton assiette, ton plat, ta collation</div>
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button onclick="document.getElementById('snapFileCamera').click()" class="btn btn-primary" style="flex:1;margin:0;">📷 Appareil photo</button>
+            <button onclick="document.getElementById('snapFileGallery').click()" class="btn btn-secondary" style="flex:1;margin:0;">🖼 Galerie</button>
+          </div>
         </div>
 
         <div id="snapPreview" style="display:none;">
@@ -112,11 +117,16 @@ const SnapPage = {
 
       <!-- MODE ÉTIQUETTE -->
       <div id="snapModeLabel" style="display:none;">
-        <div id="labelUploadZone" class="upload-zone">
-          <input type="file" id="labelFile" accept="image/*" onchange="SnapPage.onLabelFile(event)">
+        <div id="labelUploadZone" class="upload-zone" style="cursor:default;">
+          <input type="file" id="labelFileCamera" accept="image/*" capture="environment" style="display:none;" onchange="SnapPage.onLabelFile(event)">
+          <input type="file" id="labelFileGallery" accept="image/*" style="display:none;" onchange="SnapPage.onLabelFile(event)">
           <div class="upload-icon">📊</div>
           <div class="upload-title">Photo du tableau nutritionnel</div>
           <div class="upload-sub">Étiquette, emballage, plat préparé type PrepmyMeal…</div>
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button onclick="document.getElementById('labelFileCamera').click()" class="btn btn-primary" style="flex:1;margin:0;">📷 Appareil photo</button>
+            <button onclick="document.getElementById('labelFileGallery').click()" class="btn btn-secondary" style="flex:1;margin:0;">🖼 Galerie</button>
+          </div>
         </div>
         <div id="labelPreview" style="display:none;">
           <div class="preview-wrap">
@@ -436,7 +446,8 @@ const SnapPage = {
     if (this._photoUrl) { URL.revokeObjectURL(this._photoUrl); this._photoUrl = null; }
     document.getElementById('snapPreview').style.display = 'none';
     document.getElementById('snapUploadZone').style.display = 'block';
-    document.getElementById('snapFile').value = '';
+    document.getElementById('snapFileCamera').value = '';
+    document.getElementById('snapFileGallery').value = '';
   },
 
   setContext(ctx, btn) {
@@ -563,7 +574,8 @@ const SnapPage = {
     document.getElementById('snapModePhoto').style.display = 'block';
     document.getElementById('snapPreview').style.display = 'none';
     document.getElementById('snapUploadZone').style.display = 'block';
-    document.getElementById('snapFile').value = '';
+    document.getElementById('snapFileCamera').value = '';
+    document.getElementById('snapFileGallery').value = '';
     document.getElementById('snapBtn').disabled = false;
     document.getElementById('snapPortVal').textContent = '1';
   },
@@ -662,7 +674,8 @@ const SnapPage = {
     document.getElementById('labelPreview').style.display    = 'none';
     document.getElementById('labelUploadZone').style.display = 'block';
     document.getElementById('labelResultDiv').style.display  = 'none';
-    document.getElementById('labelFile').value               = '';
+    document.getElementById('labelFileCamera').value = '';
+    document.getElementById('labelFileGallery').value = '';
     document.getElementById('labelError').innerHTML          = '';
     const btn = document.getElementById('labelBtn');
     if (btn) btn.disabled = false;
