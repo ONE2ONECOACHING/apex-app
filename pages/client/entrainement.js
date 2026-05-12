@@ -121,10 +121,16 @@ const EntrainementPage = {
       <div class="card" style="margin-bottom:0.75rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div style="font-weight:700;font-size:15px;">${seance.nom}${jourLabel}</div>
-          <button class="btn btn-primary btn-small" style="font-size:12px;"
-            onclick="EntrainementPage._startSeance('${seance.id}')">
-            ▶ Démarrer
-          </button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-ghost btn-small" style="font-size:12px;"
+              onclick="EntrainementPage._openApercu('${seance.id}')">
+              👁 Aperçu
+            </button>
+            <button class="btn btn-primary btn-small" style="font-size:12px;"
+              onclick="EntrainementPage._startSeance('${seance.id}')">
+              ▶ Démarrer
+            </button>
+          </div>
         </div>
         ${seance.notes_coach ? `
           <div style="font-size:12px;color:var(--gold);background:var(--gold-bg,#fffbeb);
@@ -159,7 +165,99 @@ const EntrainementPage = {
   },
 
   _startSeance(seanceId) {
+    this._closeApercu();
     Router.navigate('seance-active', { seanceId, programmeId: this.programme?.id });
+  },
+
+  _openApercu(seanceId) {
+    const seance = (this.programme?.seances || []).find(s => s.id === seanceId);
+    if (!seance) return;
+    const exos = seance.exercices || [];
+
+    const modal = document.createElement('div');
+    modal.id = 'apercuModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;';
+
+    modal.innerHTML = `
+      <!-- Header fixe -->
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;
+                  background:var(--white);border-bottom:1px solid var(--border);flex-shrink:0;">
+        <button onclick="EntrainementPage._closeApercu()"
+          style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);padding:4px 8px;">←</button>
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--gray-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Aperçu</div>
+          <div style="font-size:16px;font-weight:700;color:var(--black);">${seance.nom}</div>
+        </div>
+        <div style="font-size:12px;color:var(--gray-muted);">${exos.length} exercice${exos.length > 1 ? 's' : ''}</div>
+      </div>
+
+      <!-- Corps scrollable -->
+      <div style="flex:1;overflow-y:auto;padding:16px 16px 8px;">
+        ${exos.length === 0
+          ? '<div style="text-align:center;color:var(--gray-muted);padding:40px 0;">Aucun exercice dans cette séance.</div>'
+          : exos.map((e, i) => this._apercuExoCard(e, i)).join('')
+        }
+      </div>
+
+      <!-- Footer fixe -->
+      <div style="padding:16px;background:var(--white);border-top:1px solid var(--border);flex-shrink:0;
+                  padding-bottom:calc(16px + env(safe-area-inset-bottom));">
+        <button onclick="EntrainementPage._startSeance('${seanceId}')"
+          style="width:100%;height:54px;background:var(--gold);color:#fff;border:none;
+                 border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;font-family:var(--font);">
+          ▶ Démarrer la séance
+        </button>
+      </div>`;
+
+    document.body.appendChild(modal);
+  },
+
+  _closeApercu() {
+    document.getElementById('apercuModal')?.remove();
+  },
+
+  _apercuExoCard(e, i) {
+    const nom    = e.exercices_bdd?.nom || '—';
+    const muscle = e.exercices_bdd?.muscle_principal || '';
+    const ytUrl  = e.exercices_bdd?.youtube_url || null;
+    const ytId   = ytUrl ? (ytUrl.match(/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/) || [])[1] : null;
+    const te     = e.type_effort || 'reps';
+    const series = e.series || 3;
+    const reps   = e.reps_cible || '10';
+    const label  = te === 'amrap'    ? `AMRAP ${reps}`
+                 : te === 'temps'    ? `${series} × ${reps}`
+                 : te === 'distance' ? `${series} × ${reps}`
+                 : `${series} × ${reps} reps`;
+
+    return `
+      <div style="background:var(--white);border-radius:14px;padding:14px;margin-bottom:12px;
+                  border:1px solid var(--border);">
+        <div style="display:flex;align-items:flex-start;gap:10px;${ytId ? 'margin-bottom:10px;' : ''}">
+          <div style="font-size:13px;font-weight:800;color:var(--gray-muted);
+                      min-width:24px;margin-top:2px;">${i + 1}.</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:15px;font-weight:700;color:var(--black);margin-bottom:5px;">${nom}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              ${muscle ? `<span style="font-size:11px;padding:2px 9px;border-radius:10px;
+                background:var(--gold-bg,#fffbeb);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
+              <span style="font-size:11px;padding:2px 9px;border-radius:10px;
+                background:var(--card-bg);color:var(--gray);font-weight:600;">${label}</span>
+            </div>
+            ${e.notes ? `<div style="font-size:12px;color:var(--gray);margin-top:6px;font-style:italic;">
+              💬 ${e.notes}</div>` : ''}
+          </div>
+        </div>
+        ${ytId ? `
+        <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:10px;
+                    overflow:hidden;background:#000;">
+          <iframe src="https://www.youtube.com/embed/${ytId}?rel=0"
+            frameborder="0" loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+            style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
+          </iframe>
+        </div>` : ''}
+      </div>`;
   },
 
   // ── Onglet Historique ────────────────────────────────────────────────────────

@@ -322,11 +322,12 @@ const SeanceActivePage = {
                  cursor:${inRest ? 'default' : 'pointer'};font-family:var(--font);">
           ${btnText}
         </button>
+        ${this._exoIdx < (this._seance?.exercices?.length || 1) - 1 ? `
         <button onclick="SeanceActivePage._skipExo()"
           style="width:100%;height:38px;background:none;border:none;color:var(--gray-muted);
                  font-size:13px;cursor:pointer;margin-top:2px;font-family:var(--font);">
-          Passer cet exercice →
-        </button>
+          ⏭ Reporter à la fin
+        </button>` : ''}
       </div>`;
   },
 
@@ -561,12 +562,22 @@ const SeanceActivePage = {
   },
 
   _skipExo() {
-    if (!confirm('Passer cet exercice ?')) return;
+    const exos = this._seance.exercices;
+    if (this._exoIdx >= exos.length - 1) return; // dernier exo, rien à reporter
+
     clearInterval(this._restTimer);
     this._removeBanner();
-    this._exoIdx++;
+
+    // Déplacer l'exercice courant et son log à la fin
+    const [skippedExo] = exos.splice(this._exoIdx, 1);
+    const [skippedLog] = this._logs.splice(this._exoIdx, 1);
+    skippedLog.sets_data = []; // reset les séries partielles
+    exos.push(skippedExo);
+    this._logs.push(skippedLog);
+
+    // _exoIdx reste le même (pointe maintenant sur le suivant)
     this._serieIdx = 0;
-    this._phase = this._exoIdx >= (this._seance?.exercices?.length || 0) ? 'done' : 'exercice';
+    this._phase    = 'exercice';
     this._draw();
   },
 
