@@ -326,7 +326,7 @@ const SeanceActivePage = {
         <button onclick="SeanceActivePage._skipExo()"
           style="width:100%;height:38px;background:none;border:none;color:var(--gray-muted);
                  font-size:13px;cursor:pointer;margin-top:2px;font-family:var(--font);">
-          ⏭ Reporter à la fin
+          Passer cet exercice →
         </button>` : ''}
       </div>`;
   },
