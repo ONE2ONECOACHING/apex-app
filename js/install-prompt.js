@@ -6,8 +6,8 @@ const InstallPrompt = {
   init() {
     // Déjà installée en standalone → rien à faire
     if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
-    // Déjà dismissé
-    if (localStorage.getItem('installDismissed')) return;
+    // Dismissé pour cette session uniquement (revient à la prochaine ouverture)
+    if (sessionStorage.getItem('installDismissedSession')) return;
 
     // Android : intercepter l'event natif
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -98,6 +98,6 @@ const InstallPrompt = {
   dismiss() {
     const banner = document.getElementById('installBanner');
     if (banner) banner.remove();
-    localStorage.setItem('installDismissed', '1');
+    sessionStorage.setItem('installDismissedSession', '1');
   }
 };
