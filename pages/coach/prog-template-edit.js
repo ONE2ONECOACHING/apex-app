@@ -2,7 +2,7 @@
 
 const CoachProgTemplateEditPage = {
   templateId:          null,
-  templateData:        { nom: '', description: '', nb_semaines: 4, tag: null },
+  templateData:        { nom: '', description: '', nb_semaines: 4, tag: null, consignes: '' },
   seances:             [],
   _allExos:            [],
   _picking:            null,  // index séance pour ajout
@@ -108,7 +108,7 @@ const CoachProgTemplateEditPage = {
         const prog = await db.getClientProgrammeActif(this._clientId);
         if (!prog) throw new Error('Aucun programme actif pour ce client.');
         this._clientProgrammeId = prog.id;
-        this.templateData = { nom: prog.nom, description: '', nb_semaines: 1 };
+        this.templateData = { nom: prog.nom, description: '', nb_semaines: 1, consignes: prog.consignes || '' };
         this.seances = (prog.seances || []).map(s => ({
           id:          s.id,
           nom:         s.nom,
@@ -126,6 +126,7 @@ const CoachProgTemplateEditPage = {
           description: tpl.description || '',
           nb_semaines: tpl.nb_semaines,
           tag:         tpl.tag || null,
+          consignes:   tpl.consignes || '',
         };
         this.seances = (tpl.seances || []).map(s => ({
           id:          s.id,
@@ -166,6 +167,9 @@ const CoachProgTemplateEditPage = {
     if (descEl) this.templateData.description = descEl.value;
     const semEl = document.getElementById('tplSemaines');
     if (semEl) this.templateData.nb_semaines = parseInt(semEl.value) || 4;
+
+    const consEl = document.getElementById('tplConsignes');
+    if (consEl) this.templateData.consignes = consEl.value;
 
     // Séances et exercices
     this.seances.forEach((s, si) => {
@@ -270,6 +274,16 @@ const CoachProgTemplateEditPage = {
             style="height:44px;padding:0 24px;flex-shrink:0;white-space:nowrap;">
             ✓ Enregistrer
           </button>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="form-label">📋 Consignes du programme <span style="color:var(--gray-muted);font-weight:400;">(optionnel — visible par le client)</span></div>
+          <textarea id="tplConsignes"
+            placeholder="Ex : Ce programme est conçu pour développer la force sur 4 semaines. Effectue chaque séance en respectant les temps de repos indiqués…"
+            style="width:100%;min-height:90px;border:1px solid var(--border-solid);border-radius:8px;
+                   background:var(--card-bg);color:var(--black);font-size:13px;
+                   padding:10px 12px;font-family:var(--font);resize:vertical;
+                   box-sizing:border-box;line-height:1.5;"
+          >${d.consignes.replace(/</g,'&lt;')}</textarea>
         </div>
       </div>
 
@@ -826,6 +840,7 @@ const CoachProgTemplateEditPage = {
       if (this._clientMode) {
         // ── Sauvegarde dans les tables client (sans modifier le template) ──
         await db.saveClientProgrammeSeances(this._clientProgrammeId, this.seances);
+        await db.saveClientProgrammeConsignes(this._clientProgrammeId, this.templateData.consignes.trim() || null);
 
         // Recharger pour obtenir les vrais IDs
         const prog = await db.getClientProgrammeActif(this._clientId);
@@ -848,6 +863,7 @@ const CoachProgTemplateEditPage = {
           description: this.templateData.description.trim() || null,
           nb_semaines: parseInt(this.templateData.nb_semaines) || 4,
           tag:         this.templateData.tag || null,
+          consignes:   this.templateData.consignes.trim() || null,
           coach_id:    profile.id,
           actif:       true,
         };

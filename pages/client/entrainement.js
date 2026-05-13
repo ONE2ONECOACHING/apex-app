@@ -105,6 +105,18 @@ const EntrainementPage = {
         <div style="font-size:18px;font-weight:700;color:var(--black);">📋 ${p.nom}</div>
         ${dateDebut ? `<div style="font-size:13px;color:var(--gray-muted);margin-top:3px;">Démarré le ${dateDebut}</div>` : ''}
       </div>
+      ${p.consignes ? `
+        <div class="card card-tap" onclick="EntrainementPage._openConsignes()"
+             style="cursor:pointer;margin-bottom:1rem;border-left:3px solid var(--gold);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-size:26px;line-height:1;">📋</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:14px;margin-bottom:2px;">Consignes du programme</div>
+              <div style="font-size:12px;color:var(--gray-light);">Méthode d'entraînement · Appuie pour lire</div>
+            </div>
+            <div style="color:var(--gray-muted);font-size:18px;">›</div>
+          </div>
+        </div>` : ''}
       ${(p.seances || []).length === 0
         ? `<div class="empty-state"><div class="empty-icon">📭</div>
            <div class="empty-text">Aucune séance dans ce programme.</div></div>`
@@ -190,6 +202,47 @@ const EntrainementPage = {
              padding:2px 0;letter-spacing:.05em;">
           🔗 superset
         </div>` : ''}`;
+  },
+
+  _openConsignes() {
+    const text = this.programme?.consignes || '';
+    if (!text) return;
+    const modal = document.createElement('div');
+    modal.id = 'consignesModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);display:flex;align-items:flex-end;';
+    modal.innerHTML = `
+      <div style="background:var(--white);border-radius:20px 20px 0 0;width:100%;
+                  max-height:80vh;display:flex;flex-direction:column;
+                  padding-bottom:env(safe-area-inset-bottom);">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;
+                    border-bottom:1px solid var(--border);flex-shrink:0;">
+          <div style="font-size:22px;">📋</div>
+          <div style="flex:1;font-size:16px;font-weight:700;">Consignes du programme</div>
+          <button onclick="EntrainementPage._closeConsignes()"
+            style="background:none;border:none;font-size:22px;color:var(--gray-muted);
+                   cursor:pointer;padding:4px;">×</button>
+        </div>
+        <!-- Corps scrollable -->
+        <div style="flex:1;overflow-y:auto;padding:20px;
+                    font-size:14px;color:var(--black);line-height:1.7;white-space:pre-wrap;">
+${text.replace(/</g,'&lt;')}</div>
+        <!-- Footer -->
+        <div style="padding:16px 20px;flex-shrink:0;">
+          <button onclick="EntrainementPage._closeConsignes()"
+            style="width:100%;height:48px;background:var(--gold);color:#fff;border:none;
+                   border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;
+                   font-family:var(--font);">
+            Compris 👍
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) this._closeConsignes(); });
+  },
+
+  _closeConsignes() {
+    document.getElementById('consignesModal')?.remove();
   },
 
   _startSeance(seanceId) {

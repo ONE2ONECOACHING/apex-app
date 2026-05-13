@@ -984,6 +984,7 @@ const db = {
         coach_id:    coachId,
         template_id: template.id,
         nom:         template.nom,
+        consignes:   template.consignes || null,
         date_debut:  dateDebut,
         actif:       true,
       })
@@ -1023,6 +1024,14 @@ const db = {
       }
     }
     return prog;
+  },
+
+  async saveClientProgrammeConsignes(programmeId, consignes) {
+    const { error } = await getSupabase()
+      .from('client_programmes')
+      .update({ consignes: consignes || null })
+      .eq('id', programmeId);
+    if (error) throw error;
   },
 
   // Sauvegarde les séances/exercices d'un programme client sans toucher le template
