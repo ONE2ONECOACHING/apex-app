@@ -231,10 +231,24 @@ const SeanceActivePage = {
     wrap.innerHTML = `
       ${this._header()}
 
-      <div style="padding:12px 16px 0;font-size:12px;color:var(--gray-muted);">
-        Exercice <b style="color:var(--black);">${this._exoIdx + 1} / ${nbEx}</b>
-        &nbsp;·&nbsp;
-        Série <b style="color:var(--black);">${this._serieIdx + 1} / ${nbSer}</b>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 0;">
+        <button onclick="SeanceActivePage._prevExo()"
+          ${this._exoIdx === 0 ? 'disabled' : ''}
+          style="width:34px;height:34px;border-radius:50%;border:1px solid var(--border-solid);
+                 background:var(--card-bg);font-size:18px;cursor:pointer;flex-shrink:0;
+                 color:${this._exoIdx === 0 ? 'var(--gray-muted)' : 'var(--black)'};
+                 display:flex;align-items:center;justify-content:center;">‹</button>
+        <div style="flex:1;text-align:center;font-size:12px;color:var(--gray-muted);">
+          Exercice <b style="color:var(--black);">${this._exoIdx + 1} / ${nbEx}</b>
+          &nbsp;·&nbsp;
+          Série <b style="color:var(--black);">${this._serieIdx + 1} / ${nbSer}</b>
+        </div>
+        <button onclick="SeanceActivePage._nextExo()"
+          ${this._exoIdx >= nbEx - 1 ? 'disabled' : ''}
+          style="width:34px;height:34px;border-radius:50%;border:1px solid var(--border-solid);
+                 background:var(--card-bg);font-size:18px;cursor:pointer;flex-shrink:0;
+                 color:${this._exoIdx >= nbEx - 1 ? 'var(--gray-muted)' : 'var(--black)'};
+                 display:flex;align-items:center;justify-content:center;">›</button>
       </div>
 
       <div style="padding:10px 16px 0;">
@@ -340,6 +354,12 @@ const SeanceActivePage = {
                  font-size:13px;cursor:pointer;margin-top:2px;font-family:var(--font);">
           Passer cet exercice →
         </button>` : ''}
+        <button onclick="SeanceActivePage._finishEarly()"
+          style="width:100%;height:34px;background:none;border:none;
+                 color:var(--gray-muted);font-size:12px;cursor:pointer;
+                 margin-top:2px;font-family:var(--font);text-decoration:underline;">
+          🏁 Terminer la séance
+        </button>
       </div>`;
   },
 
@@ -653,6 +673,38 @@ const SeanceActivePage = {
       if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer la séance'; }
       alert('Erreur : ' + e.message);
     }
+  },
+
+  _goToExo(idx) {
+    clearInterval(this._restTimer);
+    this._removeBanner();
+    const ex = this._seance.exercices[idx];
+    if (!ex) return;
+    this._exoIdx   = idx;
+    const logged   = this._logs[idx]?.sets_data?.length || 0;
+    const maxSer   = this._nbSeries(ex);
+    this._serieIdx = Math.max(0, Math.min(logged, maxSer - 1));
+    this._phase    = 'exercice';
+    this._draw();
+  },
+
+  _prevExo() {
+    if (this._exoIdx <= 0) return;
+    this._goToExo(this._exoIdx - 1);
+  },
+
+  _nextExo() {
+    if (this._exoIdx >= (this._seance?.exercices?.length || 1) - 1) return;
+    this._goToExo(this._exoIdx + 1);
+  },
+
+  _finishEarly() {
+    if (!confirm('Terminer la séance maintenant ?\nSeules les séries déjà validées seront enregistrées.')) return;
+    clearInterval(this._restTimer);
+    clearInterval(this._sessionTimer);
+    this._removeBanner();
+    this._phase = 'done';
+    this._draw();
   },
 
   _quit() {
