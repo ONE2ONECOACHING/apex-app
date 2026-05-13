@@ -440,9 +440,8 @@ const SeanceActivePage = {
         charge: document.getElementById('saCharge')?.value || '',
       };
     } else {
-      // For AMRAP/Temps/Distance: store charge + combined result from note fields
-      const score  = document.getElementById('saReps')?.value || '';
-      const note   = document.getElementById('saNote')?.value || '';
+      const score = document.getElementById('saReps')?.value || '';
+      const note  = document.getElementById('saNote')?.value || '';
       set = {
         reps:   [score, note].filter(Boolean).join(' — ') || ex.reps_cible || '',
         charge: document.getElementById('saCharge')?.value || '',
@@ -451,16 +450,51 @@ const SeanceActivePage = {
 
     this._logs[this._exoIdx].sets_data.push(set);
 
+    const exos    = this._seance.exercices;
     const nbSer   = this._nbSeries(ex);
-    const nbEx    = this._seance.exercices.length;
+    const nbEx    = exos.length;
     const lastSer = this._serieIdx + 1 >= nbSer;
     const lastExo = this._exoIdx + 1 >= nbEx;
 
-    if (lastSer && lastExo) { this._phase = 'done'; this._draw(); return; }
+    // ── Logique superset ────────────────────────────────────────────────────
+    const group = ex.superset_groupe;
+    if (group) {
+      const nextExo     = exos[this._exoIdx + 1];
+      const nextInGroup = nextExo?.superset_groupe === group;
 
+      if (nextInGroup) {
+        // Enchaîner directement avec le suivant du superset — pas de repos
+        this._exoIdx++;
+        // _serieIdx inchangé : même round
+        this._phase = 'exercice';
+        this._draw();
+        return;
+      }
+
+      // Dernier exercice du groupe pour ce round — trouver le premier du groupe
+      let firstIdx = this._exoIdx;
+      while (firstIdx > 0 && exos[firstIdx - 1]?.superset_groupe === group) firstIdx--;
+
+      if (lastSer) {
+        // Tous les rounds terminés → exercice suivant hors groupe
+        if (lastExo) { this._phase = 'done'; this._draw(); return; }
+        this._exoIdx   = this._exoIdx + 1;
+        this._serieIdx = 0;
+      } else {
+        // Prochain round → revenir au premier du groupe, série suivante
+        this._exoIdx   = firstIdx;
+        this._serieIdx++;
+      }
+
+      this._startRest(ex.repos_secondes || 90);
+      return;
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    // Exercice normal
+    if (lastSer && lastExo) { this._phase = 'done'; this._draw(); return; }
     if (lastSer) { this._exoIdx++; this._serieIdx = 0; }
     else         { this._serieIdx++; }
-
     this._startRest(ex.repos_secondes || 90);
   },
 
@@ -498,7 +532,11 @@ const SeanceActivePage = {
         <div style="font-size:22px;line-height:1;">💤</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;
-                      letter-spacing:.8px;margin-bottom:1px;">Récupération</div>
+                      letter-spacing:.8px;margin-bottom:1px;">Récupération · Prochain : ${(() => {
+            const exos = this._seance?.exercices || [];
+            const next = exos[this._exoIdx];
+            return next?.exercices_bdd?.nom || '—';
+          })()}</div>
           <div id="saRestSecs" style="font-size:30px;font-weight:900;color:#fff;
                                       font-family:var(--font);line-height:1.1;">
             ${this._fmt(this._restRemaining)}
