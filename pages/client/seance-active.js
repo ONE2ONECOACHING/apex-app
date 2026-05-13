@@ -348,12 +348,6 @@ const SeanceActivePage = {
                  cursor:${inRest ? 'default' : 'pointer'};font-family:var(--font);">
           ${btnText}
         </button>
-        ${this._exoIdx < (this._seance?.exercices?.length || 1) - 1 ? `
-        <button onclick="SeanceActivePage._skipExo()"
-          style="width:100%;height:38px;background:none;border:none;color:var(--gray-muted);
-                 font-size:13px;cursor:pointer;margin-top:2px;font-family:var(--font);">
-          Passer cet exercice →
-        </button>` : ''}
         <button onclick="SeanceActivePage._finishEarly()"
           style="width:100%;height:34px;background:none;border:none;
                  color:var(--gray-muted);font-size:12px;cursor:pointer;
