@@ -173,15 +173,21 @@ const EntrainementPage = {
       ? `border-left:3px solid ${ssColor};padding-left:8px;`
       : '';
 
+    const notes = e.notes?.trim();
     return `
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;
-           border-bottom:${nextInSS ? 'none' : '1px solid var(--border)'};${rowStyle}">
-        <div style="flex:1;font-size:13px;font-weight:500;color:var(--black);">${nom}${ssBadge}</div>
-        <div style="font-size:12px;color:var(--gray-muted);white-space:nowrap;">${label}</div>
+      <div style="padding:7px 0;border-bottom:${nextInSS ? 'none' : '1px solid var(--border)'};${rowStyle}">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:1;font-size:13px;font-weight:500;color:var(--black);">${nom}${ssBadge}</div>
+          <div style="font-size:12px;color:var(--gray-muted);white-space:nowrap;">${label}</div>
+        </div>
+        ${notes ? `
+          <div style="font-size:12px;color:var(--gold);margin-top:3px;font-style:italic;">
+            💬 ${notes}
+          </div>` : ''}
       </div>
       ${nextInSS ? `
         <div style="text-align:center;font-size:10px;font-weight:700;color:${ssColor};
-             padding:2px 0;letter-spacing:.05em;border-bottom:none;">
+             padding:2px 0;letter-spacing:.05em;">
           🔗 superset
         </div>` : ''}`;
   },

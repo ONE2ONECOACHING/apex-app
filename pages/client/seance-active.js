@@ -250,6 +250,12 @@ const SeanceActivePage = {
               background:${c}22;color:${c};font-weight:700;">🔗 Superset</span>`;
           })() : ''}
         </div>
+        ${ex.notes?.trim() ? `
+          <div style="margin-top:8px;padding:8px 12px;background:var(--gold-bg,#fffbeb);
+               border-left:3px solid var(--gold);border-radius:6px;
+               font-size:13px;color:var(--gold);font-style:italic;line-height:1.4;">
+            💬 ${ex.notes.trim()}
+          </div>` : ''}
 
         ${ytId ? `
         <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:10px;
