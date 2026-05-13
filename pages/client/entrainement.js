@@ -137,8 +137,8 @@ const EntrainementPage = {
                border-left:3px solid var(--gold);padding:6px 10px;border-radius:4px;margin-bottom:10px;">
             📌 ${seance.notes_coach}
           </div>` : ''}
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          ${exos.map(e => this._exoRow(e)).join('')}
+        <div style="display:flex;flex-direction:column;gap:0;">
+          ${exos.map((e, i) => this._exoRow(e, exos, i)).join('')}
         </div>
         ${exos.length === 0
           ? '<div style="font-size:13px;color:var(--gray-muted);">Aucun exercice.</div>'
@@ -146,7 +146,12 @@ const EntrainementPage = {
       </div>`;
   },
 
-  _exoRow(e) {
+  _ssColor(group) {
+    const colors = ['#F59E0B','#3B82F6','#10B981','#EC4899','#8B5CF6','#F97316'];
+    return group ? colors[(group.charCodeAt(0) - 65) % colors.length] : null;
+  },
+
+  _exoRow(e, exos, i) {
     const nom    = e.exercices_bdd?.nom || '—';
     const series = e.series || 3;
     const reps   = e.reps_cible || '10';
@@ -156,12 +161,29 @@ const EntrainementPage = {
                  : te === 'temps'    ? `${series}×${reps}`
                  : te === 'distance' ? `${series}×${reps}`
                  : `${series}×${reps}${charge}`;
+
+    const ssGroup  = e.superset_groupe;
+    const ssColor  = this._ssColor(ssGroup);
+    const nextInSS = ssGroup && exos && i < exos.length - 1 && exos[i + 1]?.superset_groupe === ssGroup;
+    const ssBadge  = ssGroup
+      ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;
+           background:${ssColor}22;color:${ssColor};margin-left:5px;vertical-align:middle;">SS</span>`
+      : '';
+    const rowStyle = ssGroup
+      ? `border-left:3px solid ${ssColor};padding-left:8px;`
+      : '';
+
     return `
-      <div style="display:flex;align-items:center;gap:10px;padding:6px 0;
-           border-bottom:1px solid var(--border);">
-        <div style="flex:1;font-size:13px;font-weight:500;color:var(--black);">${nom}</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;
+           border-bottom:${nextInSS ? 'none' : '1px solid var(--border)'};${rowStyle}">
+        <div style="flex:1;font-size:13px;font-weight:500;color:var(--black);">${nom}${ssBadge}</div>
         <div style="font-size:12px;color:var(--gray-muted);white-space:nowrap;">${label}</div>
-      </div>`;
+      </div>
+      ${nextInSS ? `
+        <div style="text-align:center;font-size:10px;font-weight:700;color:${ssColor};
+             padding:2px 0;letter-spacing:.05em;border-bottom:none;">
+          🔗 superset
+        </div>` : ''}`;
   },
 
   _startSeance(seanceId) {
@@ -195,7 +217,7 @@ const EntrainementPage = {
       <div style="flex:1;overflow-y:auto;padding:16px 16px 8px;">
         ${exos.length === 0
           ? '<div style="text-align:center;color:var(--gray-muted);padding:40px 0;">Aucun exercice dans cette séance.</div>'
-          : exos.map((e, i) => this._apercuExoCard(e, i)).join('')
+          : exos.map((e, i) => this._apercuExoCard(e, i, exos)).join('')
         }
       </div>
 
@@ -216,7 +238,7 @@ const EntrainementPage = {
     document.getElementById('apercuModal')?.remove();
   },
 
-  _apercuExoCard(e, i) {
+  _apercuExoCard(e, i, exos) {
     const nom    = e.exercices_bdd?.nom || '—';
     const muscle = e.exercices_bdd?.muscle_principal || '';
     const ytUrl  = e.exercices_bdd?.youtube_url || null;
@@ -229,9 +251,19 @@ const EntrainementPage = {
                  : te === 'distance' ? `${series} × ${reps}`
                  : `${series} × ${reps} reps`;
 
+    const ssGroup  = e.superset_groupe;
+    const ssColor  = this._ssColor(ssGroup);
+    const nextInSS = ssGroup && exos && i < exos.length - 1 && exos[i + 1]?.superset_groupe === ssGroup;
+    const borderLeft = ssGroup ? `border-left:3px solid ${ssColor};` : '';
+    const ssBadge  = ssGroup
+      ? `<span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;
+           background:${ssColor}22;color:${ssColor};">🔗 Superset</span>`
+      : '';
+
     return `
-      <div style="background:var(--white);border-radius:14px;padding:14px;margin-bottom:12px;
-                  border:1px solid var(--border);">
+      <div style="background:var(--white);border-radius:14px;padding:14px;
+                  margin-bottom:${nextInSS ? '2px' : '12px'};
+                  border:1px solid var(--border);${borderLeft}">
         <div style="display:flex;align-items:flex-start;gap:10px;${ytId ? 'margin-bottom:10px;' : ''}">
           <div style="font-size:13px;font-weight:800;color:var(--gray-muted);
                       min-width:24px;margin-top:2px;">${i + 1}.</div>
@@ -242,6 +274,7 @@ const EntrainementPage = {
                 background:var(--gold-bg,#fffbeb);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
               <span style="font-size:11px;padding:2px 9px;border-radius:10px;
                 background:var(--card-bg);color:var(--gray);font-weight:600;">${label}</span>
+              ${ssBadge}
             </div>
             ${e.notes ? `<div style="font-size:12px;color:var(--gray);margin-top:6px;font-style:italic;">
               💬 ${e.notes}</div>` : ''}
@@ -257,7 +290,10 @@ const EntrainementPage = {
             style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
           </iframe>
         </div>` : ''}
-      </div>`;
+      </div>
+      ${nextInSS ? `
+        <div style="text-align:center;font-size:11px;font-weight:700;color:${ssColor};
+             margin-bottom:2px;letter-spacing:.05em;">🔗 superset</div>` : ''}`;
   },
 
   // ── Onglet Historique ────────────────────────────────────────────────────────

@@ -243,6 +243,12 @@ const SeanceActivePage = {
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           ${muscle ? `<span style="font-size:11px;padding:2px 10px;border-radius:12px;
             background:var(--gold-bg,#fffbeb);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
+          ${ex.superset_groupe ? (() => {
+            const ssColors = ['#F59E0B','#3B82F6','#10B981','#EC4899','#8B5CF6','#F97316'];
+            const c = ssColors[(ex.superset_groupe.charCodeAt(0) - 65) % ssColors.length];
+            return `<span style="font-size:11px;padding:2px 10px;border-radius:12px;
+              background:${c}22;color:${c};font-weight:700;">🔗 Superset</span>`;
+          })() : ''}
         </div>
 
         ${ytId ? `
