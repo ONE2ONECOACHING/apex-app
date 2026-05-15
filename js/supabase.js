@@ -1026,6 +1026,14 @@ const db = {
     return prog;
   },
 
+  async saveClientProgrammeNom(programmeId, nom) {
+    const { error } = await getSupabase()
+      .from('client_programmes')
+      .update({ nom })
+      .eq('id', programmeId);
+    if (error) throw error;
+  },
+
   async saveClientProgrammeConsignes(programmeId, consignes) {
     const { error } = await getSupabase()
       .from('client_programmes')

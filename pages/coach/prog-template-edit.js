@@ -9,6 +9,7 @@ const CoachProgTemplateEditPage = {
   _swapTarget:         null,  // { si, ei } pour remplacement
   _pickSearch:         '',
   _pickMuscle:         'all',
+  _pickEquip:          'all',
   _saving:             false,
   // ── Mode client (édition programme assigné, sans modifier le template) ──
   _clientMode:         false,
@@ -36,8 +37,21 @@ const CoachProgTemplateEditPage = {
     { key: 'ischio',     label: 'Ischio'    },
     { key: 'fessiers',   label: 'Fessiers'  },
     { key: 'abdos',      label: 'Abdos'     },
+    { key: 'mollets',    label: 'Mollets'   },
     { key: 'full_body',  label: 'Full Body' },
     { key: 'cardio',     label: 'Cardio'    },
+  ],
+
+  _equipPicker: [
+    { key: 'all',         label: 'Tout équipement' },
+    { key: 'poids_corps', label: 'Poids du corps'  },
+    { key: 'halteres',    label: 'Haltères'        },
+    { key: 'barre',       label: 'Barre'           },
+    { key: 'cables',      label: 'Câbles'          },
+    { key: 'trx',         label: 'TRX'             },
+    { key: 'machine',     label: 'Machine'         },
+    { key: 'elastiques',  label: 'Élastiques'      },
+    { key: 'autres',      label: 'Autres'          },
   ],
 
   render() {
@@ -239,10 +253,12 @@ const CoachProgTemplateEditPage = {
       <div class="card" style="margin-bottom:1.25rem;padding:14px 18px;">
         <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
           ${this._clientMode ? `
-          <div style="flex:1;min-width:200px;">
-            <div style="font-size:12px;color:var(--gray-muted);margin-bottom:2px;">Programme de ${this._clientPrenom}</div>
-            <div style="font-size:16px;font-weight:700;">${d.nom}</div>
-            <div style="font-size:11px;color:var(--gold);margin-top:3px;">✏️ Modifications pour ce client uniquement — le template n'est pas modifié</div>
+          <div style="flex:2;min-width:220px;">
+            <div style="font-size:12px;color:var(--gray-muted);margin-bottom:4px;">Programme de ${this._clientPrenom}</div>
+            <input class="input" id="tplNom" value="${d.nom.replace(/"/g,'&quot;')}"
+              placeholder="Nom du programme"
+              oninput="document.getElementById('tplEditTitle').textContent=this.value||'Programme'">
+            <div style="font-size:11px;color:var(--gold);margin-top:4px;">✏️ Modifications pour ce client uniquement — le template n'est pas modifié</div>
           </div>` : `
           <div style="flex:2;min-width:220px;">
             <div class="form-label">Nom du programme</div>
@@ -689,6 +705,7 @@ const CoachProgTemplateEditPage = {
     this._swapTarget  = null;
     this._pickSearch  = '';
     this._pickMuscle  = 'all';
+    this._pickEquip   = 'all';
     this._renderPicker();
   },
 
@@ -698,6 +715,7 @@ const CoachProgTemplateEditPage = {
     this._swapTarget  = { si, ei };
     this._pickSearch  = '';
     this._pickMuscle  = 'all';
+    this._pickEquip   = 'all';
     this._renderPicker();
   },
 
@@ -721,9 +739,10 @@ const CoachProgTemplateEditPage = {
             oninput="CoachProgTemplateEditPage._pickSearch=this.value;
                      CoachProgTemplateEditPage._renderPickerList()">
 
+          <div id="pickerEquips" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;"></div>
           <div id="pickerMuscles" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;"></div>
 
-          <div id="pickerList" style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+          <div id="pickerList" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
 
           ${this._allExos.length === 0 ? `
             <div style="text-align:center;margin-top:16px;">
@@ -734,11 +753,26 @@ const CoachProgTemplateEditPage = {
         </div>
       </div>`;
 
+    this._renderPickerEquips();
     this._renderPickerMuscles();
     this._renderPickerList();
     // Focus sur la recherche après ouverture
     const inp = document.getElementById('pickerSearch');
     if (inp) inp.focus();
+  },
+
+  _renderPickerEquips() {
+    const el = document.getElementById('pickerEquips');
+    if (!el) return;
+    el.innerHTML = this._equipPicker.map(e => `
+      <button class="rec-kcal-btn${this._pickEquip === e.key ? ' active' : ''}"
+        onclick="CoachProgTemplateEditPage._pickEquip='${e.key}';
+                 CoachProgTemplateEditPage._pickMuscle='all';
+                 CoachProgTemplateEditPage._renderPickerEquips();
+                 CoachProgTemplateEditPage._renderPickerMuscles();
+                 CoachProgTemplateEditPage._renderPickerList()">
+        ${e.label}
+      </button>`).join('');
   },
 
   _renderPickerMuscles() {
@@ -757,13 +791,14 @@ const CoachProgTemplateEditPage = {
     const el = document.getElementById('pickerList');
     if (!el) return;
     let exos = this._allExos;
+    if (this._pickEquip  !== 'all') exos = exos.filter(e => e.equipement === this._pickEquip);
     if (this._pickMuscle !== 'all') exos = exos.filter(e => e.muscle_principal === this._pickMuscle);
     if (this._pickSearch.trim()) {
       const q = this._pickSearch.toLowerCase();
       exos = exos.filter(e => e.nom.toLowerCase().includes(q));
     }
     const equips = { poids_corps:'Poids du corps', halteres:'Haltères', barre:'Barre',
-      machine:'Machine', cables:'Câbles', elastiques:'Élastiques', autres:'Autres' };
+      machine:'Machine', cables:'Câbles', elastiques:'Élastiques', trx:'TRX', autres:'Autres' };
     const isSwap = !!this._swapTarget;
     el.innerHTML = exos.length === 0
       ? '<div style="text-align:center;color:var(--gray-muted);padding:24px 0;">Aucun exercice trouvé</div>'
@@ -839,8 +874,12 @@ const CoachProgTemplateEditPage = {
     try {
       if (this._clientMode) {
         // ── Sauvegarde dans les tables client (sans modifier le template) ──
+        const nomClient = this.templateData.nom.trim();
+        if (!nomClient) { alert('Le nom du programme est requis.'); this._saving = false; if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer'; } return; }
+        await db.saveClientProgrammeNom(this._clientProgrammeId, nomClient);
         await db.saveClientProgrammeSeances(this._clientProgrammeId, this.seances);
         await db.saveClientProgrammeConsignes(this._clientProgrammeId, this.templateData.consignes.trim() || null);
+        document.getElementById('tplEditTitle').textContent = nomClient;
 
         // Recharger pour obtenir les vrais IDs
         const prog = await db.getClientProgrammeActif(this._clientId);
