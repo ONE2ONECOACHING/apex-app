@@ -74,7 +74,12 @@ const CoachClientProgrammePage = {
           onclick="CoachClientProgrammePage.openAssignModal()">
           ${p ? '🔄 Changer de programme' : '+ Assigner un programme'}
         </button>
-      </div>`;
+      </div>
+      ${p ? `
+      <button id="cpNotifyBtn" class="btn btn-secondary" style="width:100%;margin-top:8px;"
+        onclick="CoachClientProgrammePage.notifyClient()">
+        🔔 Notifier le client
+      </button>` : ''}`;
   },
 
   _programmeCard(p) {
@@ -220,17 +225,6 @@ const CoachClientProgrammePage = {
       const tabsHtml = coachClientNav(this.client.id, 'coach-client-programme');
       this._render(tabsHtml);
 
-      // Notification push au client (silencieuse si non abonné)
-      const prenom = this.client?.prenom || 'ton client';
-      try {
-        await db.sendPush(
-          this.client.id,
-          '💪 Nouveau programme disponible',
-          `${Router.userProfile.prenom || 'Ton coach'} vient de t'assigner un programme : ${template.nom}`,
-          '#entrainement'
-        );
-      } catch (_) { /* pas de subscription push → on ignore */ }
-
       // Flash succès
       const flash = document.createElement('div');
       flash.className = 'alert alert-success';
@@ -245,5 +239,26 @@ const CoachClientProgrammePage = {
       document.getElementById('cpAssignErr').innerHTML =
         '<div class="alert alert-error">' + e.message + '</div>';
     }
-  }
+  },
+
+  async notifyClient() {
+    if (!this.programme || !this.client) return;
+    const btn = document.getElementById('cpNotifyBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
+    try {
+      await db.sendPush(
+        this.client.id,
+        '💪 Programme mis à jour',
+        `${Router.userProfile?.prenom || 'Ton coach'} a mis à jour ton programme : ${this.programme.nom}`,
+        '#entrainement'
+      );
+      if (btn) { btn.textContent = '✓ Notification envoyée !'; }
+      setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.textContent = '🔔 Notifier le client'; }
+      }, 3000);
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = '🔔 Notifier le client'; }
+      alert('Erreur envoi notification : ' + e.message);
+    }
+  },
 };
