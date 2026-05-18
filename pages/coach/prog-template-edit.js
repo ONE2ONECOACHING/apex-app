@@ -97,6 +97,8 @@ const CoachProgTemplateEditPage = {
       series_data:     ex.series_data || (te === 'reps'
         ? Array.from({length: ex.series ?? 3}, () => ({reps: ex.reps_cible || '10', charge: ex.charge_cible || ''}))
         : null),
+      reps_secondaire: ex.reps_secondaire || null,
+      repos_intra_sec: ex.repos_intra_sec ?? null,
     };
   },
 
@@ -227,6 +229,12 @@ const CoachProgTemplateEditPage = {
         // note par exercice
         const exNote = document.getElementById(`exnote_${si}_${ei}`);
         if (exNote) ex.notes = exNote.value;
+
+        // 2e effort (optionnel — mode reps uniquement)
+        const exReps2      = document.getElementById(`exreps2_${si}_${ei}`);
+        const exReposIntra = document.getElementById(`exrepos_intra_${si}_${ei}`);
+        if (exReps2)      ex.reps_secondaire = exReps2.value.trim() || null;
+        if (exReposIntra) ex.repos_intra_sec = parseInt(exReposIntra.value) || null;
 
         // 4. Pour temps/amrap : combiner min + sec en "M:SS"
         if (ex.type_effort === 'temps' || ex.type_effort === 'amrap') {
@@ -553,6 +561,26 @@ const CoachProgTemplateEditPage = {
                         style="padding:1px 8px;border-radius:6px;border:1px dashed var(--border-solid);
                                background:transparent;color:var(--gray);font-size:11px;cursor:pointer;
                                font-family:var(--font);">+ Série</button>
+                    </div>
+                    <!-- 2e effort optionnel (Rest-Pause, Drop Set, Iso Régressif…) -->
+                    <div style="display:flex;gap:5px;align-items:center;margin-top:7px;flex-wrap:wrap;
+                                padding:5px 8px;border-radius:7px;background:var(--card-bg);border:1px dashed var(--border-solid);">
+                      <span style="font-size:10px;color:var(--gray-muted);flex-shrink:0;">→ 2e effort&nbsp;:</span>
+                      <input id="exreps2_${si}_${ei}" type="text"
+                        value="${ex.reps_secondaire || ''}" placeholder="ex: max"
+                        style="width:52px;height:26px;text-align:center;border:1px solid var(--border-solid);
+                               border-radius:6px;background:var(--white);color:var(--black);
+                               font-size:11px;padding:0 2px;font-family:var(--font);"
+                        title="Reps du 2e effort (ex: max, 6, AMRAP…). Laisser vide si non applicable.">
+                      <span style="font-size:10px;color:var(--gray-muted);">reps</span>
+                      <span style="font-size:10px;color:var(--gray-muted);">·</span>
+                      <input id="exrepos_intra_${si}_${ei}" type="number" min="0" max="300"
+                        value="${ex.repos_intra_sec || ''}" placeholder="s"
+                        style="width:40px;height:26px;text-align:center;border:1px solid var(--border-solid);
+                               border-radius:6px;background:var(--white);color:var(--black);
+                               font-size:11px;padding:0;font-family:var(--font);"
+                        title="Repos intra-série entre les 2 efforts (secondes)">
+                      <span style="font-size:10px;color:var(--gray-muted);">s entre efforts</span>
                     </div>
                   </div>`;
                 })()

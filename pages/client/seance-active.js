@@ -14,6 +14,9 @@ const SeanceActivePage = {
   _sessionSeconds:  0,
   _lastSets:        {}, // { exercice_id: sets_data[] } — dernière séance connue
   _noteRessenti:    null, // 'dur' | 'bien' | 'feu' — note obligatoire avant save
+  _effortIdx:       0,   // 0 = effort principal, 1 = 2e effort (Rest-Pause / Drop Set…)
+  _pendingE1:       null, // {reps, charge} de l'effort 1 en attente de combinaison
+  _intraRest:       false, // true pendant le repos intra-série (entre effort 1 et 2)
 
   render() {
     return `<div id="saWrap" style="min-height:100vh;background:var(--bg);
@@ -43,6 +46,9 @@ const SeanceActivePage = {
       this._phase          = 'exercice';
       this._sessionSeconds = 0;
       this._noteRessenti   = null;
+      this._effortIdx      = 0;
+      this._pendingE1      = null;
+      this._intraRest      = false;
       this._logs = (this._seance.exercices || []).map(ex => ({
         exercice_id:             ex.exercice_id,
         client_prog_exercice_id: ex.id,
@@ -163,14 +169,20 @@ const SeanceActivePage = {
       }
 
       if (isCurrent) {
+        const isE2       = !!ex.reps_secondaire && this._effortIdx === 1;
+        const repsVal    = isE2 ? (ex.reps_secondaire || 'max') : tgt.reps;
+        const chargeVal  = isE2 ? (this._pendingE1?.charge ?? lastCharge) : lastCharge;
+        const serieLabel = ex.reps_secondaire
+          ? `Série ${k + 1} · Effort ${this._effortIdx + 1} / 2`
+          : `Série ${k + 1}`;
         return `<div style="padding:10px 12px;background:var(--gold-bg,#fffbeb);border-radius:10px;
                             border:2px solid var(--gold);">
-          <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:8px;">Série ${k + 1}</div>
+          <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:8px;">${serieLabel}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <div>
               <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;
-                          letter-spacing:.5px;margin-bottom:4px;">Reps</div>
-              <input id="saReps" type="number" inputmode="numeric" min="0" value="${tgt.reps}"
+                          letter-spacing:.5px;margin-bottom:4px;">${isE2 ? 'Reps (2e effort)' : 'Reps'}</div>
+              <input id="saReps" type="number" inputmode="numeric" min="0" value="${repsVal}"
                 style="width:100%;height:54px;text-align:center;font-size:26px;font-weight:800;
                        border:2px solid var(--border-solid);border-radius:10px;
                        background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
@@ -179,7 +191,7 @@ const SeanceActivePage = {
               <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;
                           letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
               <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
-                value="${lastCharge}" placeholder="0"
+                value="${chargeVal}" placeholder="0"
                 style="width:100%;height:54px;text-align:center;font-size:26px;font-weight:800;
                        border:2px solid var(--border-solid);border-radius:10px;
                        background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
@@ -219,12 +231,19 @@ const SeanceActivePage = {
 
     // Button state: disabled during rest phase
     const inRest  = this._phase === 'repos';
-    const btnText = inRest ? '⏳ Récupération…' : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
+    const btnText = inRest ? '⏳ Récupération…'
+                  : this._effortIdx === 1 ? '✓ Effort 2 validé'
+                  : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
 
-    // Effort label for non-reps Objectif card
+    // Effort label for Objectif card
+    const hasE2 = effort === 'reps' && !!ex.reps_secondaire;
     const effortLabel = effort === 'amrap' ? `AMRAP ${target.reps}`
                       : effort === 'temps' ? `⏱ ${target.reps}`
                       : effort === 'distance' ? `📏 ${target.reps}`
+                      : hasE2 && this._effortIdx === 1
+                        ? `Effort 2 / 2 — ${ex.reps_secondaire} reps`
+                      : hasE2
+                        ? `Effort 1 / 2 — ${target.reps} reps${target.charge ? ' · ' + target.charge + ' kg' : ''}`
                       : `${target.reps} reps${target.charge ? ' · ' + target.charge + ' kg' : ''}`;
 
 
@@ -453,12 +472,32 @@ const SeanceActivePage = {
     if (!ex) return;
     const effort = ex.type_effort || 'reps';
 
-    let set;
-    if (effort === 'reps') {
-      set = {
+    // ── Logique 2e effort (Rest-Pause, Drop Set, Iso Régressif…) ────────────
+    if (effort === 'reps' && ex.reps_secondaire && this._effortIdx === 0) {
+      // Sauvegarder effort 1, démarrer repos intra-série
+      this._pendingE1 = {
         reps:   document.getElementById('saReps')?.value   || '0',
         charge: document.getElementById('saCharge')?.value || '',
       };
+      this._effortIdx = 1;
+      this._intraRest = true;
+      this._startRest(ex.repos_intra_sec || 10);
+      return;
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    let set;
+    if (effort === 'reps') {
+      const reps   = document.getElementById('saReps')?.value   || '0';
+      const charge = document.getElementById('saCharge')?.value || '';
+      if (this._effortIdx === 1 && this._pendingE1) {
+        // Combiner effort 1 + effort 2
+        set = { reps: (this._pendingE1.reps || '0') + '→' + reps, charge: this._pendingE1.charge };
+        this._effortIdx = 0;
+        this._pendingE1 = null;
+      } else {
+        set = { reps, charge };
+      }
     } else {
       const score = document.getElementById('saReps')?.value || '';
       const note  = document.getElementById('saNote')?.value || '';
@@ -552,11 +591,14 @@ const SeanceActivePage = {
         <div style="font-size:22px;line-height:1;">💤</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;
-                      letter-spacing:.8px;margin-bottom:1px;">Récupération · Prochain : ${(() => {
-            const exos = this._seance?.exercices || [];
-            const next = exos[this._exoIdx];
-            return next?.exercices_bdd?.nom || '—';
-          })()}</div>
+                      letter-spacing:.8px;margin-bottom:1px;">${this._intraRest
+            ? `Repos intra-série · Effort 2 : ${this._exo()?.reps_secondaire || '?'} reps`
+            : `Récupération · Prochain : ${(() => {
+                const exos = this._seance?.exercices || [];
+                const next = exos[this._exoIdx];
+                return next?.exercices_bdd?.nom || '—';
+              })()}`
+          }</div>
           <div id="saRestSecs" style="font-size:30px;font-weight:900;color:#fff;
                                       font-family:var(--font);line-height:1.1;">
             ${this._fmt(this._restRemaining)}
@@ -588,7 +630,8 @@ const SeanceActivePage = {
 
       if (this._restRemaining <= 0) {
         clearInterval(this._restTimer);
-        this._phase = 'exercice';
+        this._phase     = 'exercice';
+        this._intraRest = false;
         this._removeBanner();
         this._enableValidateBtn();
         // Bug 28 — ne vibrer que si l'utilisateur est toujours sur cette page
@@ -614,13 +657,15 @@ const SeanceActivePage = {
     const isLast = ex
       ? (this._serieIdx + 1 >= this._nbSeries(ex) && this._exoIdx + 1 >= (this._seance?.exercices?.length || 1))
       : true;
-    btn.textContent = isLast ? '🏁 Terminer la séance' : '✓ Série validée';
+    btn.textContent = this._effortIdx === 1 ? '✓ Effort 2 validé'
+                    : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
   },
 
   _skipRest() {
     clearInterval(this._restTimer);
     this._restRemaining = 0;
-    this._phase = 'exercice';
+    this._phase         = 'exercice';
+    this._intraRest     = false;
     this._removeBanner();
     this._enableValidateBtn();
   },

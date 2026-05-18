@@ -895,19 +895,24 @@ const db = {
       if (e1) throw e1;
 
       if (s.exercices && s.exercices.length) {
-        const rows = s.exercices.map((ex, j) => ({
-          seance_id:        seanceData.id,
-          exercice_id:      ex.exercice_id,
-          ordre:            j,
-          type_effort:      ex.type_effort || 'reps',
-          series:           ex.series ?? 3,
-          reps_cible:       ex.reps_cible || '10',
-          charge_cible:     ex.charge_cible || null,
-          repos_secondes:   ex.repos_secondes ?? 90,
-          superset_groupe:  ex.superset_groupe || null,
-          series_data:      ex.series_data || null,
-          notes:            ex.notes || null,
-        }));
+        const rows = s.exercices.map((ex, j) => {
+          const row = {
+            seance_id:       seanceData.id,
+            exercice_id:     ex.exercice_id,
+            ordre:           j,
+            type_effort:     ex.type_effort || 'reps',
+            series:          ex.series ?? 3,
+            reps_cible:      ex.reps_cible || '10',
+            charge_cible:    ex.charge_cible || null,
+            repos_secondes:  ex.repos_secondes ?? 90,
+            superset_groupe: ex.superset_groupe || null,
+            series_data:     ex.series_data || null,
+            notes:           ex.notes || null,
+          };
+          if (ex.reps_secondaire)          row.reps_secondaire = ex.reps_secondaire;
+          if (ex.repos_intra_sec != null)  row.repos_intra_sec = ex.repos_intra_sec;
+          return row;
+        });
         const { error: e2 } = await sb.from('prog_template_exercices').insert(rows);
         if (e2) throw e2;
       }
@@ -1074,7 +1079,7 @@ const db = {
       await sb.from('client_prog_exercices').delete().eq('seance_id', seanceId);
       for (let j = 0; j < s.exercices.length; j++) {
         const ex = s.exercices[j];
-        const { error: ee } = await sb.from('client_prog_exercices').insert({
+        const exRow = {
           seance_id:       seanceId,
           exercice_id:     ex.exercice_id,
           ordre:           j,
@@ -1086,7 +1091,10 @@ const db = {
           superset_groupe: ex.superset_groupe || null,
           series_data:     ex.series_data || null,
           notes:           ex.notes || null,
-        });
+        };
+        if (ex.reps_secondaire)         exRow.reps_secondaire = ex.reps_secondaire;
+        if (ex.repos_intra_sec != null) exRow.repos_intra_sec = ex.repos_intra_sec;
+        const { error: ee } = await sb.from('client_prog_exercices').insert(exRow);
         if (ee) throw ee;
       }
     }
