@@ -563,24 +563,34 @@ const CoachProgTemplateEditPage = {
                                font-family:var(--font);">+ Série</button>
                     </div>
                     <!-- 2e effort optionnel (Rest-Pause, Drop Set, Iso Régressif…) -->
-                    <div style="display:flex;gap:5px;align-items:center;margin-top:7px;flex-wrap:wrap;
-                                padding:5px 8px;border-radius:7px;background:var(--card-bg);border:1px dashed var(--border-solid);">
-                      <span style="font-size:10px;color:var(--gray-muted);flex-shrink:0;">→ 2e effort&nbsp;:</span>
-                      <input id="exreps2_${si}_${ei}" type="text"
-                        value="${ex.reps_secondaire || ''}" placeholder="ex: max"
-                        style="width:52px;height:26px;text-align:center;border:1px solid var(--border-solid);
-                               border-radius:6px;background:var(--white);color:var(--black);
-                               font-size:11px;padding:0 2px;font-family:var(--font);"
-                        title="Reps du 2e effort (ex: max, 6, AMRAP…). Laisser vide si non applicable.">
-                      <span style="font-size:10px;color:var(--gray-muted);">reps</span>
-                      <span style="font-size:10px;color:var(--gray-muted);">·</span>
-                      <input id="exrepos_intra_${si}_${ei}" type="number" min="0" max="300"
-                        value="${ex.repos_intra_sec || ''}" placeholder="s"
-                        style="width:40px;height:26px;text-align:center;border:1px solid var(--border-solid);
-                               border-radius:6px;background:var(--white);color:var(--black);
-                               font-size:11px;padding:0;font-family:var(--font);"
-                        title="Repos intra-série entre les 2 efforts (secondes)">
-                      <span style="font-size:10px;color:var(--gray-muted);">s entre efforts</span>
+                    <div style="margin-top:7px;">
+                      <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+                                    font-size:10px;color:var(--gray-muted);user-select:none;">
+                        <input type="checkbox" id="exreps2check_${si}_${ei}"
+                          ${ex.reps_secondaire ? 'checked' : ''}
+                          onchange="var z=document.getElementById('exreps2zone_${si}_${ei}');z.style.display=this.checked?'flex':'none';if(!this.checked){document.getElementById('exreps2_${si}_${ei}').value='';document.getElementById('exrepos_intra_${si}_${ei}').value='';}"
+                          style="accent-color:var(--gold);cursor:pointer;">
+                        2e effort
+                      </label>
+                      <div id="exreps2zone_${si}_${ei}"
+                        style="display:${ex.reps_secondaire ? 'flex' : 'none'};gap:5px;align-items:center;
+                               margin-top:5px;flex-wrap:wrap;padding:5px 8px;border-radius:7px;
+                               background:var(--card-bg);border:1px dashed var(--border-solid);">
+                        <span style="font-size:10px;color:var(--gray-muted);flex-shrink:0;">→</span>
+                        <input id="exreps2_${si}_${ei}" type="text"
+                          value="${ex.reps_secondaire || ''}" placeholder="ex: max"
+                          style="width:52px;height:26px;text-align:center;border:1px solid var(--border-solid);
+                                 border-radius:6px;background:var(--white);color:var(--black);
+                                 font-size:11px;padding:0 2px;font-family:var(--font);">
+                        <span style="font-size:10px;color:var(--gray-muted);">reps</span>
+                        <span style="font-size:10px;color:var(--gray-muted);">·</span>
+                        <input id="exrepos_intra_${si}_${ei}" type="number" min="0" max="300"
+                          value="${ex.repos_intra_sec || ''}" placeholder="s"
+                          style="width:40px;height:26px;text-align:center;border:1px solid var(--border-solid);
+                                 border-radius:6px;background:var(--white);color:var(--black);
+                                 font-size:11px;padding:0;font-family:var(--font);">
+                        <span style="font-size:10px;color:var(--gray-muted);">s entre efforts</span>
+                      </div>
                     </div>
                   </div>`;
                 })()
