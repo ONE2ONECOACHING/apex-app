@@ -17,6 +17,10 @@ const SeanceActivePage = {
   _effortIdx:       0,   // 0 = effort principal, 1 = 2e effort (Rest-Pause / Drop Set…)
   _pendingE1:       null, // {reps, charge} de l'effort 1 en attente de combinaison
   _intraRest:       false, // true pendant le repos intra-série (entre effort 1 et 2)
+  _amrapPhase:      'idle', // 'idle' | 'countdown' | 'work' | 'done'
+  _amrapRemaining:  0,
+  _amrapTotal:      0,
+  _amrapTimer:      null,
 
   render() {
     return `<div id="saWrap" style="min-height:100vh;background:var(--bg);
@@ -49,6 +53,11 @@ const SeanceActivePage = {
       this._effortIdx      = 0;
       this._pendingE1      = null;
       this._intraRest      = false;
+      this._amrapPhase     = 'idle';
+      this._amrapRemaining = 0;
+      this._amrapTotal     = 0;
+      clearInterval(this._amrapTimer);
+      this._amrapTimer     = null;
       this._logs = (this._seance.exercices || []).map(ex => ({
         exercice_id:             ex.exercice_id,
         client_prog_exercice_id: ex.id,
@@ -230,11 +239,14 @@ const SeanceActivePage = {
     const prevSets = this._logs[this._exoIdx]?.sets_data || [];
     const isLast   = this._serieIdx + 1 >= nbSer && this._exoIdx + 1 >= nbEx;
 
-    // Button state: disabled during rest phase
-    const inRest  = this._phase === 'repos';
-    const btnText = inRest ? '⏳ Récupération…'
-                  : this._effortIdx === 1 ? '✓ Effort 2 validé'
-                  : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
+    // Button state
+    const inRest      = this._phase === 'repos';
+    const amrapIdle   = effort === 'amrap' && this._amrapPhase === 'idle';
+    const amrapActive = effort === 'amrap' && (this._amrapPhase === 'countdown' || this._amrapPhase === 'work');
+    const btnText     = inRest      ? '⏳ Récupération…'
+                      : amrapActive ? '⏱ AMRAP en cours…'
+                      : this._effortIdx === 1 ? '✓ Effort 2 validé'
+                      : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
 
     // Effort label for Objectif card
     const hasE2 = effort === 'reps' && !!ex.reps_secondaire;
@@ -320,6 +332,9 @@ const SeanceActivePage = {
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;">
             ${this._renderSeriesGrid(ex, nbSer, prevSets)}
           </div>
+        ` : effort === 'amrap' ? `
+        <!-- AMRAP : timer interactif -->
+          ${this._renderAmrapSection(ex)}
         ` : `
         <!-- Saisie non-reps : charge + résultat + notes -->
           <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
@@ -371,15 +386,24 @@ const SeanceActivePage = {
 
       <!-- Boutons -->
       <div style="padding:16px;margin-top:auto;">
+        ${amrapIdle ? `
+        <button onclick="SeanceActivePage._startAmrap()"
+          style="width:100%;height:58px;background:var(--gold);color:#fff;
+                 border:none;border-radius:16px;font-size:20px;font-weight:700;
+                 cursor:pointer;font-family:var(--font);">
+          ▶ Démarrer
+        </button>
+        ` : `
         <button id="saValidateBtn" onclick="SeanceActivePage._validate()"
-          ${inRest ? 'disabled' : ''}
+          ${(inRest || amrapActive) ? 'disabled' : ''}
           style="width:100%;height:58px;
-                 background:${inRest ? 'var(--border-solid)' : 'var(--gold)'};
-                 color:${inRest ? 'var(--gray-muted)' : '#fff'};
+                 background:${(inRest || amrapActive) ? 'var(--border-solid)' : 'var(--gold)'};
+                 color:${(inRest || amrapActive) ? 'var(--gray-muted)' : '#fff'};
                  border:none;border-radius:16px;font-size:18px;font-weight:700;
-                 cursor:${inRest ? 'default' : 'pointer'};font-family:var(--font);">
+                 cursor:${(inRest || amrapActive) ? 'default' : 'pointer'};font-family:var(--font);">
           ${btnText}
         </button>
+        `}
         <button onclick="SeanceActivePage._finishEarly()"
           style="width:100%;height:34px;background:none;border:none;
                  color:var(--gray-muted);font-size:12px;cursor:pointer;
@@ -485,6 +509,9 @@ const SeanceActivePage = {
     const ex = this._exo();
     if (!ex) return;
     const effort = ex.type_effort || 'reps';
+
+    // Reset phase AMRAP après validation du score
+    if (effort === 'amrap' && this._amrapPhase === 'done') this._amrapPhase = 'idle';
 
     // ── Logique 2e effort (Rest-Pause, Drop Set, Iso Régressif…) ────────────
     if (effort === 'reps' && ex.reps_secondaire && this._effortIdx === 0) {
@@ -675,6 +702,183 @@ const SeanceActivePage = {
                     : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
   },
 
+  // ── AMRAP Timer ─────────────────────────────────────────────────────────────
+
+  _parseAmrapSecs(val) {
+    if (!val) return 300;
+    const colon = String(val).match(/^(\d+):(\d+)$/);
+    if (colon) return parseInt(colon[1]) * 60 + parseInt(colon[2]);
+    const m = String(val).match(/(\d+)\s*(?:min|m)/i);
+    if (m) return parseInt(m[1]) * 60;
+    const n = parseInt(val);
+    return isNaN(n) ? 300 : n;
+  },
+
+  _beep(freq = 880, ms = 180, vol = 0.4) {
+    try {
+      const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ms / 1000);
+      osc.start(); osc.stop(ctx.currentTime + ms / 1000);
+      setTimeout(() => ctx.close().catch(() => {}), ms + 50);
+    } catch (_) {}
+  },
+
+  _speak(text) {
+    try {
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = 'fr-FR'; utt.rate = 0.95; utt.volume = 1;
+      window.speechSynthesis.speak(utt);
+    } catch (_) {}
+  },
+
+  _renderAmrapSection(ex) {
+    const totalSecs = this._parseAmrapSecs(ex.reps_cible);
+    const phase     = this._amrapPhase;
+
+    if (phase === 'idle') {
+      return `
+        <div style="text-align:center;padding:28px 0 12px;">
+          <div style="font-size:64px;font-weight:900;color:var(--black);
+                      font-variant-numeric:tabular-nums;letter-spacing:-2px;line-height:1;">
+            ${this._fmt(totalSecs)}
+          </div>
+          <div style="font-size:12px;color:var(--gray-muted);margin-top:6px;">Durée de travail</div>
+        </div>`;
+    }
+
+    if (phase === 'countdown') {
+      return `
+        <div style="text-align:center;padding:20px 0 12px;">
+          <div style="font-size:12px;color:var(--gray-muted);margin-bottom:8px;text-transform:uppercase;
+                      letter-spacing:.8px;font-weight:600;">Prépare-toi…</div>
+          <div id="saAmrapDisplay" style="font-size:110px;font-weight:900;color:var(--gold);
+                      font-variant-numeric:tabular-nums;line-height:1;">
+            ${this._amrapRemaining}
+          </div>
+        </div>`;
+    }
+
+    if (phase === 'work') {
+      const pct   = this._amrapTotal > 0 ? (this._amrapRemaining / this._amrapTotal * 100).toFixed(1) : 0;
+      const color = this._amrapRemaining <= 10 ? '#ef4444'
+                  : this._amrapRemaining <= 60 ? 'var(--gold)' : 'var(--black)';
+      return `
+        <div style="text-align:center;padding:16px 0 12px;">
+          <div id="saAmrapDisplay" style="font-size:80px;font-weight:900;color:${color};
+                      font-variant-numeric:tabular-nums;letter-spacing:-3px;line-height:1;
+                      transition:color .3s;">
+            ${this._fmt(this._amrapRemaining)}
+          </div>
+          <div style="margin:10px 0 4px;height:5px;background:var(--border-solid);border-radius:3px;overflow:hidden;">
+            <div id="saAmrapBar" style="height:100%;background:var(--gold);border-radius:3px;
+                 width:${pct}%;transition:width 1s linear;"></div>
+          </div>
+          <div style="font-size:11px;color:var(--gray-muted);">Temps restant</div>
+        </div>`;
+    }
+
+    // done — afficher les inputs de score
+    const lastSets = this._lastSets[ex.exercice_id] || [];
+    return `
+      <div style="text-align:center;padding:12px 0 4px;">
+        <div style="font-size:44px;margin-bottom:4px;">🔥</div>
+        <div style="font-size:15px;font-weight:700;color:var(--black);">Temps écoulé !</div>
+        <div style="font-size:12px;color:var(--gray-muted);margin-bottom:14px;">Note ton score</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+        ${lastSets.length > 0 ? `
+        <div style="font-size:11px;color:var(--gray-muted);background:var(--card-bg);
+            border-radius:8px;padding:6px 10px;">
+          📅 Dernière séance : ${lastSets.map((s,i)=>`S${i+1}: ${s.reps}${s.charge?' · '+s.charge+'kg':''}`).join(' &nbsp;')}
+        </div>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Reps total</div>
+            <input id="saReps" type="number" inputmode="numeric" min="0" placeholder="—"
+              style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
+                     border:2px solid var(--border-solid);border-radius:12px;
+                     background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
+            <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
+              value="${lastSets[0]?.charge ?? ''}" placeholder="0"
+              style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
+                     border:2px solid var(--border-solid);border-radius:12px;
+                     background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
+          </div>
+        </div>
+      </div>`;
+  },
+
+  _startAmrap() {
+    const ex = this._exo();
+    if (!ex || this._amrapPhase !== 'idle') return;
+    clearInterval(this._amrapTimer);
+    this._amrapTotal     = this._parseAmrapSecs(ex.reps_cible);
+    this._amrapRemaining = 10;
+    this._amrapPhase     = 'countdown';
+    this._draw();
+    this._amrapTimer = setInterval(() => this._tickAmrap(), 1000);
+  },
+
+  _tickAmrap() {
+    if (this._amrapPhase === 'countdown') {
+      this._amrapRemaining--;
+      const el = document.getElementById('saAmrapDisplay');
+      if (this._amrapRemaining > 0) {
+        if (el) el.textContent = this._amrapRemaining;
+        if (this._amrapRemaining <= 3) this._beep(880, 180);
+      } else {
+        // GO — transition vers work
+        this._beep(1100, 350);
+        this._amrapPhase     = 'work';
+        this._amrapRemaining = this._amrapTotal;
+        this._draw();
+      }
+
+    } else if (this._amrapPhase === 'work') {
+      this._amrapRemaining--;
+
+      // Mises à jour DOM directes (pas de re-render complet)
+      const el  = document.getElementById('saAmrapDisplay');
+      const bar = document.getElementById('saAmrapBar');
+      if (el) {
+        el.textContent   = this._fmt(this._amrapRemaining);
+        el.style.color   = this._amrapRemaining <= 10 ? '#ef4444'
+                         : this._amrapRemaining <= 60 ? 'var(--gold)' : 'var(--black)';
+      }
+      if (bar) bar.style.width = (this._amrapTotal > 0
+        ? (this._amrapRemaining / this._amrapTotal * 100) : 0).toFixed(1) + '%';
+
+      // Annonces vocales
+      if (this._amrapRemaining === 60) this._speak('1 minute');
+      if (this._amrapRemaining === 10) this._speak('10 secondes');
+
+      // Bips finaux
+      if (this._amrapRemaining <= 3 && this._amrapRemaining > 0) this._beep(880, 180);
+
+      // Fin
+      if (this._amrapRemaining <= 0) {
+        clearInterval(this._amrapTimer);
+        this._amrapTimer = null;
+        this._amrapPhase = 'done';
+        this._beep(1100, 500);
+        setTimeout(() => this._beep(1100, 500), 550);
+        setTimeout(() => this._beep(1300, 700), 1100);
+        if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500]);
+        this._draw();
+      }
+    }
+  },
+
   _syncNote() {
     const el = document.getElementById('saClientNote');
     if (el && this._logs[this._exoIdx] !== undefined) {
@@ -738,6 +942,9 @@ const SeanceActivePage = {
   _goToExo(idx) {
     this._syncNote();
     clearInterval(this._restTimer);
+    clearInterval(this._amrapTimer);
+    this._amrapTimer = null;
+    this._amrapPhase = 'idle';
     this._removeBanner();
     const ex = this._seance.exercices[idx];
     if (!ex) return;
