@@ -54,6 +54,7 @@ const SeanceActivePage = {
         client_prog_exercice_id: ex.id,
         type_effort:             ex.type_effort || 'reps',
         sets_data:               [],
+        note_client:             null,
       }));
 
       // Charger les dernières valeurs par exercice (silencieux si erreur)
@@ -356,6 +357,18 @@ const SeanceActivePage = {
 
       </div>
 
+      <!-- Note client par exercice -->
+      <div style="padding:0 16px 10px;">
+        <input id="saClientNote" type="text"
+          value="${this._logs[this._exoIdx]?.note_client || ''}"
+          placeholder="💬 Note pour ton coach (optionnel)"
+          oninput="SeanceActivePage._syncNote()"
+          style="width:100%;height:44px;padding:0 14px;
+                 border:1.5px solid var(--border-solid);border-radius:12px;
+                 background:var(--card-bg);color:var(--black);
+                 font-family:var(--font);font-size:14px;box-sizing:border-box;">
+      </div>
+
       <!-- Boutons -->
       <div style="padding:16px;margin-top:auto;">
         <button id="saValidateBtn" onclick="SeanceActivePage._validate()"
@@ -468,6 +481,7 @@ const SeanceActivePage = {
   // ── Actions ──────────────────────────────────────────────────────────────────
 
   _validate() {
+    this._syncNote();
     const ex = this._exo();
     if (!ex) return;
     const effort = ex.type_effort || 'reps';
@@ -661,6 +675,13 @@ const SeanceActivePage = {
                     : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
   },
 
+  _syncNote() {
+    const el = document.getElementById('saClientNote');
+    if (el && this._logs[this._exoIdx] !== undefined) {
+      this._logs[this._exoIdx].note_client = el.value.trim() || null;
+    }
+  },
+
   _skipRest() {
     clearInterval(this._restTimer);
     this._restRemaining = 0;
@@ -715,6 +736,7 @@ const SeanceActivePage = {
   },
 
   _goToExo(idx) {
+    this._syncNote();
     clearInterval(this._restTimer);
     this._removeBanner();
     const ex = this._seance.exercices[idx];
@@ -738,6 +760,7 @@ const SeanceActivePage = {
   },
 
   _finishEarly() {
+    this._syncNote();
     if (!confirm('Terminer la séance maintenant ?\nSeules les séries déjà validées seront enregistrées.')) return;
     clearInterval(this._restTimer);
     clearInterval(this._sessionTimer);

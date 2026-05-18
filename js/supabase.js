@@ -1164,14 +1164,18 @@ const db = {
     // Supprimer les sets existants pour ce log
     await sb.from('seances_log_sets').delete().eq('log_id', logId);
     if (!sets || !sets.length) return;
-    const rows = sets.map((s, i) => ({
-      log_id:                    logId,
-      exercice_id:               s.exercice_id,
-      client_prog_exercice_id:   null, // toujours null pour éviter FK violation si programme modifié
-      ordre:                     i,
-      type_effort:               s.type_effort || 'reps',
-      sets_data:                 s.sets_data || [],
-    }));
+    const rows = sets.map((s, i) => {
+      const row = {
+        log_id:                    logId,
+        exercice_id:               s.exercice_id,
+        client_prog_exercice_id:   null,
+        ordre:                     i,
+        type_effort:               s.type_effort || 'reps',
+        sets_data:                 s.sets_data || [],
+      };
+      if (s.note_client) row.note_client = s.note_client;
+      return row;
+    });
     const { error } = await sb.from('seances_log_sets').insert(rows);
     if (error) throw error;
   },
