@@ -21,6 +21,7 @@ const SeanceActivePage = {
   _amrapRemaining:  0,
   _amrapTotal:      0,
   _amrapTimer:      null,
+  _audioCtx:        null,
 
   render() {
     return `<div id="saWrap" style="min-height:100vh;background:var(--bg);
@@ -58,6 +59,7 @@ const SeanceActivePage = {
       this._amrapTotal     = 0;
       clearInterval(this._amrapTimer);
       this._amrapTimer     = null;
+      if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
       this._logs = (this._seance.exercices || []).map(ex => ({
         exercice_id:             ex.exercice_id,
         client_prog_exercice_id: ex.id,
@@ -716,7 +718,8 @@ const SeanceActivePage = {
 
   _beep(freq = 880, ms = 180, vol = 0.4) {
     try {
-      const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = this._audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
@@ -725,7 +728,6 @@ const SeanceActivePage = {
       gain.gain.setValueAtTime(vol, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ms / 1000);
       osc.start(); osc.stop(ctx.currentTime + ms / 1000);
-      setTimeout(() => ctx.close().catch(() => {}), ms + 50);
     } catch (_) {}
   },
 
@@ -822,6 +824,22 @@ const SeanceActivePage = {
     const ex = this._exo();
     if (!ex || this._amrapPhase !== 'idle') return;
     clearInterval(this._amrapTimer);
+
+    // Débloque l'audio iOS depuis le geste utilisateur (clic bouton)
+    try {
+      if (!this._audioCtx) {
+        this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (this._audioCtx.state === 'suspended') this._audioCtx.resume();
+    } catch (_) {}
+
+    // Débloque la synthèse vocale iOS (doit être appelé dans un geste utilisateur)
+    try {
+      const unlock = new SpeechSynthesisUtterance('');
+      unlock.volume = 0;
+      window.speechSynthesis.speak(unlock);
+    } catch (_) {}
+
     this._amrapTotal     = this._parseAmrapSecs(ex.reps_cible);
     this._amrapRemaining = 10;
     this._amrapPhase     = 'countdown';
@@ -945,6 +963,7 @@ const SeanceActivePage = {
     clearInterval(this._amrapTimer);
     this._amrapTimer = null;
     this._amrapPhase = 'idle';
+    if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
     this._removeBanner();
     const ex = this._seance.exercices[idx];
     if (!ex) return;
