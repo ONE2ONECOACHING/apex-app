@@ -734,6 +734,23 @@ const db = {
     return data || null;
   },
 
+  // Mise à jour sécurisée du poids seul (ne touche pas les autres colonnes mesures)
+  async updateMesurePoids(profileId, dateEntree, poids) {
+    const sb = getSupabase();
+    const { data: existing } = await sb.from('mesures')
+      .select('*').eq('profile_id', profileId).eq('date_entree', dateEntree).maybeSingle();
+    const { data, error } = await sb.from('mesures')
+      .upsert({
+        ...(existing || {}),
+        profile_id:  profileId,
+        date_entree: dateEntree,
+        poids,
+      }, { onConflict: 'profile_id,date_entree' })
+      .select().single();
+    if (error) throw error;
+    return data;
+  },
+
   async upsertMesure(mesure) {
     const { data, error } = await getSupabase()
       .from('mesures')

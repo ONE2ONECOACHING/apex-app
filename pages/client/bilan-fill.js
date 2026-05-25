@@ -95,7 +95,8 @@ const ClientBilanPage = {
           html += `
             <input type="number" class="input" id="bq_${q.id}" placeholder="0"
               style="margin-top:8px;max-width:140px;"
-              oninput="ClientBilanPage.setAnswer('${q.id}',this.value)">`;
+              oninput="ClientBilanPage.setAnswer('${q.id}',this.value)">
+            ${q.poids ? `<div style="font-size:11px;color:var(--gold);margin-top:5px;">⚖️ Synchronisé avec tes Mesures</div>` : ''}`;
 
         } else if (q.type === 'choice') {
           const opts = q.options || [];
@@ -133,8 +134,8 @@ const ClientBilanPage = {
     const inst = this.instance;
     const qs = inst.questions_snapshot || [];
 
-    // Vérifier que les champs texte/nombre/choix sont remplis
-    const missing = qs.filter(q => q.type !== 'scale' && !this.answers[q.id]);
+    // Vérifier que les champs texte/nombre/choix sont remplis (poids optionnel)
+    const missing = qs.filter(q => q.type !== 'scale' && !q.poids && !this.answers[q.id]);
     if (missing.length > 0) {
       document.getElementById('bilanSubmitMsg').innerHTML =
         `<div class="alert alert-error" style="margin-bottom:0.5rem;">Réponds à toutes les questions (${missing.length} manquante${missing.length > 1 ? 's' : ''}).</div>`;
@@ -153,6 +154,17 @@ const ClientBilanPage = {
 
     try {
       await db.completeBilan(inst.id, reponses);
+
+      // Auto-sync poids → Mesures
+      const poidsQ = qs.find(q => q.poids);
+      if (poidsQ && this.answers[poidsQ.id]) {
+        const poidsVal = parseFloat(this.answers[poidsQ.id]);
+        if (!isNaN(poidsVal) && poidsVal > 0) {
+          const dateEntree = inst.semaine; // format YYYY-MM-DD
+          await db.updateMesurePoids(Router.userProfile.id, dateEntree, poidsVal).catch(() => {});
+        }
+      }
+
       document.getElementById('bilanContent').innerHTML = `
         <div style="text-align:center;padding:3rem 1rem;">
           <div style="font-size:52px;margin-bottom:1rem;">🎉</div>

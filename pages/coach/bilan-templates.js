@@ -115,7 +115,7 @@ const CoachBilanTemplatesPage = {
       ? '<div style="font-size:13px;color:var(--gray-muted);padding:6px 0 4px;">Aucune question pour l\'instant.</div>'
       : qs.map((q, i) => `
           <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
-            <span style="font-size:18px;flex-shrink:0;">${icons[q.type] || '📝'}</span>
+            <span style="font-size:18px;flex-shrink:0;">${q.poids ? '⚖️' : (icons[q.type] || '📝')}</span>
             <div style="flex:1;font-size:13px;color:var(--black);">${q.label}</div>
             <button class="btn btn-ghost btn-small" style="padding:0 7px;" onclick="CoachBilanTemplatesPage._moveQ(${i},-1)" ${i === 0 ? 'disabled style="opacity:0.3;"' : ''}>↑</button>
             <button class="btn btn-ghost btn-small" style="padding:0 7px;" onclick="CoachBilanTemplatesPage._moveQ(${i},1)" ${i === qs.length-1 ? 'disabled style="opacity:0.3;"' : ''}>↓</button>
@@ -137,6 +137,7 @@ const CoachBilanTemplatesPage = {
             <button class="toggle-btn" onclick="CoachBilanTemplatesPage._setQType('text',this)">📝 Texte</button>
             <button class="toggle-btn" onclick="CoachBilanTemplatesPage._setQType('number',this)">🔢 Nombre</button>
             <button class="toggle-btn" onclick="CoachBilanTemplatesPage._setQType('choice',this)">✅ Choix</button>
+            <button class="toggle-btn" onclick="CoachBilanTemplatesPage._setQType('poids',this)">⚖️ Poids</button>
           </div>
         </div>
         <div class="field">
@@ -166,7 +167,9 @@ const CoachBilanTemplatesPage = {
   _confirmAddQ() {
     const label = document.getElementById('btQLabel').value.trim();
     if (!label) { alert('Saisis la question.'); return; }
-    const q = { id: 'q_' + Date.now(), type: this._newQType, label };
+    const isPoids = this._newQType === 'poids';
+    const q = { id: 'q_' + Date.now(), type: isPoids ? 'number' : this._newQType, label };
+    if (isPoids) q.poids = true;
     if (q.type === 'choice') {
       const raw = document.getElementById('btQChoices').value.trim();
       q.options = raw ? raw.split('\n').map(o => o.trim()).filter(Boolean) : ['Oui', 'Non'];
@@ -179,17 +182,19 @@ const CoachBilanTemplatesPage = {
   _editQ(idx) {
     this._editIdx = idx;
     const q = this._tpl.questions[idx];
-    this._newQType = q.type;
+    const vtype = q.poids ? 'poids' : q.type;
+    this._newQType = vtype;
     document.getElementById('btAddQForm').innerHTML = `
       <div class="card card-accent" style="margin-bottom:0.75rem;">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);margin-bottom:10px;">Modifier la question</div>
         <div class="field">
           <label class="field-label">Type</label>
           <div class="toggle-row" id="btQTypeRow">
-            <button class="toggle-btn ${q.type==='scale'?'active':''}"  onclick="CoachBilanTemplatesPage._setQType('scale',this)">⭐ Échelle</button>
-            <button class="toggle-btn ${q.type==='text'?'active':''}"   onclick="CoachBilanTemplatesPage._setQType('text',this)">📝 Texte</button>
-            <button class="toggle-btn ${q.type==='number'?'active':''}" onclick="CoachBilanTemplatesPage._setQType('number',this)">🔢 Nombre</button>
-            <button class="toggle-btn ${q.type==='choice'?'active':''}" onclick="CoachBilanTemplatesPage._setQType('choice',this)">✅ Choix</button>
+            <button class="toggle-btn ${vtype==='scale'?'active':''}"  onclick="CoachBilanTemplatesPage._setQType('scale',this)">⭐ Échelle</button>
+            <button class="toggle-btn ${vtype==='text'?'active':''}"   onclick="CoachBilanTemplatesPage._setQType('text',this)">📝 Texte</button>
+            <button class="toggle-btn ${vtype==='number'?'active':''}" onclick="CoachBilanTemplatesPage._setQType('number',this)">🔢 Nombre</button>
+            <button class="toggle-btn ${vtype==='choice'?'active':''}" onclick="CoachBilanTemplatesPage._setQType('choice',this)">✅ Choix</button>
+            <button class="toggle-btn ${vtype==='poids'?'active':''}"  onclick="CoachBilanTemplatesPage._setQType('poids',this)">⚖️ Poids</button>
           </div>
         </div>
         <div class="field">
@@ -215,8 +220,10 @@ const CoachBilanTemplatesPage = {
   _confirmEditQ() {
     const label = document.getElementById('btQLabel').value.trim();
     if (!label) { alert('Saisis la question.'); return; }
+    const isPoids = this._newQType === 'poids';
     const orig = this._tpl.questions[this._editIdx];
-    const q = { ...orig, type: this._newQType, label };
+    const q = { ...orig, type: isPoids ? 'number' : this._newQType, label };
+    if (isPoids) q.poids = true; else delete q.poids;
     if (q.type === 'choice') {
       const raw = document.getElementById('btQChoices').value.trim();
       q.options = raw ? raw.split('\n').map(o => o.trim()).filter(Boolean) : ['Oui', 'Non'];
