@@ -897,16 +897,10 @@ body.coach-wide .tabs .tab {
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── 🅐 PAGE TRANSITIONS ──────────────────────────────────────── */
-@keyframes pageIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes pageOut {
-  from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(-8px); }
-}
-.page-enter { animation: pageIn 0.28s cubic-bezier(0.22,1,0.36,1) both; }
-.page-exit  { animation: pageOut 0.18s ease-in both; pointer-events: none; }
+@keyframes pageIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pageOut { from { opacity: 1; } to { opacity: 0; } }
+.page-enter { animation: pageIn  0.25s ease-out both; }
+.page-exit  { animation: pageOut 0.15s ease-in  both; pointer-events: none; }
 
 /* ── 🅑 TOAST NOTIFICATIONS ──────────────────────────────────── */
 @keyframes toastIn  { from { opacity:0; transform:translateY(16px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
@@ -1102,7 +1096,3 @@ body.coach-wide .tabs .tab {
 /* ── UTILITAIRE — NOMBRE ANIMÉ ────────────────────────────────── */
 .count-up { display: inline-block; }
 
-/* ── SAFE-AREA GLOBAL ──────────────────────────────────────────── */
-.page-enter, .page-exit {
-  will-change: opacity, transform;
-}
