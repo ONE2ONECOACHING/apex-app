@@ -745,6 +745,7 @@ const SeanceActivePage = {
     const phase     = this._amrapPhase;
 
     if (phase === 'idle') {
+      const lastSets = this._lastSets[ex.exercice_id] || [];
       return `
         <div style="text-align:center;padding:28px 0 12px;">
           <div style="font-size:64px;font-weight:900;color:var(--black);
@@ -752,7 +753,12 @@ const SeanceActivePage = {
             ${this._fmt(totalSecs)}
           </div>
           <div style="font-size:12px;color:var(--gray-muted);margin-top:6px;">Durée de travail</div>
-        </div>`;
+        </div>
+        ${lastSets.length > 0 ? `
+        <div style="font-size:11px;color:var(--gray-muted);background:var(--card-bg);
+            border-radius:8px;padding:6px 10px;margin-bottom:8px;">
+          📅 Dernière séance : ${lastSets.map(s => `${s.reps}${s.charge ? ' · ' + s.charge + 'kg' : ''}`).join(' &nbsp;')}
+        </div>` : ''}`;
     }
 
     if (phase === 'countdown') {

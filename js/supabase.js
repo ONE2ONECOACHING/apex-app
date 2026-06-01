@@ -1144,6 +1144,18 @@ const db = {
     return data || [];
   },
 
+  async getSeancesLogRange(clientId, dateFrom, dateTo) {
+    const { data, error } = await getSupabase()
+      .from('seances_log')
+      .select('*, seances_log_sets(ordre, type_effort, sets_data, exercices_bdd(nom))')
+      .eq('client_id', clientId)
+      .gte('date_seance', dateFrom)
+      .lte('date_seance', dateTo)
+      .order('date_seance', { ascending: false });
+    if (error) return [];
+    return data || [];
+  },
+
   // Retourne { exercice_id: sets_data[] } pour la séance la plus récente par exercice
   async getLastSetsPerExo(profileId, exerciceIds) {
     if (!exerciceIds?.length) return {};
