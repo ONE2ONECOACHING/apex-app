@@ -321,7 +321,7 @@ const SnapPage = {
     const a = this._baseSelected;
     if (!a) return;
     const qty = +document.getElementById('baseQty').value || 0;
-    if (qty <= 0) { alert('Quantité invalide.'); return; }
+    if (qty <= 0) { toast('Quantité invalide.', 'error'); return; }
     const factor = a.mode === 'unit' ? qty : qty / 100;
     this._cart.push({
       nom: a.nom,
@@ -400,7 +400,7 @@ const SnapPage = {
         this._cart = [];
         Router.navigate('logbook');
       }
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   // ── UTILITAIRE : redimensionner + compresser une image avant envoi API ───────
@@ -563,7 +563,7 @@ const SnapPage = {
       } else {
         Router.navigate('logbook');
       }
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   resetAll() {
@@ -624,7 +624,7 @@ const SnapPage = {
         source: 'saved'
       });
       Router.navigate('logbook');
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   async deleteSaved(id) {
@@ -633,7 +633,7 @@ const SnapPage = {
       await db.deleteSavedMeal(id);
       this._savedMeals = this._savedMeals.filter(m => m.id !== id);
       this.loadSaved();
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   // ── MODAL ENREGISTRER ────────────────────────────────────────────────────────
@@ -737,7 +737,7 @@ const SnapPage = {
     const d = this._labelData;
     if (!d) return;
     const qty = +document.getElementById('labelQtyInput')?.value || 0;
-    if (qty <= 0) { alert('Quantité invalide.'); return; }
+    if (qty <= 0) { toast('Quantité invalide.', 'error'); return; }
     const f = qty / 100;
     this._cart.push({
       nom: d.product_name || 'Produit',
@@ -758,7 +758,7 @@ const SnapPage = {
 
   async confirmSave() {
     const nom = document.getElementById('saveModalName').value.trim();
-    if (!nom) { alert('Donne un nom au repas.'); return; }
+    if (!nom) { toast('Donne un nom au repas.', 'error'); return; }
     const profile = Router.userProfile;
     const data = this._pendingSave;
     if (!data || !profile) { Router.navigate('logbook'); return; }
@@ -767,7 +767,7 @@ const SnapPage = {
       document.getElementById('saveModal').style.display = 'none';
       Router.navigate('logbook');
     } catch (e) {
-      alert('Erreur : ' + e.message);
+      toast('Erreur : ' + e.message, 'error');
     }
   }
 };

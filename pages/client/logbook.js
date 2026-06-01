@@ -198,7 +198,7 @@ const LogbookPage = {
       await db.deleteJournalEntry(id);
       this.entries = this.entries.filter(e => e.id !== id);
       this.renderContent();
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   async generateRecap() {

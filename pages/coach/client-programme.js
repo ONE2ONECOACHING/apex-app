@@ -225,13 +225,7 @@ const CoachClientProgrammePage = {
       const tabsHtml = coachClientNav(this.client.id, 'coach-client-programme');
       this._render(tabsHtml);
 
-      // Flash succès
-      const flash = document.createElement('div');
-      flash.className = 'alert alert-success';
-      flash.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);';
-      flash.textContent = '✓ Programme assigné !';
-      document.body.appendChild(flash);
-      setTimeout(() => flash.remove(), 2500);
+      toast('✓ Programme assigné !', 'success');
 
     } catch (e) {
       this._assigning = false;
@@ -258,7 +252,7 @@ const CoachClientProgrammePage = {
       }, 3000);
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = '🔔 Notifier le client'; }
-      alert('Erreur envoi notification : ' + e.message);
+      toast('Erreur envoi notification : ' + e.message, 'error');
     }
   },
 };

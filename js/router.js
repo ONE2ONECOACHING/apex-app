@@ -110,43 +110,60 @@ const Router = {
       }
     }
 
-    // Charger la page
+    // Charger la page avec transition
     this.currentPage = hash;
     const app = document.getElementById('app');
 
-    switch (hash) {
-      case 'login': app.innerHTML = LoginPage.render(); LoginPage.init(); break;
-      case 'dashboard': app.innerHTML = DashboardPage.render(); DashboardPage.init(); break;
-      case 'plan': app.innerHTML = PlanPage.render(); PlanPage.init(); break;
-      case 'logbook': app.innerHTML = LogbookPage.render(); LogbookPage.init(); break;
-      case 'snap': app.innerHTML = SnapPage.render(); SnapPage.init(); break;
-      case 'historique': app.innerHTML = HistoriquePage.render(); HistoriquePage.init(); break;
-      case 'recettes': app.innerHTML = RecettesPage.render(); RecettesPage.init(); break;
-      case 'client-bilan': app.innerHTML = ClientBilanPage.render(); ClientBilanPage.init(); break;
-      case 'onboarding': app.innerHTML = OnboardingPage.render(); OnboardingPage.init(); break;
-      case 'set-password': app.innerHTML = SetPasswordPage.render(); SetPasswordPage.init(); break;
-      case 'invite': app.innerHTML = InvitePage.render(); InvitePage.init(); break;
-      case 'coach-clients': app.innerHTML = CoachClientsPage.render(); CoachClientsPage.init(); break;
-      case 'coach-client-edit': app.innerHTML = CoachClientEditPage.render(); CoachClientEditPage.init(); break;
-      case 'coach-plan-edit': app.innerHTML = CoachPlanEditPage.render(); CoachPlanEditPage.init(); break;
-      case 'coach-journal':
-      case 'coach-journal-view': app.innerHTML = CoachJournalPage.render(); CoachJournalPage.init(); break;
-      case 'coach-habits-edit': app.innerHTML = CoachHabitsEditPage.render(); CoachHabitsEditPage.init(); break;
-      case 'coach-bilan-templates': app.innerHTML = CoachBilanTemplatesPage.render(); CoachBilanTemplatesPage.init(); break;
-      case 'coach-bilan-client': app.innerHTML = CoachBilanClientPage.render(); CoachBilanClientPage.init(); break;
-      case 'mesure': app.innerHTML = MesurePage.render(); MesurePage.init(); break;
-      case 'entrainement': app.innerHTML = EntrainementPage.render(); EntrainementPage.init(); break;
-      case 'seance-active': app.innerHTML = SeanceActivePage.render(); SeanceActivePage.init(); break;
-      case 'tutorial': app.innerHTML = TutorialPage.render(); TutorialPage.init(); break;
-      case 'outils': app.innerHTML = OutilsPage.render(); OutilsPage.init(); break;
-      case 'menu': app.innerHTML = MenuPage.render(); MenuPage.init(); break;
-      case 'coach-mesure-client': app.innerHTML = CoachMesureClientPage.render(); CoachMesureClientPage.init(); break;
-      case 'coach-exercices': app.innerHTML = CoachExercicesPage.render(); CoachExercicesPage.init(); break;
-      case 'coach-prog-templates': app.innerHTML = CoachProgTemplatesPage.render(); CoachProgTemplatesPage.init(); break;
-      case 'coach-prog-template-edit': app.innerHTML = CoachProgTemplateEditPage.render(); CoachProgTemplateEditPage.init(); break;
-      case 'coach-client-programme': app.innerHTML = CoachClientProgrammePage.render(); CoachClientProgrammePage.init(); break;
-      case 'coach-training-client': app.innerHTML = CoachTrainingClientPage.render(); CoachTrainingClientPage.init(); break;
-      default: window.location.hash = '#login';
+    const loadPage = () => {
+      switch (hash) {
+        case 'login': app.innerHTML = LoginPage.render(); LoginPage.init(); break;
+        case 'dashboard': app.innerHTML = DashboardPage.render(); DashboardPage.init(); break;
+        case 'plan': app.innerHTML = PlanPage.render(); PlanPage.init(); break;
+        case 'logbook': app.innerHTML = LogbookPage.render(); LogbookPage.init(); break;
+        case 'snap': app.innerHTML = SnapPage.render(); SnapPage.init(); break;
+        case 'historique': app.innerHTML = HistoriquePage.render(); HistoriquePage.init(); break;
+        case 'recettes': app.innerHTML = RecettesPage.render(); RecettesPage.init(); break;
+        case 'client-bilan': app.innerHTML = ClientBilanPage.render(); ClientBilanPage.init(); break;
+        case 'onboarding': app.innerHTML = OnboardingPage.render(); OnboardingPage.init(); break;
+        case 'set-password': app.innerHTML = SetPasswordPage.render(); SetPasswordPage.init(); break;
+        case 'invite': app.innerHTML = InvitePage.render(); InvitePage.init(); break;
+        case 'coach-clients': app.innerHTML = CoachClientsPage.render(); CoachClientsPage.init(); break;
+        case 'coach-client-edit': app.innerHTML = CoachClientEditPage.render(); CoachClientEditPage.init(); break;
+        case 'coach-plan-edit': app.innerHTML = CoachPlanEditPage.render(); CoachPlanEditPage.init(); break;
+        case 'coach-journal':
+        case 'coach-journal-view': app.innerHTML = CoachJournalPage.render(); CoachJournalPage.init(); break;
+        case 'coach-habits-edit': app.innerHTML = CoachHabitsEditPage.render(); CoachHabitsEditPage.init(); break;
+        case 'coach-bilan-templates': app.innerHTML = CoachBilanTemplatesPage.render(); CoachBilanTemplatesPage.init(); break;
+        case 'coach-bilan-client': app.innerHTML = CoachBilanClientPage.render(); CoachBilanClientPage.init(); break;
+        case 'mesure': app.innerHTML = MesurePage.render(); MesurePage.init(); break;
+        case 'entrainement': app.innerHTML = EntrainementPage.render(); EntrainementPage.init(); break;
+        case 'seance-active': app.innerHTML = SeanceActivePage.render(); SeanceActivePage.init(); break;
+        case 'tutorial': app.innerHTML = TutorialPage.render(); TutorialPage.init(); break;
+        case 'outils': app.innerHTML = OutilsPage.render(); OutilsPage.init(); break;
+        case 'menu': app.innerHTML = MenuPage.render(); MenuPage.init(); break;
+        case 'coach-mesure-client': app.innerHTML = CoachMesureClientPage.render(); CoachMesureClientPage.init(); break;
+        case 'coach-exercices': app.innerHTML = CoachExercicesPage.render(); CoachExercicesPage.init(); break;
+        case 'coach-prog-templates': app.innerHTML = CoachProgTemplatesPage.render(); CoachProgTemplatesPage.init(); break;
+        case 'coach-prog-template-edit': app.innerHTML = CoachProgTemplateEditPage.render(); CoachProgTemplateEditPage.init(); break;
+        case 'coach-client-programme': app.innerHTML = CoachClientProgrammePage.render(); CoachClientProgrammePage.init(); break;
+        case 'coach-training-client': app.innerHTML = CoachTrainingClientPage.render(); CoachTrainingClientPage.init(); break;
+        default: window.location.hash = '#login';
+      }
+      // Classe d'entrée sur le conteneur
+      app.classList.remove('page-enter');
+      void app.offsetWidth; // force reflow
+      app.classList.add('page-enter');
+    };
+
+    // Si du contenu est déjà là, fade-out rapide avant de charger
+    if (app.children.length > 0) {
+      app.classList.add('page-exit');
+      setTimeout(() => {
+        app.classList.remove('page-exit');
+        loadPage();
+      }, 160);
+    } else {
+      loadPage();
     }
 
   },

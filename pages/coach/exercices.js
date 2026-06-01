@@ -1,4 +1,4 @@
-// APEX APP — Coach : Bibliothèque d'exercices (desktop-optimized)
+﻿// APEX APP — Coach : Bibliothèque d'exercices (desktop-optimized)
 
 const CoachExercicesPage = {
   exercices: [],
@@ -296,7 +296,7 @@ const CoachExercicesPage = {
       this.exercices = this.exercices.filter(e => e.id !== id);
       this.renderList();
     } catch (e) {
-      alert('Erreur : ' + e.message);
+      toast('Erreur : ' + e.message, 'error');
     }
   }
 };

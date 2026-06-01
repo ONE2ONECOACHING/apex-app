@@ -913,7 +913,7 @@ const CoachProgTemplateEditPage = {
       if (this._clientMode) {
         // ── Sauvegarde dans les tables client (sans modifier le template) ──
         const nomClient = this.templateData.nom.trim();
-        if (!nomClient) { alert('Le nom du programme est requis.'); this._saving = false; if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer'; } return; }
+        if (!nomClient) { toast('Le nom du programme est requis.', 'error'); this._saving = false; if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer'; } return; }
         await db.saveClientProgrammeNom(this._clientProgrammeId, nomClient);
         await db.saveClientProgrammeSeances(this._clientProgrammeId, this.seances);
         await db.saveClientProgrammeConsignes(this._clientProgrammeId, this.templateData.consignes.trim() || null);
@@ -932,7 +932,7 @@ const CoachProgTemplateEditPage = {
       } else {
         // ── Sauvegarde template ──
         const nom = this.templateData.nom.trim();
-        if (!nom) { alert('Le nom du programme est requis.'); this._saving = false; if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer'; } return; }
+        if (!nom) { toast('Le nom du programme est requis.', 'error'); this._saving = false; if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer'; } return; }
 
         const profile = Router.userProfile;
         const tplPayload = {
@@ -964,17 +964,12 @@ const CoachProgTemplateEditPage = {
       this._saving = false;
       this.renderContent();
 
-      const flash = document.createElement('div');
-      flash.className = 'alert alert-success';
-      flash.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.15);';
-      flash.textContent = '✓ Programme enregistré !';
-      document.body.appendChild(flash);
-      setTimeout(() => flash.remove(), 2500);
+      toast('✓ Programme enregistré !', 'success');
 
     } catch (e) {
       this._saving = false;
       if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer'; }
-      alert('Erreur lors de la sauvegarde : ' + e.message);
+      toast('Erreur lors de la sauvegarde : ' + e.message, 'error');
     }
   }
 };

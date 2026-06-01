@@ -262,7 +262,7 @@ const PlanPage = {
       }
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = '📖 Ajouter au journal'; }
-      alert('Erreur : ' + e.message);
+      toast('Erreur : ' + e.message, 'error');
     }
   },
 

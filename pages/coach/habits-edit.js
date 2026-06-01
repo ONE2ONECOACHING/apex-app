@@ -177,6 +177,6 @@ const CoachHabitsEditPage = {
       await db.deleteHabitudeConfig(id);
       this.habitudes = this.habitudes.filter(h => h.id !== id);
       this.renderList();
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   }
 };

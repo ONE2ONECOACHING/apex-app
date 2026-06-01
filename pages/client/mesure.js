@@ -347,6 +347,6 @@ const MesurePage = {
       this.mesure    = saved;
       this.photoUrls = await this._loadPhotoUrls(saved);
       this.renderContent();
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   }
 };

@@ -1,4 +1,4 @@
-// APEX APP — Client : Séance active (entraînement en cours)
+﻿// APEX APP — Client : Séance active (entraînement en cours)
 
 const SeanceActivePage = {
   _seance:          null,
@@ -430,7 +430,9 @@ const SeanceActivePage = {
     wrap.innerHTML = `
       <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
                   justify-content:center;padding:32px 20px;text-align:center;">
-        <div style="font-size:64px;margin-bottom:12px;">🏆</div>
+        <div id="saTrophyWrap" style="position:relative;display:inline-block;margin-bottom:12px;">
+          <div style="font-size:64px;" class="trophy-anim">🏆</div>
+        </div>
         <div style="font-size:26px;font-weight:800;color:var(--black);margin-bottom:6px;">Séance terminée !</div>
         <div style="font-size:14px;color:var(--gray-muted);margin-bottom:24px;">${this._seance?.nom || ''}</div>
 
@@ -476,6 +478,8 @@ const SeanceActivePage = {
           Abandonner sans enregistrer
         </button>
       </div>`;
+    // Confetti après rendu
+    setTimeout(() => launchConfetti(document.getElementById('saTrophyWrap')), 200);
   },
 
   _selectNote(key) {
@@ -882,6 +886,9 @@ const SeanceActivePage = {
       if (bar) bar.style.width = (this._amrapTotal > 0
         ? (this._amrapRemaining / this._amrapTotal * 100) : 0).toFixed(1) + '%';
 
+      // Ambiance warning ≤10s — fond rouge pulse
+      setAmrapWarning(this._amrapRemaining <= 10 && this._amrapRemaining > 0);
+
       // Annonces vocales
       if (this._amrapRemaining === 60) this._speak('1 minute');
       if (this._amrapRemaining === 10) this._speak('10 secondes');
@@ -956,10 +963,11 @@ const SeanceActivePage = {
       });
 
       await db.saveSeanceSets(log.id, this._logs);
-      window.location.hash = '#entrainement';
+      toast('💪 Séance enregistrée !', 'success');
+      setTimeout(() => { window.location.hash = '#entrainement'; }, 600);
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer la séance'; }
-      alert('Erreur : ' + e.message);
+      toast('Erreur : ' + e.message, 'error');
     }
   },
 

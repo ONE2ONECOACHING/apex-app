@@ -166,7 +166,7 @@ const CoachBilanTemplatesPage = {
 
   _confirmAddQ() {
     const label = document.getElementById('btQLabel').value.trim();
-    if (!label) { alert('Saisis la question.'); return; }
+    if (!label) { toast('Saisis la question.', 'error'); return; }
     const isPoids = this._newQType === 'poids';
     const q = { id: 'q_' + Date.now(), type: isPoids ? 'number' : this._newQType, label };
     if (isPoids) q.poids = true;
@@ -219,7 +219,7 @@ const CoachBilanTemplatesPage = {
 
   _confirmEditQ() {
     const label = document.getElementById('btQLabel').value.trim();
-    if (!label) { alert('Saisis la question.'); return; }
+    if (!label) { toast('Saisis la question.', 'error'); return; }
     const isPoids = this._newQType === 'poids';
     const orig = this._tpl.questions[this._editIdx];
     const q = { ...orig, type: isPoids ? 'number' : this._newQType, label };
@@ -278,7 +278,7 @@ const CoachBilanTemplatesPage = {
       const saved = await db.upsertBilanTemplate(copy);
       this.templates.unshift(saved);
       this.renderList();
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   async deleteTemplate(id) {
@@ -287,6 +287,6 @@ const CoachBilanTemplatesPage = {
       await db.deleteBilanTemplate(id);
       this.templates = this.templates.filter(t => t.id !== id);
       this.renderList();
-    } catch (e) { alert('Erreur : ' + e.message); }
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   }
 };

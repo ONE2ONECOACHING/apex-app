@@ -153,7 +153,7 @@ const CoachClientEditPage = {
       await db.deleteClient(this.client.id);
       window.location.hash = '#coach-clients';
     } catch (e) {
-      alert('Erreur : ' + e.message);
+      toast('Erreur : ' + e.message, 'error');
     }
   },
 
@@ -174,7 +174,7 @@ const CoachClientEditPage = {
     };
 
     if (!profile.age || !profile.poids || !profile.taille) {
-      alert('Remplis au minimum l\'âge, le poids et la taille.'); return;
+      toast('Remplis au minimum l\'âge, le poids et la taille.', 'error'); return;
     }
 
     const result = TDEE.calculate(profile, this.activites);

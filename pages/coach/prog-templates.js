@@ -123,7 +123,7 @@ const CoachProgTemplatesPage = {
       this.templates = this.templates.filter(t => t.id !== id);
       this.renderList();
     } catch (e) {
-      alert('Erreur : ' + e.message);
+      toast('Erreur : ' + e.message, 'error');
     }
   }
 };
