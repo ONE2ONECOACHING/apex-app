@@ -3,6 +3,7 @@
 const CoachClientsPage = {
   clients: [],
   activeFilter: 'all',
+  _searchQuery: '',
   _plans: [],
   _completedBilans: [],
   _pendingBilans: [],
@@ -25,12 +26,19 @@ const CoachClientsPage = {
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-exercices'">🏋️ Exercices</button>
         <div id="tagFilters" style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;"></div>
       </div>
+      <div style="position:relative;margin-bottom:1rem;">
+        <input id="clientSearchInput" class="input" type="search"
+          placeholder="🔍 Rechercher un client…"
+          oninput="CoachClientsPage.setSearch(this.value)"
+          style="padding-left:14px;height:44px;font-size:15px;">
+      </div>
       <div id="dashContent"><div class="spinner" style="margin-top:2rem;"></div></div>
       <div id="coachModal"></div>`;
   },
 
   async init() {
-    this.activeFilter = 'all'; // Reset filtre pour éviter un filtre persistant entre sessions
+    this.activeFilter = 'all';
+    this._searchQuery = '';
     try {
       this._mondayStr = this._getMondayStr();
 
@@ -87,11 +95,27 @@ const CoachClientsPage = {
     this.renderDashboard();
   },
 
+  setSearch(q) {
+    this._searchQuery = q.trim().toLowerCase();
+    this.renderDashboard();
+  },
+
   renderDashboard() {
     const el = document.getElementById('dashContent');
-    const filtered = this.activeFilter === 'all'
+    let filtered = this.activeFilter === 'all'
       ? this.clients
       : this.clients.filter(c => c.coach_tag === this.activeFilter);
+
+    if (this._searchQuery) {
+      filtered = filtered.filter(c => {
+        const full = `${c.prenom || ''} ${c.nom || ''}`.toLowerCase();
+        return full.includes(this._searchQuery);
+      });
+    }
+
+    // Conserver la valeur de recherche dans le champ après re-render
+    const input = document.getElementById('clientSearchInput');
+    if (input && this._searchQuery) input.value = this._searchQuery;
 
     const planMap = new Map(this._plans.map(p => [p.profile_id, p]));
     let html = '';
