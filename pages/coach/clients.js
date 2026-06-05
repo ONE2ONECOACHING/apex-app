@@ -26,12 +26,6 @@ const CoachClientsPage = {
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-exercices'">🏋️ Exercices</button>
         <div id="tagFilters" style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;"></div>
       </div>
-      <div style="position:relative;margin-bottom:1rem;">
-        <input id="clientSearchInput" class="input" type="search"
-          placeholder="🔍 Rechercher un client…"
-          oninput="CoachClientsPage.setSearch(this.value)"
-          style="padding-left:14px;height:44px;font-size:15px;">
-      </div>
       <div id="dashContent"><div class="spinner" style="margin-top:2rem;"></div></div>
       <div id="coachModal"></div>`;
   },
@@ -113,9 +107,6 @@ const CoachClientsPage = {
       });
     }
 
-    // Conserver la valeur de recherche dans le champ après re-render
-    const input = document.getElementById('clientSearchInput');
-    if (input && this._searchQuery) input.value = this._searchQuery;
 
     const planMap = new Map(this._plans.map(p => [p.profile_id, p]));
     let html = '';
@@ -139,7 +130,14 @@ const CoachClientsPage = {
 
     // ── ZONE 3 : CLIENTS ─────────────────────────────────────────────────
     html += `<div class="dash-section">
-      <div class="dash-section-title">👥 Clients <span class="dash-badge dash-badge-gray">${filtered.length}</span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.6rem;">
+        <div class="dash-section-title" style="margin-bottom:0;">👥 Clients <span class="dash-badge dash-badge-gray">${filtered.length}</span></div>
+        <input id="clientSearchInput" class="input" type="search"
+          placeholder="🔍 Chercher…"
+          value="${this._searchQuery}"
+          oninput="CoachClientsPage.setSearch(this.value)"
+          style="height:32px;font-size:13px;padding:0 10px;flex:1;min-width:0;border-radius:10px;">
+      </div>
       ${filtered.length === 0
         ? '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Aucun client pour ce filtre.</div></div>'
         : filtered.map(c => this._renderClientRow(c, planMap)).join('')}
