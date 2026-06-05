@@ -149,6 +149,12 @@ const CoachTrainingClientPage = {
             </span>`;
           }).join('')}
         </div>
+        ${s.note_client ? `
+        <div style="margin-top:7px;font-size:12px;padding:6px 10px;
+            border-radius:8px;background:var(--gold-light);border:1px solid var(--gold-border);
+            color:var(--black);line-height:1.5;">
+          💬 <span style="color:var(--gold);font-weight:600;">Note client :</span> ${s.note_client}
+        </div>` : ''}
       </div>`;
   },
 

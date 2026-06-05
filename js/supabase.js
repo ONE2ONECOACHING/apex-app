@@ -1156,26 +1156,28 @@ const db = {
     return data || [];
   },
 
-  // Retourne { exercice_id: sets_data[] } pour la séance la plus récente par exercice
+  // Retourne { sets: { exercice_id: sets_data[] }, notes: { exercice_id: note_client } }
   async getLastSetsPerExo(profileId, exerciceIds) {
-    if (!exerciceIds?.length) return {};
+    if (!exerciceIds?.length) return { sets: {}, notes: {} };
     const { data, error } = await getSupabase()
       .from('seances_log')
-      .select('date_seance, seances_log_sets(exercice_id, sets_data)')
+      .select('date_seance, seances_log_sets(exercice_id, sets_data, note_client)')
       .eq('client_id', profileId)
       .order('date_seance', { ascending: false })
       .limit(20);
-    if (error) return {};
-    const result = {};
+    if (error) return { sets: {}, notes: {} };
+    const sets  = {};
+    const notes = {};
     for (const log of (data || [])) {
       for (const s of (log.seances_log_sets || [])) {
-        if (exerciceIds.includes(s.exercice_id) && !result[s.exercice_id]) {
-          result[s.exercice_id] = s.sets_data || [];
+        if (exerciceIds.includes(s.exercice_id) && !sets[s.exercice_id]) {
+          sets[s.exercice_id]  = s.sets_data || [];
+          notes[s.exercice_id] = s.note_client || null;
         }
       }
-      if (Object.keys(result).length === exerciceIds.length) break;
+      if (Object.keys(sets).length === exerciceIds.length) break;
     }
-    return result;
+    return { sets, notes };
   },
 
   async upsertSeanceLog(log) {

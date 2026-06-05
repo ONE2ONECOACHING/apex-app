@@ -13,6 +13,7 @@ const SeanceActivePage = {
   _sessionTimer:    null,
   _sessionSeconds:  0,
   _lastSets:        {}, // { exercice_id: sets_data[] } — dernière séance connue
+  _lastNotes:       {}, // { exercice_id: note_client } — note laissée la séance précédente
   _noteRessenti:    null, // 'dur' | 'bien' | 'feu' — note obligatoire avant save
   _effortIdx:       0,   // 0 = effort principal, 1 = 2e effort (Rest-Pause / Drop Set…)
   _pendingE1:       null, // {reps, charge} de l'effort 1 en attente de combinaison
@@ -68,9 +69,11 @@ const SeanceActivePage = {
         note_client:             null,
       }));
 
-      // Charger les dernières valeurs par exercice (silencieux si erreur)
+      // Charger les dernières valeurs + notes par exercice (silencieux si erreur)
       const exoIds = (this._seance.exercices || []).map(e => e.exercice_id).filter(Boolean);
-      this._lastSets = await db.getLastSetsPerExo(profile.id, exoIds).catch(() => ({}));
+      const lastData = await db.getLastSetsPerExo(profile.id, exoIds).catch(() => ({ sets: {}, notes: {} }));
+      this._lastSets  = lastData.sets  || {};
+      this._lastNotes = lastData.notes || {};
 
       this._startSessionTimer();
       this._draw();
@@ -376,6 +379,16 @@ const SeanceActivePage = {
 
       <!-- Note client par exercice -->
       <div style="padding:0 16px 10px;">
+        ${(() => {
+          const prevNote = this._lastNotes[ex?.exercice_id];
+          return prevNote ? `
+            <div style="font-size:11px;color:var(--gray-muted);background:var(--gold-light);
+                border:1px solid var(--gold-border);border-radius:10px;
+                padding:7px 12px;margin-bottom:6px;line-height:1.5;">
+              💬 <span style="color:var(--gold);font-weight:600;">Ta note sem. passée :</span>
+              <span style="color:var(--black);">${prevNote}</span>
+            </div>` : '';
+        })()}
         <input id="saClientNote" type="text"
           value="${this._logs[this._exoIdx]?.note_client || ''}"
           placeholder="💬 Note pour ton coach (optionnel)"
