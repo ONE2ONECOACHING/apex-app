@@ -412,20 +412,35 @@ ${text.replace(/</g,'&lt;')}</div>
     const nom    = s.exercices_bdd?.nom || '—';
     const sets   = s.sets_data || [];
     const effort = s.type_effort || 'reps';
+    const isReps = effort === 'reps';
     return `
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:5px;">${nom}</div>
+      <div style="background:var(--card-bg);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:13px;font-weight:700;color:var(--black);margin-bottom:8px;">${nom}</div>
+        ${isReps && sets.length > 0 ? `
+        <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:3px 8px;font-size:12px;">
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--border);">#</div>
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--border);">Reps</div>
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--border);">Charge</div>
+          ${sets.map((set, i) => `
+            <div style="color:var(--gray-muted);padding:3px 0;">S${i + 1}</div>
+            <div style="color:var(--black);font-weight:600;padding:3px 0;">${set.reps || '—'}</div>
+            <div style="color:${set.charge ? 'var(--gold)' : 'var(--gray-muted)'};font-weight:${set.charge ? '700' : '400'};padding:3px 0;">
+              ${set.charge ? set.charge + ' kg' : '—'}
+            </div>
+          `).join('')}
+        </div>` : `
         <div style="display:flex;flex-wrap:wrap;gap:4px;">
-          ${sets.map((set, i) => {
-            const label = effort === 'reps'
-              ? `${set.reps} reps${set.charge ? ' · ' + set.charge + ' kg' : ''}`
-              : set.reps || '—';
-            return `<span style="font-size:11px;padding:3px 9px;border-radius:8px;
-              background:var(--card-bg);color:var(--gray);font-weight:500;">
-              S${i + 1}: ${label}
-            </span>`;
-          }).join('')}
-        </div>
+          ${sets.map((set, i) => `
+            <span style="font-size:12px;padding:4px 10px;border-radius:8px;
+              background:var(--white);color:var(--black);font-weight:500;border:1px solid var(--border);">
+              S${i + 1} : ${set.reps || '—'}${set.charge ? ' · ' + set.charge + ' kg' : ''}
+            </span>`).join('')}
+        </div>`}
+        ${s.note_client ? `
+        <div style="margin-top:8px;font-size:12px;padding:5px 8px;border-radius:8px;
+            background:var(--gold-light);color:var(--black);border:1px solid var(--gold-border);line-height:1.5;">
+          💬 ${s.note_client}
+        </div>` : ''}
       </div>`;
   },
 

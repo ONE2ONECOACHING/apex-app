@@ -70,19 +70,32 @@ const HistoriquePage = {
     if (sets.length === 0) return '';
 
     const rows = sets.map(set => {
-      const nom = set.exercices_bdd?.nom || '—';
-      const data = set.sets_data || [];
+      const nom    = set.exercices_bdd?.nom || '—';
+      const data   = set.sets_data || [];
+      const effort = set.type_effort || 'reps';
+      const isReps = effort === 'reps';
       if (data.length === 0) return '';
 
-      const setsStr = data.map((d, i) => {
-        const reps   = d.reps   || '—';
-        const charge = d.charge ? ` · ${d.charge}kg` : '';
-        return `S${i + 1}: ${reps}${charge}`;
-      }).join('&nbsp;&nbsp;');
+      const setsHtml = isReps ? `
+        <div style="display:grid;grid-template-columns:26px 1fr 1fr;gap:2px 8px;font-size:11px;margin-top:5px;">
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:3px;border-bottom:1px solid var(--border);">#</div>
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:3px;border-bottom:1px solid var(--border);">Reps</div>
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:3px;border-bottom:1px solid var(--border);">Charge</div>
+          ${data.map((d, i) => `
+            <div style="color:var(--gray-muted);padding:2px 0;">S${i + 1}</div>
+            <div style="color:var(--black);font-weight:600;padding:2px 0;">${d.reps || '—'}</div>
+            <div style="color:${d.charge ? 'var(--gold)' : 'var(--gray-muted)'};font-weight:${d.charge ? '700' : '400'};padding:2px 0;">
+              ${d.charge ? d.charge + ' kg' : '—'}
+            </div>
+          `).join('')}
+        </div>` :
+        `<div style="font-size:11px;color:var(--gray-muted);margin-top:3px;">
+          ${data.map((d, i) => `S${i + 1}: ${d.reps || '—'}${d.charge ? ' · ' + d.charge + 'kg' : ''}`).join(' &nbsp; ')}
+        </div>`;
 
-      return `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);">
-        <span style="color:var(--black);font-weight:500;">${nom}</span>
-        <span style="color:var(--gray-muted);margin-left:6px;">${setsStr}</span>
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--border);">
+        <div style="font-size:12px;font-weight:600;color:var(--black);">${nom}</div>
+        ${setsHtml}
       </div>`;
     }).filter(Boolean).join('');
 

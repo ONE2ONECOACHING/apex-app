@@ -131,27 +131,37 @@ const CoachTrainingClientPage = {
     const muscle = s.exercices_bdd?.muscle_principal || '';
     const sets   = s.sets_data || [];
     const effort = s.type_effort || 'reps';
+    const isReps = effort === 'reps';
     return `
-      <div>
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-          <span style="font-size:13px;font-weight:600;color:var(--black);">${nom}</span>
+      <div style="background:var(--card-bg);border-radius:10px;padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:700;color:var(--black);">${nom}</span>
           ${muscle ? `<span style="font-size:10px;padding:1px 7px;border-radius:10px;
-            background:var(--gold-bg,#fffbeb);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
+            background:var(--gold-light);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
         </div>
+        ${isReps && sets.length > 0 ? `
+        <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:3px 8px;font-size:12px;">
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--border);">#</div>
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--border);">Reps</div>
+          <div style="color:var(--gray-muted);font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--border);">Charge</div>
+          ${sets.map((set, i) => `
+            <div style="color:var(--gray-muted);padding:3px 0;">S${i + 1}</div>
+            <div style="color:var(--black);font-weight:600;padding:3px 0;">${set.reps || '—'}</div>
+            <div style="color:${set.charge ? 'var(--gold)' : 'var(--gray-muted)'};font-weight:${set.charge ? '700' : '400'};padding:3px 0;">
+              ${set.charge ? set.charge + ' kg' : '—'}
+            </div>
+          `).join('')}
+        </div>` : `
         <div style="display:flex;flex-wrap:wrap;gap:4px;">
-          ${sets.map((set, i) => {
-            const label = effort === 'reps'
-              ? `${set.reps} reps${set.charge ? ' · ' + set.charge + ' kg' : ''}`
-              : set.reps || '—';
-            return `<span style="font-size:11px;padding:3px 9px;border-radius:8px;
-              background:var(--card-bg);color:var(--gray);font-weight:500;">
-              S${i + 1}: ${label}
-            </span>`;
-          }).join('')}
-        </div>
+          ${sets.map((set, i) => `
+            <span style="font-size:12px;padding:4px 10px;border-radius:8px;
+              background:var(--white);color:var(--black);font-weight:500;border:1px solid var(--border);">
+              S${i + 1} : ${set.reps || '—'}${set.charge ? ' · ' + set.charge + ' kg' : ''}
+            </span>`).join('')}
+        </div>`}
         ${s.note_client ? `
-        <div style="margin-top:7px;font-size:12px;padding:6px 10px;
-            border-radius:8px;background:var(--gold-light);border:1px solid var(--gold-border);
+        <div style="margin-top:8px;font-size:12px;padding:6px 10px;border-radius:8px;
+            background:var(--gold-light);border:1px solid var(--gold-border);
             color:var(--black);line-height:1.5;">
           💬 <span style="color:var(--gold);font-weight:600;">Note client :</span> ${s.note_client}
         </div>` : ''}
