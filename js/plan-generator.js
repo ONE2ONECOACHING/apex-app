@@ -81,13 +81,32 @@ const PlanGenerator = {
   // Arrondit à un multiple propre
   round(qty, step) { return Math.max(step, Math.round(qty / step) * step); },
 
-  // Génère un repas principal (déjeuner ou dîner) — calcul 2 passes
-  mainMeal(targetP, targetG, creneau, opts, isLunch) {
+  // Génère un repas principal (déjeuner ou dîner) — fat-aware
+  // fatBudget : lipides restants disponibles pour CE repas (en g)
+  mainMeal(targetP, targetG, creneau, opts, isLunch, fatBudget) {
     const items = [];
 
-    const proteinSrc = opts.vegetarien
-      ? (isLunch ? 'Tofu ferme' : 'Lentilles cuites')
-      : (isLunch ? 'Poulet blanc cuit' : 'Saumon');
+    let proteinSrc;
+    if (opts.vegetarien) {
+      proteinSrc = isLunch ? 'Tofu ferme' : 'Lentilles cuites';
+    } else {
+      // Choisir la source protéique en fonction du budget lipidique
+      // Thon ≈ 1g fat/100g | Poulet ≈ 4g/100g | Saumon ≈ 14g/100g
+      const fatPerProt = (est) => {
+        // Estime la quantité de protéine nécessaire et les lipides associés
+        const fp = this.FOODS[est];
+        const approxQty = 150; // estimation grossière
+        return approxQty * fp.l / 100;
+      };
+      if (fatBudget < 8) {
+        proteinSrc = isLunch ? 'Thon en boite'     : 'Thon en boite';
+      } else if (fatBudget < 18) {
+        proteinSrc = isLunch ? 'Poulet blanc cuit'  : 'Blanc de dinde';
+      } else {
+        proteinSrc = isLunch ? 'Poulet blanc cuit'  : 'Saumon';
+      }
+    }
+
     const starchSrc = isLunch ? 'Riz blanc cuit'   : 'Patate douce cuite';
     const vegSrc    = isLunch ? 'Brocoli cuit'      : 'Haricots verts';
 
@@ -95,20 +114,18 @@ const PlanGenerator = {
     const fs = this.FOODS[starchSrc];
     const fv = this.FOODS[vegSrc];
 
+    // Huile d'olive — seulement si le budget lipidique le permet (10g huile = 10g lipides)
+    const useOil = fatBudget >= 12;
+    if (useOil) items.push(this.item("Huile d'olive", 10, creneau));
+
     // Passe 1 — estimer les protéines apportées par le féculent et le légume
-    // (on ne peut pas les connaître exactement avant d'avoir calculé les quantités,
-    //  donc on les estime à partir des cibles glucides)
     const vegP         = 150 * fv.p / 100;
     const vegG         = 150 * fv.g / 100;
     const estStarchQty = Math.max(50, (targetG - vegG) / (fs.g / 100));
     const estStarchP   = estStarchQty * fs.p / 100;
 
-    // Source protéique : seulement les protéines manquantes après féculent + légume
     const protNeeded = Math.max(10, targetP - vegP - estStarchP);
     const protQty    = this.round(protNeeded / (fp.p / 100), 10);
-
-    // Huile d'olive (cuisson, toujours 10g)
-    items.push(this.item("Huile d'olive", 10, creneau));
     items.push(this.item(proteinSrc, protQty, creneau));
 
     // Passe 2 — glucides réels restants → quantité exacte de féculent
@@ -141,6 +158,29 @@ const PlanGenerator = {
     const repas = [];
     const add = (items) => items.forEach(i => { if (i) repas.push(i); });
 
+    // ── PRÉ-CALCUL BUDGET LIPIDIQUE ───────────────────────────────────────
+    // Estimer les lipides des sources fixes (petit-déj, collations) pour
+    // savoir combien il reste pour les repas principaux
+    let fixedFat = 0;
+    if (hasPdej) {
+      const scaleSale = Math.max(0.5, cal * pdejPct / 599);
+      const nbOeufs   = Math.max(1, Math.round(3 * scaleSale));
+      const avoQty    = this.round(80 * scaleSale, 10);
+      fixedFat += nbOeufs * 60 / 100 * this.FOODS['Oeuf entier'].l;    // œufs
+      fixedFat += avoQty / 100 * this.FOODS['Avocat'].l;               // avocat
+      fixedFat += this.round(60 * scaleSale, 10) / 100 * this.FOODS['Pain complet'].l; // pain
+    }
+    // Collations — amandes et snacks gras
+    const amendPerSnack = snackEach > 350 ? 25 : snackEach > 250 ? 20 : 15;
+    if (colMatin)  fixedFat += amendPerSnack / 100 * this.FOODS['Amandes'].l;
+    if (colAprem)  fixedFat += amendPerSnack / 100 * this.FOODS['Amandes'].l;
+    if (colSoir)   fixedFat += amendPerSnack / 100 * this.FOODS['Amandes'].l;
+
+    const mainMealFatBudget = Math.max(0, t.lipides - fixedFat);
+    // Diviser entre déjeuner et dîner
+    const lunchFatBudget  = mainMealFatBudget * 0.50;
+    const dinnerFatBudget = mainMealFatBudget * 0.50;
+
     // ── PETIT DÉJEUNER ────────────────────────────────────────────────────
     if (hasPdej) {
       const pdejKcal = cal * pdejPct;
@@ -172,23 +212,27 @@ const PlanGenerator = {
       ]);
     }
 
+    // Quantité d'amandes adaptée au budget lipidique global
+    // (50g fat/100g → réduit si lipides contraints)
+    const fatPerAmande = this.FOODS['Amandes'].l / 100; // g fat par g amande
+    const amendBudgetPerSnack = nbSnacks > 0 ? (t.lipides * 0.08) / nbSnacks : 0; // max 8% des lipides par collation
+    const amendQtyFromBudget  = Math.min(amendPerSnack, Math.max(5, Math.round(amendBudgetPerSnack / fatPerAmande / 5) * 5));
+
     // ── COLLATION MATIN ───────────────────────────────────────────────────
     if (colMatin) {
       if (whey) {
         const wheyQty = this.round((t.proteines * (snackPct / nbSnacks) * 0.75) / (this.FOODS['Whey protéine'].p / 100), 5);
         add([
-          this.item('Whey protéine', wheyQty, 'collation_matin'),
-          this.item('Banane',        1,       'collation_matin'),
-          this.item('Amandes',       20,      'collation_matin'),
+          this.item('Whey protéine', wheyQty,             'collation_matin'),
+          this.item('Banane',        1,                   'collation_matin'),
+          this.item('Amandes',       amendQtyFromBudget,  'collation_matin'),
         ]);
       } else {
-        // Cible : snackEach kcal — FB + amandes + fruit
-        const fbQty    = Math.min(250, this.round(snackEach * 0.55 / (this.FOODS['Fromage blanc 0%'].cal / 100), 25));
-        const amendQty = snackEach > 350 ? 25 : snackEach > 250 ? 20 : 15;
+        const fbQty = Math.min(250, this.round(snackEach * 0.55 / (this.FOODS['Fromage blanc 0%'].cal / 100), 25));
         add([
-          this.item('Fromage blanc 0%', fbQty,    'collation_matin'),
-          this.item('Pomme',            1,         'collation_matin'),
-          this.item('Amandes',          amendQty, 'collation_matin'),
+          this.item('Fromage blanc 0%', fbQty,             'collation_matin'),
+          this.item('Pomme',            1,                 'collation_matin'),
+          this.item('Amandes',          amendQtyFromBudget,'collation_matin'),
         ]);
       }
     }
@@ -197,7 +241,7 @@ const PlanGenerator = {
     add(this.mainMeal(
       t.proteines * lunchPct,
       t.glucides  * lunchPct,
-      'dejeuner', opts, true
+      'dejeuner', opts, true, lunchFatBudget
     ));
 
     // ── COLLATION APRÈS-MIDI ──────────────────────────────────────────────
@@ -205,17 +249,16 @@ const PlanGenerator = {
       if (whey) {
         const wheyQty = this.round((t.proteines * (snackPct / nbSnacks) * 0.75) / (this.FOODS['Whey protéine'].p / 100), 5);
         add([
-          this.item('Whey protéine', wheyQty, 'collation_apres_midi'),
-          this.item('Pomme',         1,       'collation_apres_midi'),
-          this.item('Amandes',       20,      'collation_apres_midi'),
+          this.item('Whey protéine', wheyQty,             'collation_apres_midi'),
+          this.item('Pomme',         1,                   'collation_apres_midi'),
+          this.item('Amandes',       amendQtyFromBudget,  'collation_apres_midi'),
         ]);
       } else {
-        const fbQty    = Math.min(250, this.round(snackEach * 0.55 / (this.FOODS['Fromage blanc 0%'].cal / 100), 25));
-        const amendQty = snackEach > 350 ? 25 : snackEach > 250 ? 20 : 15;
+        const fbQty = Math.min(250, this.round(snackEach * 0.55 / (this.FOODS['Fromage blanc 0%'].cal / 100), 25));
         add([
-          this.item('Fromage blanc 0%', fbQty,    'collation_apres_midi'),
-          this.item('Myrtilles',        100,       'collation_apres_midi'),
-          this.item('Amandes',          amendQty, 'collation_apres_midi'),
+          this.item('Fromage blanc 0%', fbQty,             'collation_apres_midi'),
+          this.item('Myrtilles',        100,               'collation_apres_midi'),
+          this.item('Amandes',          amendQtyFromBudget,'collation_apres_midi'),
         ]);
       }
     }
@@ -224,21 +267,21 @@ const PlanGenerator = {
     add(this.mainMeal(
       t.proteines * dinnerPct,
       t.glucides  * dinnerPct,
-      'diner', opts, false
+      'diner', opts, false, dinnerFatBudget
     ));
 
     // ── COLLATION SOIR ────────────────────────────────────────────────────
     if (colSoir) {
       const skyrQty  = Math.min(300, this.round(snackEach * 0.55 / (this.FOODS['Skyr'].cal / 100), 25));
       const mielQty  = snackEach > 300 ? 15 : 10;
-      const amendQty = snackEach > 350 ? 25 : snackEach > 250 ? 20 : 15;
-      const chocoQty = snackEach > 350 ? 20 : snackEach > 250 ? 15 : 0;
+      // Chocolat seulement si budget lipidique suffisant
+      const chocoQty = snackEach > 350 && t.lipides > 100 ? 20 : snackEach > 250 && t.lipides > 80 ? 15 : 0;
 
       add([
-        this.item('Skyr',    skyrQty,  'collation_soir'),
-        this.item('Fraises', 100,      'collation_soir'),
-        this.item('Miel',    mielQty,  'collation_soir'),
-        this.item('Amandes', amendQty, 'collation_soir'),
+        this.item('Skyr',    skyrQty,             'collation_soir'),
+        this.item('Fraises', 100,                 'collation_soir'),
+        this.item('Miel',    mielQty,             'collation_soir'),
+        this.item('Amandes', amendQtyFromBudget,  'collation_soir'),
       ]);
       if (chocoQty > 0) add([this.item('Chocolat noir 70%', chocoQty, 'collation_soir')]);
     }
