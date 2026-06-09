@@ -1,4 +1,4 @@
-﻿// APEX APP â€” Router SPA (hash-based)
+// APEX APP — Router SPA (hash-based)
 
 const Router = {
   currentPage: null,
@@ -13,10 +13,10 @@ const Router = {
       const hashParams = new URLSearchParams(hashStr);
       const at = hashParams.get('access_token');
       const rt = hashParams.get('refresh_token');
-      // Ã‰tablir la session explicitement (detectSessionInUrl est dÃ©sactivÃ©)
+      // Établir la session explicitement (detectSessionInUrl est désactivé)
       if (at && rt) {
         try { await db.restoreSession(at, rt); } catch (_) {}
-        // Backup dans sessionStorage au cas oÃ¹
+        // Backup dans sessionStorage au cas où
         sessionStorage.setItem('recovery_access_token', at);
         sessionStorage.setItem('recovery_refresh_token', rt);
       }
@@ -27,7 +27,7 @@ const Router = {
     }
     // Detect Supabase invite redirect
     if (window.location.hash.includes('type=invite')) {
-      // Ã‰tablir la session AVANT de changer le hash (sinon les tokens sont perdus)
+      // Établir la session AVANT de changer le hash (sinon les tokens sont perdus)
       await db.getSessionFromUrl();
       history.replaceState(null, '', window.location.pathname + '#set-password');
       document.getElementById('app').innerHTML = SetPasswordPage.render();
@@ -39,18 +39,18 @@ const Router = {
   },
 
   async route() {
-    // Extraire la route sans les query params du hash (ex: #invite?t=xxx â†’ 'invite')
+    // Extraire la route sans les query params du hash (ex: #invite?t=xxx → 'invite')
     const fullHash = window.location.hash.slice(1) || 'login';
     const hash = fullHash.split('?')[0];
 
-    // Retirer coach-wide seulement si on quitte les pages coach (Ã©vite le flash de layout)
+    // Retirer coach-wide seulement si on quitte les pages coach (évite le flash de layout)
     const coachHashes = ['coach-clients','coach-client-edit','coach-plan-edit','coach-journal','coach-journal-view','coach-habits-edit','coach-bilan-templates','coach-bilan-client','coach-mesure-client','coach-exercices','coach-prog-templates','coach-prog-template-edit','coach-client-programme','coach-training-client'];
     if (!coachHashes.includes(hash)) {
       document.body.classList.remove('coach-wide');
     }
     const user = await db.getUser();
 
-    // Non connectÃ© â†’ login (sauf page invite qui est publique)
+    // Non connecté → login (sauf page invite qui est publique)
     if (!user && hash !== 'login' && hash !== 'invite') {
       window.location.hash = '#login';
       return;
@@ -63,16 +63,16 @@ const Router = {
       return;
     }
 
-    // ConnectÃ© â†’ charger profil
+    // Connecté → charger profil
     if (user && !this.userProfile) {
       try {
         this.userProfile = await db.getProfile(user.id);
       } catch (e) {
-        console.error('Profil non trouvÃ©', e);
+        console.error('Profil non trouvé', e);
       }
     }
 
-    // ConnectÃ© sur login â†’ rediriger
+    // Connecté sur login → rediriger
     if (user && hash === 'login') {
       if (this.userProfile && this.userProfile.role === 'coach') {
         window.location.hash = '#coach-clients';
@@ -84,7 +84,7 @@ const Router = {
       return;
     }
 
-    // Client sans onboarding â†’ forcer changement de mdp d'abord, puis onboarding
+    // Client sans onboarding → forcer changement de mdp d'abord, puis onboarding
     if (user && this.userProfile && this.userProfile.role === 'client'
         && !this.userProfile.onboarding_done && hash !== 'set-password' && hash !== 'onboarding') {
       window.location.hash = '#set-password';
@@ -96,7 +96,7 @@ const Router = {
       PushNotifications.init(this.userProfile.id).catch(() => {});
     }
 
-    // Cloisonnement role â†” route
+    // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation'];
     const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations'];
     if (this.userProfile) {
@@ -152,13 +152,13 @@ const Router = {
         case 'formation':             app.innerHTML = FormationPage.render();           FormationPage.init();           break;
         default: window.location.hash = '#login';
       }
-      // Classe d'entrÃ©e sur le conteneur
+      // Classe d'entrée sur le conteneur
       app.classList.remove('page-enter');
       void app.offsetWidth; // force reflow
       app.classList.add('page-enter');
     };
 
-    // Si du contenu est dÃ©jÃ  lÃ , fade-out rapide avant de charger
+    // Si du contenu est déjà là, fade-out rapide avant de charger
     if (app.children.length > 0) {
       app.classList.add('page-exit');
       setTimeout(() => {
@@ -196,12 +196,12 @@ const Router = {
     modal.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;">
         <div style="background:var(--white);border-radius:var(--radius);padding:1.75rem 1.5rem;width:100%;max-width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
-          <div style="font-size:2rem;margin-bottom:0.75rem;">â»</div>
-          <div style="font-weight:700;font-size:16px;margin-bottom:0.5rem;">Se dÃ©connecter ?</div>
-          <div style="font-size:13px;color:var(--gray-light);margin-bottom:1.5rem;line-height:1.5;">Tu devras te reconnecter pour accÃ©der Ã  ton espace.</div>
+          <div style="font-size:2rem;margin-bottom:0.75rem;">⏻</div>
+          <div style="font-weight:700;font-size:16px;margin-bottom:0.5rem;">Se déconnecter ?</div>
+          <div style="font-size:13px;color:var(--gray-light);margin-bottom:1.5rem;line-height:1.5;">Tu devras te reconnecter pour accéder à ton espace.</div>
           <div style="display:flex;gap:10px;">
             <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('logoutModal').remove()">Annuler</button>
-            <button class="btn" style="flex:1;background:#E05252;color:white;border-color:#E05252;" onclick="Router.logout()">DÃ©connexion</button>
+            <button class="btn" style="flex:1;background:#E05252;color:white;border-color:#E05252;" onclick="Router.logout()">Déconnexion</button>
           </div>
         </div>
       </div>`;
@@ -228,21 +228,21 @@ function formatDateFR(dateStr) {
 
 function creneauLabel(code) {
   const labels = {
-    'petit_dejeuner': 'Petit-dÃ©jeuner', 'petit_dejeuner_sale': 'Petit-dÃ©jeuner salÃ©',
-    'petit_dejeuner_sucre': 'Petit-dÃ©jeuner sucrÃ©', 'collation_matin': 'Collation matin',
-    'dejeuner': 'DÃ©jeuner', 'collation_apres_midi': 'Collation aprÃ¨s-midi',
-    'diner': 'DÃ®ner', 'collation_soir': 'Collation soir'
+    'petit_dejeuner': 'Petit-déjeuner', 'petit_dejeuner_sale': 'Petit-déjeuner salé',
+    'petit_dejeuner_sucre': 'Petit-déjeuner sucré', 'collation_matin': 'Collation matin',
+    'dejeuner': 'Déjeuner', 'collation_apres_midi': 'Collation après-midi',
+    'diner': 'Dîner', 'collation_soir': 'Collation soir'
   };
   return labels[code] || code;
 }
 
 function creneauIcon(code) {
   const icons = {
-    'petit_dejeuner': 'ðŸŒ…', 'petit_dejeuner_sale': 'ðŸ¥“', 'petit_dejeuner_sucre': 'ðŸ¥',
-    'collation_matin': 'ðŸŽ', 'dejeuner': 'ðŸ½ï¸',
-    'collation_apres_midi': 'ðŸ¥œ', 'diner': 'ðŸŒ™', 'collation_soir': 'ðŸ«–'
+    'petit_dejeuner': '🌅', 'petit_dejeuner_sale': '🥓', 'petit_dejeuner_sucre': '🥐',
+    'collation_matin': '🍎', 'dejeuner': '🍽️',
+    'collation_apres_midi': '🥜', 'diner': '🌙', 'collation_soir': '🫖'
   };
-  return icons[code] || 'ðŸ´';
+  return icons[code] || '🍴';
 }
 
 function pctBar(current, target, color) {
@@ -253,36 +253,36 @@ function pctBar(current, target, color) {
 }
 
 function noteEmoji(note) {
-  if (note >= 8) return 'ðŸŸ¢';
-  if (note >= 5) return 'ðŸŸ¡';
-  return 'ðŸ”´';
+  if (note >= 8) return '🟢';
+  if (note >= 5) return '🟡';
+  return '🔴';
 }
 
-// â”€â”€ Navigation partagÃ©e â€” pages client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Navigation partagée — pages client ───────────────────────
 function clientNav(activeTab) {
   const items = [
-    { key: 'dashboard',    icon: 'ðŸ ', label: 'Accueil' },
-    { key: 'logbook',      icon: 'ðŸ¥—', label: 'Nutrition' },
-    { key: 'entrainement', icon: 'ðŸ’ª', label: 'EntraÃ®n.' },
-    { key: 'formation',    icon: 'ðŸ“š', label: 'Formation' },
-    { key: 'mesure',       icon: 'ðŸ“', label: 'Mesures' },
+    { key: 'dashboard',    icon: '🏠', label: 'Accueil' },
+    { key: 'logbook',      icon: '🥗', label: 'Nutrition' },
+    { key: 'entrainement', icon: '💪', label: 'Entraîn.' },
+    { key: 'formation',    icon: '📚', label: 'Formation' },
+    { key: 'mesure',       icon: '📏', label: 'Mesures' },
   ];
   return `<nav class="nav-bottom"><div class="nav-inner">${items.map(i =>
     `<a class="nav-item${i.key === activeTab ? ' active' : ''}" href="#${i.key}"><span class="nav-icon">${i.icon}</span><span class="nav-label">${i.label}</span></a>`
   ).join('')}</div></nav>`;
 }
 
-// â”€â”€ Navigation partagÃ©e â€” pages client coach â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Navigation partagée — pages client coach ─────────────────
 function coachClientNav(clientId, activeTab) {
   const tabs = [
-    { key: 'coach-client-edit',      label: 'ðŸ‘¤ Infos' },
-    { key: 'coach-plan-edit',        label: 'ðŸ“‹ Plan' },
-    { key: 'coach-habits-edit',      label: 'âœ… Habitudes' },
-    { key: 'coach-journal',          label: 'ðŸ“– Journal' },
-    { key: 'coach-bilan-client',     label: 'ðŸ“ Bilans' },
-    { key: 'coach-mesure-client',    label: 'ðŸ“ Mesures' },
-    { key: 'coach-client-programme', label: 'ðŸ’ª Programmes' },
-    { key: 'coach-training-client',  label: 'ðŸ‹ï¸ SÃ©ances' },
+    { key: 'coach-client-edit',      label: '👤 Infos' },
+    { key: 'coach-plan-edit',        label: '📋 Plan' },
+    { key: 'coach-habits-edit',      label: '✅ Habitudes' },
+    { key: 'coach-journal',          label: '📖 Journal' },
+    { key: 'coach-bilan-client',     label: '📝 Bilans' },
+    { key: 'coach-mesure-client',    label: '📏 Mesures' },
+    { key: 'coach-client-programme', label: '💪 Programmes' },
+    { key: 'coach-training-client',  label: '🏋️ Séances' },
   ];
   return `
     <div class="tabs" style="margin-bottom:1.25rem;">${
@@ -302,7 +302,7 @@ function clientCurrentWeek(client) {
 
 function lastSaturdayStr(date) {
   const d = new Date(date || new Date());
-  const back = (d.getDay() + 1) % 7; // sam=0, dim=1, lun=2 â€¦
+  const back = (d.getDay() + 1) % 7; // sam=0, dim=1, lun=2 …
   d.setDate(d.getDate() - back);
   return formatDate(d);
 }

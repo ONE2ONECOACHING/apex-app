@@ -378,24 +378,29 @@ const CoachFormationsPage = {
           <button class="btn btn-ghost btn-small" style="color:var(--error);flex-shrink:0;"
             onclick="CoachFormationsPage._removeQuestion(${qi})">×</button>
         </div>
+        <div style="font-size:11px;color:var(--gray-muted);margin-bottom:6px;">
+          Clique sur ✓ / ✗ pour marquer les bonnes réponses (plusieurs possibles)
+        </div>
         ${q.options.map((o, oi) => `
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-            <input type="radio" name="correct_${qi}" ${o.correct?'checked':''}
-              onchange="CoachFormationsPage._setCorrect(${qi},${oi})"
-              style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <button onclick="CoachFormationsPage._toggleCorrect(${qi},${oi})"
+              style="width:32px;height:32px;border-radius:8px;border:2px solid ${o.correct?'#10B981':'#EF4444'};
+                     background:${o.correct?'#dcfce7':'#fef2f2'};cursor:pointer;font-size:14px;flex-shrink:0;">
+              ${o.correct ? '✓' : '✗'}
+            </button>
             <input class="input" style="height:34px;font-size:13px;flex:1;" value="${o.text.replace(/"/g,'&quot;')}"
               oninput="CoachFormationsPage._quizzQuestions[${qi}].options[${oi}].text=this.value"
-              placeholder="Option ${oi+1}…">
-            ${q.options.length > 2 ? `<button class="btn btn-ghost btn-small" style="color:var(--error);flex-shrink:0;"
+              placeholder="Réponse ${oi+1}…">
+            ${q.options.length > 2 ? `<button class="btn btn-ghost btn-small" style="color:var(--error);flex-shrink:0;padding:0 6px;"
               onclick="CoachFormationsPage._removeOption(${qi},${oi})">×</button>` : ''}
           </div>`).join('')}
-        ${q.options.length < 4 ? `
+        ${q.options.length < 5 ? `
           <button class="btn btn-ghost btn-small" style="font-size:12px;margin-top:4px;"
-            onclick="CoachFormationsPage._addOption(${qi})">+ Option</button>` : ''}
+            onclick="CoachFormationsPage._addOption(${qi})">+ Réponse</button>` : ''}
         <div style="margin-top:8px;">
           <input class="input" style="height:32px;font-size:12px;" value="${(q.explication||'').replace(/"/g,'&quot;')}"
             oninput="CoachFormationsPage._quizzQuestions[${qi}].explication=this.value"
-            placeholder="Explication de la bonne réponse (optionnel)">
+            placeholder="Explication (optionnel)">
         </div>
       </div>`).join('');
   },
@@ -426,8 +431,9 @@ const CoachFormationsPage = {
     this._renderQuizzList();
   },
 
-  _setCorrect(qi, oi) {
-    this._quizzQuestions[qi].options.forEach((o, i) => { o.correct = i === oi; });
+  _toggleCorrect(qi, oi) {
+    this._quizzQuestions[qi].options[oi].correct = !this._quizzQuestions[qi].options[oi].correct;
+    this._renderQuizzList();
   },
 
   _addLecon(formationId, moduleId) { this._openLeconForm(formationId, moduleId, null); },
@@ -452,7 +458,7 @@ const CoachFormationsPage = {
       if (qs.length === 0) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">Ajoute au moins une question.</div>'; return; }
       for (const q of qs) {
         if (!q.question.trim()) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">Une question est vide.</div>'; return; }
-        if (!q.options.some(o => o.correct)) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">Chaque question doit avoir une bonne réponse sélectionnée.</div>'; return; }
+        if (!q.options.some(o => o.correct)) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">Marque au moins une bonne réponse (✓) par question.</div>'; return; }
       }
     }
 

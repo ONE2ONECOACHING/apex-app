@@ -192,8 +192,12 @@ const FormationPage = {
     const allAnswered = qs.every((_, qi) => answers[qi] !== undefined);
 
     if (submitted || done) {
-      // Résultats
-      const score   = qs.filter((q, qi) => q.options[answers[qi]]?.correct).length;
+      // Résultats — scoring multi-réponses
+      const score = qs.filter((q, qi) => {
+        const selected = new Set(answers[qi] || []);
+        const correct  = new Set(q.options.map((o,i) => o.correct ? i : -1).filter(i => i >= 0));
+        return selected.size === correct.size && [...correct].every(i => selected.has(i));
+      }).length;
       const perfect = score === qs.length;
       return `
         <div class="card" style="margin-bottom:1rem;">
@@ -210,15 +214,18 @@ const FormationPage = {
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
             ${qs.map((q, qi) => {
-              const chosen  = answers[qi];
-              const correct = q.options.findIndex(o => o.correct);
-              const ok      = chosen === correct;
+              const selected = new Set(answers[qi] || []);
+              const correct  = new Set(q.options.map((o,i) => o.correct ? i : -1).filter(i => i >= 0));
+              const ok       = selected.size === correct.size && [...correct].every(i => selected.has(i));
               return `<div style="background:${ok?'var(--success-bg)':'var(--error-bg)'};border-radius:10px;padding:10px 12px;border:1px solid ${ok?'#bbf7d0':'#fecaca'};">
                 <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${qi+1}. ${q.question}</div>
-                ${q.options.map((o, oi) => `
-                  <div style="font-size:13px;padding:3px 0;color:${oi===correct?'var(--success)':oi===chosen&&!ok?'var(--error)':'var(--gray)'};">
-                    ${oi===correct?'✅':oi===chosen&&!ok?'❌':'  '} ${o.text}
-                  </div>`).join('')}
+                ${q.options.map((o, oi) => {
+                  const isCorrect  = o.correct;
+                  const isSelected = selected.has(oi);
+                  const icon = isCorrect && isSelected ? '✅' : isCorrect && !isSelected ? '⬜✓' : isSelected && !isCorrect ? '❌' : '⬜';
+                  const color = isCorrect ? 'var(--success)' : isSelected ? 'var(--error)' : 'var(--gray)';
+                  return `<div style="font-size:13px;padding:3px 0;color:${color};">${icon} ${o.text}</div>`;
+                }).join('')}
                 ${q.explication ? `<div style="font-size:12px;color:var(--gray);margin-top:6px;font-style:italic;">💡 ${q.explication}</div>` : ''}
               </div>`;
             }).join('')}
@@ -232,7 +239,8 @@ const FormationPage = {
         </div>`;
     }
 
-    // Questions
+    // Questions — checkboxes multi-sélection
+    const nbAnswered = qs.filter((_, qi) => (answers[qi]||[]).length > 0).length;
     return `
       <div class="card" style="margin-bottom:1rem;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
@@ -242,28 +250,38 @@ const FormationPage = {
             <div style="font-size:12px;color:var(--gray-muted);">${m.titre} · ${qs.length} question${qs.length!==1?'s':''}</div></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:12px;">
-          ${qs.map((q, qi) => `
+          ${qs.map((q, qi) => {
+            const sel = new Set(answers[qi] || []);
+            const multipleCorrect = q.options.filter(o => o.correct).length > 1;
+            return `
             <div style="background:var(--card-bg);border-radius:12px;padding:12px 14px;">
-              <div style="font-size:14px;font-weight:600;margin-bottom:10px;">${qi+1}. ${q.question}</div>
+              <div style="font-size:14px;font-weight:600;margin-bottom:4px;">${qi+1}. ${q.question}</div>
+              ${multipleCorrect ? `<div style="font-size:11px;color:var(--gray-muted);margin-bottom:8px;">Plusieurs réponses possibles</div>` : `<div style="font-size:11px;color:var(--gray-muted);margin-bottom:8px;">Une seule bonne réponse</div>`}
               <div style="display:flex;flex-direction:column;gap:7px;">
                 ${q.options.map((o, oi) => {
-                  const sel = answers[qi] === oi;
+                  const checked = sel.has(oi);
                   return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;
-                    border-radius:10px;border:1.5px solid ${sel?'var(--gold)':'var(--border-solid)'};
-                    background:${sel?'var(--gold-light)':'var(--white)'};">
-                    <input type="radio" name="q${l.id}_${qi}" value="${oi}" ${sel?'checked':''}
-                      onchange="if(!FormationPage._quizzAnswers['${l.id}'])FormationPage._quizzAnswers['${l.id}']={};FormationPage._quizzAnswers['${l.id}'][${qi}]=${oi};FormationPage._render()"
+                    border-radius:10px;border:1.5px solid ${checked?'var(--gold)':'var(--border-solid)'};
+                    background:${checked?'var(--gold-light)':'var(--white)'};">
+                    <input type="checkbox" ${checked?'checked':''}
+                      onchange="
+                        if(!FormationPage._quizzAnswers['${l.id}'])FormationPage._quizzAnswers['${l.id}']={};
+                        var s=new Set(FormationPage._quizzAnswers['${l.id}'][${qi}]||[]);
+                        if(this.checked)s.add(${oi});else s.delete(${oi});
+                        FormationPage._quizzAnswers['${l.id}'][${qi}]=[...s];
+                        FormationPage._render()"
                       style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0;">
                     <span style="font-size:14px;">${o.text}</span>
                   </label>`;
                 }).join('')}
               </div>
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
         </div>
         <button class="btn btn-primary" style="height:50px;margin-top:14px;font-size:16px;"
-          ${allAnswered?'':'disabled style="height:50px;margin-top:14px;font-size:16px;"'}
+          ${nbAnswered===qs.length?'':'disabled'}
           onclick="FormationPage._quizzSubmitted['${l.id}']=true;FormationPage._render()">
-          ${allAnswered ? '✓ Soumettre mes réponses' : `Réponds à toutes les questions (${Object.keys(answers).length}/${qs.length})`}
+          ${nbAnswered===qs.length ? '✓ Soumettre mes réponses' : `Réponds à toutes les questions (${nbAnswered}/${qs.length})`}
         </button>
       </div>`;
   },
