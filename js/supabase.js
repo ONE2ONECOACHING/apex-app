@@ -670,7 +670,7 @@ const db = {
     since.setDate(since.getDate() - days);
     const { data, error } = await getSupabase()
       .from('bilan_instances')
-      .select('id, client_id, semaine, completed_at')
+      .select('id, client_id, semaine, completed_at, reponses')
       .eq('statut', 'complete')
       .eq('coach_lu', false)
       .gte('completed_at', since.toISOString())
@@ -687,6 +687,29 @@ const db = {
       .eq('statut', 'complete')
       .eq('coach_lu', false);
     if (error) throw error;
+  },
+
+  // ── Coach notes hebdomadaires ─────────────────────────────────────────────
+  async getCoachNotes(clientId, limit = 16) {
+    const { data, error } = await getSupabase()
+      .from('coach_notes')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('semaine', { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return data || [];
+  },
+
+  async upsertCoachNote(clientId, coachId, semaine, note) {
+    const { data, error } = await getSupabase()
+      .from('coach_notes')
+      .upsert({ client_id: clientId, coach_id: coachId, semaine, note,
+                updated_at: new Date().toISOString() },
+               { onConflict: 'client_id,semaine' })
+      .select().single();
+    if (error) throw error;
+    return data;
   },
 
   async getAllPendingBilans() {

@@ -98,7 +98,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
         window.location.hash = '#coach-clients';
@@ -147,6 +147,7 @@ const Router = {
         case 'coach-prog-template-edit': app.innerHTML = CoachProgTemplateEditPage.render(); CoachProgTemplateEditPage.init(); break;
         case 'coach-client-programme': app.innerHTML = CoachClientProgrammePage.render(); CoachClientProgrammePage.init(); break;
         case 'coach-training-client': app.innerHTML = CoachTrainingClientPage.render(); CoachTrainingClientPage.init(); break;
+        case 'coach-client-suivi':    app.innerHTML = CoachClientSuiviPage.render();   CoachClientSuiviPage.init();   break;
         default: window.location.hash = '#login';
       }
       // Classe d'entrée sur le conteneur
@@ -272,14 +273,15 @@ function clientNav(activeTab) {
 // ── Navigation partagée — pages client coach ─────────────────
 function coachClientNav(clientId, activeTab) {
   const tabs = [
+    { key: 'coach-client-suivi',      label: '📊 Suivi' },
     { key: 'coach-client-edit',      label: '👤 Infos' },
     { key: 'coach-plan-edit',        label: '📋 Plan' },
     { key: 'coach-habits-edit',      label: '✅ Habitudes' },
-    { key: 'coach-journal',          label: '📊 Journal' },
+    { key: 'coach-journal',          label: '📖 Journal' },
     { key: 'coach-bilan-client',     label: '📝 Bilans' },
     { key: 'coach-mesure-client',    label: '📏 Mesures' },
     { key: 'coach-client-programme', label: '💪 Programmes' },
-    { key: 'coach-training-client',  label: '🏋️ Entraînement' },
+    { key: 'coach-training-client',  label: '🏋️ Séances' },
   ];
   return `
     <div class="tabs" style="margin-bottom:1.25rem;">${

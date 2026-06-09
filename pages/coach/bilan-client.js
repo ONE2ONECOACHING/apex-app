@@ -1,4 +1,4 @@
-﻿// APEX APP — Coach : Bilan hebdo d'un client (assignation + historique)
+// APEX APP — Coach : Bilan hebdo d'un client (assignation + historique enrichi)
 
 const CoachBilanClientPage = {
   clientId: null,
@@ -24,13 +24,9 @@ const CoachBilanClientPage = {
   },
 
   async init() {
-    // Reset état pour éviter les fuites entre clients
-    this.clientId       = null;
-    this.client         = null;
-    this.templates      = [];
-    this.assignation    = null;
-    this.instances      = [];
-    this._openInstanceId = null;
+    this.clientId        = null; this.client      = null;
+    this.templates       = [];   this.assignation = null;
+    this.instances       = [];   this._openInstanceId = null;
 
     const params = Router.getParams();
     this.clientId = params.clientId;
@@ -44,7 +40,6 @@ const CoachBilanClientPage = {
         db.getBilanInstancesForCoach(this.clientId).catch(() => [])
       ]);
       document.getElementById('bcTitle').textContent = 'Bilans — ' + (this.client.prenom || 'Client');
-      // Marquer les bilans complétés comme lus en base (sync multi-appareils)
       db.markBilansAsRead(this.clientId).catch(() => {});
       this.renderContent();
     } catch (e) {
@@ -57,20 +52,14 @@ const CoachBilanClientPage = {
     const currentTemplateId = asgn?.actif ? asgn.template_id : null;
     const jourEnvoi  = asgn?.jour_envoi  ?? 6;
     const heureEnvoi = asgn?.heure_envoi ?? '08:00';
-    const jours = [
-      [1,'Lundi'],[2,'Mardi'],[3,'Mercredi'],[4,'Jeudi'],
-      [5,'Vendredi'],[6,'Samedi'],[0,'Dimanche']
-    ];
+    const jours = [[1,'Lundi'],[2,'Mardi'],[3,'Mercredi'],[4,'Jeudi'],[5,'Vendredi'],[6,'Samedi'],[0,'Dimanche']];
 
-    let html = `
-      ${coachClientNav(this.clientId, 'coach-bilan-client')}
-
-      <!-- Assignation -->
+    let html = `${coachClientNav(this.clientId, 'coach-bilan-client')}
       <div class="card" style="margin-bottom:1rem;">
         <div class="card-title">Template assigné</div>`;
 
     if (this.templates.length === 0) {
-      html += `<div style="font-size:13px;color:var(--gray-muted);margin-bottom:0.75rem;">
+      html += `<div style="font-size:13px;color:var(--gray-muted);">
         Aucun template créé. <a href="#coach-bilan-templates" style="color:var(--gold);font-weight:600;">Créer un template →</a>
       </div>`;
     } else {
@@ -101,8 +90,6 @@ const CoachBilanClientPage = {
     }
 
     html += `</div>
-
-      <!-- Historique -->
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin-bottom:0.75rem;">
         Historique (${this.instances.length} bilans)
       </div>`;
@@ -113,48 +100,105 @@ const CoachBilanClientPage = {
         <div class="empty-text">Aucun bilan envoyé pour ce client.</div>
       </div>`;
     } else {
-      html += this.instances.map(inst => {
-        const semStr = new Date(inst.semaine + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      const completed = this.instances.filter(i => i.statut === 'complete');
+      html += this.instances.map((inst, idx) => {
+        const semStr    = new Date(inst.semaine + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
         const isComplete = inst.statut === 'complete';
-        const isOpen = this._openInstanceId === inst.id;
-        let html = `
-          <div class="card" style="margin-bottom:0.65rem;cursor:pointer;" onclick="CoachBilanClientPage.toggleInstance('${inst.id}')">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div>
-                <div style="font-weight:600;font-size:14px;">Semaine du ${semStr}</div>
-                <div style="font-size:12px;margin-top:2px;">
-                  <span style="color:${isComplete ? 'var(--success)' : 'var(--gold)'};font-weight:600;">
-                    ${isComplete ? '✅ Complété' : '⏳ En attente'}
-                  </span>
-                  ${inst.completed_at ? ' · ' + new Date(inst.completed_at).toLocaleDateString('fr-FR') : ''}
+        const isOpen     = this._openInstanceId === inst.id;
+        const prevCompleted = completed.find((c, ci) => c.id !== inst.id && new Date(c.semaine) < new Date(inst.semaine));
+
+        let card = `
+          <div class="card" style="margin-bottom:0.65rem;">
+            <div style="cursor:pointer;" onclick="CoachBilanClientPage.toggleInstance('${inst.id}')">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-weight:600;font-size:14px;">Semaine du ${semStr}</div>
+                  <div style="font-size:12px;margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="color:${isComplete ? 'var(--success)' : 'var(--gold)'};font-weight:600;">
+                      ${isComplete ? '✅ Complété' : '⏳ En attente'}
+                    </span>
+                    ${inst.completed_at ? `<span style="color:var(--gray-muted);">${new Date(inst.completed_at).toLocaleDateString('fr-FR')}</span>` : ''}
+                  </div>
                 </div>
+                ${isComplete ? this._bilanScorePreview(inst, prevCompleted) : ''}
+                <span style="color:var(--gray-muted);font-size:20px;margin-left:8px;">${isOpen ? '▲' : '▼'}</span>
               </div>
-              <span style="color:var(--gray-muted);font-size:20px;">${isOpen ? '▲' : '▼'}</span>
             </div>`;
 
         if (isOpen && isComplete && inst.reponses?.length > 0) {
-          html += `<div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.75rem;">`;
+          card += `<div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.75rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">`;
+
           inst.reponses.forEach(r => {
-            html += `<div style="margin-bottom:0.75rem;">
-              <div style="font-size:12px;font-weight:700;color:var(--gray-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">${r.label}</div>
-              <div style="font-size:15px;font-weight:600;color:var(--black);">
-                ${r.type === 'scale' ? `<span style="font-size:22px;color:var(--gold);">${r.reponse}</span><span style="font-size:13px;color:var(--gray-muted)">/10</span>` : r.reponse || '—'}
-              </div>
-            </div>`;
+            const prevR = prevCompleted?.reponses?.find(pr => pr.id === r.id);
+            if (r.type === 'scale') {
+              const val  = parseFloat(r.reponse) || 0;
+              const prev = prevR ? parseFloat(prevR.reponse) || 0 : null;
+              const diff = prev !== null ? val - prev : null;
+              const barColor = val >= 7 ? '#10B981' : val >= 5 ? '#C4820A' : '#EF4444';
+              const trendHtml = diff !== null
+                ? `<span style="font-size:10px;font-weight:700;color:${diff > 0 ? '#10B981' : diff < 0 ? '#EF4444' : 'var(--gray-muted)'};">${diff > 0 ? '↑+' + diff : diff < 0 ? '↓' + diff : '='}</span>`
+                : '';
+              card += `<div style="background:var(--card-bg);border-radius:10px;padding:10px;">
+                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${r.label}</div>
+                <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:5px;">
+                  <span style="font-size:26px;font-weight:800;color:${barColor};">${val}</span>
+                  <span style="font-size:12px;color:var(--gray-muted);">/10</span>
+                  ${trendHtml}
+                </div>
+                <div style="height:5px;background:var(--border-solid);border-radius:3px;overflow:hidden;">
+                  <div style="height:100%;width:${val * 10}%;background:${barColor};border-radius:3px;"></div>
+                </div>
+              </div>`;
+            } else if (r.type === 'number') {
+              const val  = r.reponse || '—';
+              const prev = prevR?.reponse;
+              const diff = prev && val !== '—' ? (parseFloat(val) - parseFloat(prev)).toFixed(1) : null;
+              card += `<div style="background:var(--card-bg);border-radius:10px;padding:10px;">
+                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${r.label}</div>
+                <div style="font-size:22px;font-weight:700;color:var(--black);">${val}
+                  ${r.reponse && r.label.toLowerCase().includes('poids') ? '<span style="font-size:12px;color:var(--gray-muted);">kg</span>' : ''}
+                  ${diff !== null ? `<span style="font-size:11px;font-weight:700;color:${parseFloat(diff) < 0 ? '#10B981' : parseFloat(diff) > 0 ? '#EF4444' : 'var(--gray-muted)'};">${parseFloat(diff) > 0 ? '+' : ''}${diff}</span>` : ''}
+                </div>
+              </div>`;
+            } else {
+              card += `<div style="background:var(--card-bg);border-radius:10px;padding:10px;grid-column:span 2;">
+                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${r.label}</div>
+                <div style="font-size:14px;color:var(--black);line-height:1.5;">${r.reponse || '—'}</div>
+              </div>`;
+            }
           });
-          html += `</div>`;
+
+          card += `</div></div>`;
         } else if (isOpen && !isComplete) {
-          html += `<div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.5rem;font-size:13px;color:var(--gray-muted);">
+          card += `<div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.5rem;font-size:13px;color:var(--gray-muted);">
             En attente de réponse du client.
           </div>`;
         }
 
-        html += `</div>`;
-        return html;
+        card += `</div>`;
+        return card;
       }).join('');
     }
 
     document.getElementById('bcContent').innerHTML = html;
+  },
+
+  _bilanScorePreview(inst, prev) {
+    const scales = (inst.reponses || []).filter(r => r.type === 'scale').slice(0, 3);
+    if (!scales.length) return '';
+    return `<div style="display:flex;gap:3px;align-items:center;">
+      ${scales.map(r => {
+        const val = parseFloat(r.reponse) || 0;
+        const prevR = prev?.reponses?.find(pr => pr.id === r.id);
+        const diff  = prevR ? val - (parseFloat(prevR.reponse) || 0) : null;
+        const color = val >= 7 ? '#10B981' : val >= 5 ? '#C4820A' : '#EF4444';
+        return `<div style="background:${color}22;border:1px solid ${color}44;border-radius:6px;padding:2px 7px;text-align:center;">
+          <div style="font-size:12px;font-weight:700;color:${color};">${val}</div>
+          ${diff !== null && diff !== 0 ? `<div style="font-size:8px;color:${diff > 0 ? '#10B981' : '#EF4444'};">${diff > 0 ? '↑' : '↓'}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
   },
 
   toggleInstance(id) {
@@ -163,29 +207,24 @@ const CoachBilanClientPage = {
   },
 
   async saveAssignation() {
-    const templateId  = document.getElementById('bcTemplateSelect').value;
-    const jourEnvoi   = parseInt(document.getElementById('bcJourEnvoi')?.value ?? 6, 10);
-    const heureEnvoi  = document.getElementById('bcHeureEnvoi')?.value || '08:00';
+    const templateId = document.getElementById('bcTemplateSelect').value;
+    const jourEnvoi  = parseInt(document.getElementById('bcJourEnvoi')?.value ?? 6, 10);
+    const heureEnvoi = document.getElementById('bcHeureEnvoi')?.value || '08:00';
     const msg = document.getElementById('bcAssignMsg');
-
     try {
       if (!templateId) {
-        // Désassigner
         await db.removeBilanAssignation(this.clientId);
         this.assignation = null;
       } else {
         const saved = await db.upsertBilanAssignation({
-          template_id: templateId,
-          client_id: this.clientId,
-          coach_id: Router.userProfile.id,
-          actif: true,
-          jour_envoi: jourEnvoi,
-          heure_envoi: heureEnvoi
+          template_id: templateId, client_id: this.clientId,
+          coach_id: Router.userProfile.id, actif: true,
+          jour_envoi: jourEnvoi, heure_envoi: heureEnvoi
         });
         this.assignation = { ...saved, bilan_templates: this.templates.find(t => t.id === templateId) };
       }
-      msg.innerHTML = '<div class="alert alert-success">✅ Assignation enregistrée</div>';
-      setTimeout(() => { if (msg) msg.innerHTML = ''; }, 2500);
+      toast('✅ Assignation enregistrée', 'success');
+      msg.innerHTML = '';
     } catch (e) {
       msg.innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
     }
