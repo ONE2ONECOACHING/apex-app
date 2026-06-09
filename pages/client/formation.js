@@ -39,6 +39,9 @@ const FormationPage = {
     }
   },
 
+  _quizzAnswers: {}, // { leconId: { qIdx: optionIdx } }
+  _quizzSubmitted: {}, // { leconId: true }
+
   _render() {
     const el = document.getElementById('formationContent');
     if (!this.formation) {
@@ -77,38 +80,43 @@ const FormationPage = {
         </div>
       </div>`;
 
-    // Afficher leçon ouverte (lecteur vidéo)
+    // Afficher leçon/quizz ouvert
     if (this._openLeconId) {
       const { m, l } = this._findLecon(this._openLeconId);
       if (l) {
-        const done   = doneIds.has(l.id);
-        const ytId   = this._ytId(l.youtube_url);
-        html += `
-          <div class="card" style="margin-bottom:1rem;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <button onclick="FormationPage._openLeconId=null;FormationPage._render()"
-                style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);">←</button>
-              <div style="flex:1;">
-                <div style="font-size:15px;font-weight:700;">${l.titre}</div>
-                <div style="font-size:12px;color:var(--gray-muted);">${m.titre}</div>
+        const done = doneIds.has(l.id);
+        const backBtn = `<button onclick="FormationPage._openLeconId=null;FormationPage._render()"
+          style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);">←</button>`;
+
+        if (l.type === 'quizz') {
+          html += this._renderQuizz(l, m, done);
+        } else {
+          const ytId = this._ytId(l.youtube_url);
+          html += `
+            <div class="card" style="margin-bottom:1rem;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                ${backBtn}
+                <div style="flex:1;">
+                  <div style="font-size:15px;font-weight:700;">${l.titre}</div>
+                  <div style="font-size:12px;color:var(--gray-muted);">${m.titre}</div>
+                </div>
               </div>
-            </div>
-            ${ytId ? `
-            <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:12px;overflow:hidden;background:#000;margin-bottom:12px;">
-              <iframe src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1"
-                frameborder="0" loading="lazy"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-                style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
-              </iframe>
-            </div>` : ''}
-            ${l.description ? `<div style="font-size:14px;color:var(--black);line-height:1.7;margin-bottom:14px;">${l.description}</div>` : ''}
-            <button class="btn ${done ? 'btn-secondary' : 'btn-primary'}" style="height:48px;"
-              onclick="FormationPage._toggleComplete('${l.id}', ${!done})">
-              ${done ? '↩ Marquer comme non vue' : '✅ Marquer comme vue'}
-            </button>
-          </div>`;
-        el.innerHTML = html + `${clientNav('formation')}`;
+              ${ytId ? `
+              <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:12px;overflow:hidden;background:#000;margin-bottom:12px;">
+                <iframe src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1"
+                  frameborder="0" loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
+                </iframe>
+              </div>` : ''}
+              ${l.description ? `<div style="font-size:14px;color:var(--black);line-height:1.7;margin-bottom:14px;">${l.description}</div>` : ''}
+              <button class="btn ${done ? 'btn-secondary' : 'btn-primary'}" style="height:48px;"
+                onclick="FormationPage._toggleComplete('${l.id}', ${!done})">
+                ${done ? '↩ Marquer comme non vue' : '✅ Marquer comme vue'}
+              </button>
+            </div>`;
+        }
+        el.innerHTML = html;
         return;
       }
     }
@@ -144,14 +152,18 @@ const FormationPage = {
                              border-bottom:1px solid var(--border);cursor:pointer;
                              background:${done ? 'var(--success-bg)' : 'var(--white)'};"
                   onclick="FormationPage._openLeconId='${l.id}';FormationPage._render()">
-                  <div style="width:28px;height:28px;border-radius:50%;border:2px solid ${done ? 'var(--success)' : 'var(--border-solid)'};
+                  <div style="width:28px;height:28px;border-radius:50%;border:2px solid ${done ? 'var(--success)' : l.type==='quizz'?'#8B5CF6':'var(--border-solid)'};
                                background:${done ? 'var(--success)' : 'transparent'};
                                display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    ${done ? '<span style="color:#fff;font-size:13px;">✓</span>' : `<span style="font-size:11px;color:var(--gray-muted);">${li+1}</span>`}
+                    ${done ? '<span style="color:#fff;font-size:13px;">✓</span>' : l.type==='quizz'?'<span style="font-size:13px;">🧠</span>':`<span style="font-size:11px;color:var(--gray-muted);">${li+1}</span>`}
                   </div>
                   <div style="flex:1;min-width:0;">
-                    <div style="font-size:14px;font-weight:${done ? '400' : '500'};color:${done ? 'var(--gray)' : 'var(--black)'};">${l.titre}</div>
-                    ${l.duree_min ? `<div style="font-size:11px;color:var(--gray-muted);">${hasYt ? '▶ ' : ''}${l.duree_min} min</div>` : (hasYt ? '<div style="font-size:11px;color:var(--gray-muted);">▶ Vidéo</div>' : '')}
+                    <div style="font-size:14px;font-weight:${done ? '400' : '500'};color:${done ? 'var(--gray)' : 'var(--black)'};">${l.titre}
+                      ${l.type==='quizz'?`<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:6px;background:#8B5CF622;color:#8B5CF6;margin-left:4px;">Quizz</span>`:''}
+                    </div>
+                    ${l.type==='quizz'
+                      ? `<div style="font-size:11px;color:var(--gray-muted);">${(l.questions||[]).length} question${(l.questions||[]).length!==1?'s':''}</div>`
+                      : l.duree_min ? `<div style="font-size:11px;color:var(--gray-muted);">${hasYt ? '▶ ' : ''}${l.duree_min} min</div>` : (hasYt ? '<div style="font-size:11px;color:var(--gray-muted);">▶ Vidéo</div>' : '')}
                   </div>
                   <div style="color:var(--gray-muted);font-size:16px;">›</div>
                 </div>`;
@@ -161,6 +173,89 @@ const FormationPage = {
     });
 
     el.innerHTML = html;
+  },
+
+  _renderQuizz(l, m, done) {
+    const qs         = l.questions || [];
+    const answers    = this._quizzAnswers[l.id] || {};
+    const submitted  = this._quizzSubmitted[l.id] || false;
+    const allAnswered = qs.every((_, qi) => answers[qi] !== undefined);
+
+    if (submitted || done) {
+      // Résultats
+      const score   = qs.filter((q, qi) => q.options[answers[qi]]?.correct).length;
+      const perfect = score === qs.length;
+      return `
+        <div class="card" style="margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <button onclick="FormationPage._openLeconId=null;FormationPage._render()"
+              style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);">←</button>
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;">${l.titre}</div>
+              <div style="font-size:12px;color:var(--gray-muted);">${m.titre}</div></div>
+          </div>
+          <div style="text-align:center;padding:16px 0 8px;">
+            <div style="font-size:48px;margin-bottom:8px;">${perfect ? '🏆' : score >= qs.length * 0.7 ? '🎉' : '💪'}</div>
+            <div style="font-size:22px;font-weight:800;color:${perfect?'var(--success)':'var(--gold)'};">${score} / ${qs.length}</div>
+            <div style="font-size:14px;color:var(--gray-muted);margin-top:4px;">${perfect ? 'Parfait !' : 'Bonne tentative !'}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+            ${qs.map((q, qi) => {
+              const chosen  = answers[qi];
+              const correct = q.options.findIndex(o => o.correct);
+              const ok      = chosen === correct;
+              return `<div style="background:${ok?'var(--success-bg)':'var(--error-bg)'};border-radius:10px;padding:10px 12px;border:1px solid ${ok?'#bbf7d0':'#fecaca'};">
+                <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${qi+1}. ${q.question}</div>
+                ${q.options.map((o, oi) => `
+                  <div style="font-size:13px;padding:3px 0;color:${oi===correct?'var(--success)':oi===chosen&&!ok?'var(--error)':'var(--gray)'};">
+                    ${oi===correct?'✅':oi===chosen&&!ok?'❌':'  '} ${o.text}
+                  </div>`).join('')}
+                ${q.explication ? `<div style="font-size:12px;color:var(--gray);margin-top:6px;font-style:italic;">💡 ${q.explication}</div>` : ''}
+              </div>`;
+            }).join('')}
+          </div>
+          ${!done ? `<button class="btn btn-primary" style="height:48px;margin-top:14px;"
+            onclick="FormationPage._toggleComplete('${l.id}', true)">✅ Valider le quizz</button>` : ''}
+          <button class="btn btn-secondary" style="height:44px;margin-top:8px;"
+            onclick="delete FormationPage._quizzAnswers['${l.id}'];delete FormationPage._quizzSubmitted['${l.id}'];FormationPage._render()">
+            🔄 Recommencer
+          </button>
+        </div>`;
+    }
+
+    // Questions
+    return `
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <button onclick="FormationPage._openLeconId=null;FormationPage._render()"
+            style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);">←</button>
+          <div style="flex:1;"><div style="font-size:15px;font-weight:700;">🧠 ${l.titre}</div>
+            <div style="font-size:12px;color:var(--gray-muted);">${m.titre} · ${qs.length} question${qs.length!==1?'s':''}</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          ${qs.map((q, qi) => `
+            <div style="background:var(--card-bg);border-radius:12px;padding:12px 14px;">
+              <div style="font-size:14px;font-weight:600;margin-bottom:10px;">${qi+1}. ${q.question}</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                ${q.options.map((o, oi) => {
+                  const sel = answers[qi] === oi;
+                  return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;
+                    border-radius:10px;border:1.5px solid ${sel?'var(--gold)':'var(--border-solid)'};
+                    background:${sel?'var(--gold-light)':'var(--white)'};">
+                    <input type="radio" name="q${l.id}_${qi}" value="${oi}" ${sel?'checked':''}
+                      onchange="if(!FormationPage._quizzAnswers['${l.id}'])FormationPage._quizzAnswers['${l.id}']={};FormationPage._quizzAnswers['${l.id}'][${qi}]=${oi};FormationPage._render()"
+                      style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0;">
+                    <span style="font-size:14px;">${o.text}</span>
+                  </label>`;
+                }).join('')}
+              </div>
+            </div>`).join('')}
+        </div>
+        <button class="btn btn-primary" style="height:50px;margin-top:14px;font-size:16px;"
+          ${allAnswered?'':'disabled style="height:50px;margin-top:14px;font-size:16px;"'}
+          onclick="FormationPage._quizzSubmitted['${l.id}']=true;FormationPage._render()">
+          ${allAnswered ? '✓ Soumettre mes réponses' : `Réponds à toutes les questions (${Object.keys(answers).length}/${qs.length})`}
+        </button>
+      </div>`;
   },
 
   async _toggleComplete(leconId, done) {

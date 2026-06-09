@@ -192,10 +192,16 @@ const CoachFormationsPage = {
               </div>
               ${(m.formation_lecons || []).map((l, li) => `
                 <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border);">
-                  <span>${l.youtube_url ? '▶' : '📄'}</span>
+                  <span>${l.type==='quizz'?'🧠':l.youtube_url?'▶':'📄'}</span>
                   <div style="flex:1;min-width:0;">
-                    <div style="font-size:13px;font-weight:500;">${l.titre}</div>
-                    ${l.youtube_url ? `<div style="font-size:11px;color:var(--gray-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.youtube_url}</div>` : ''}
+                    <div style="font-size:13px;font-weight:500;">${l.titre}
+                      <span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:6px;margin-left:4px;
+                        background:${l.type==='quizz'?'#8B5CF622':'#3B82F622'};
+                        color:${l.type==='quizz'?'#8B5CF6':'#3B82F6'};">${l.type==='quizz'?'Quizz':'Leçon'}</span>
+                    </div>
+                    ${l.type==='quizz'
+                      ? `<div style="font-size:11px;color:var(--gray-muted);">${(l.questions||[]).length} question${(l.questions||[]).length!==1?'s':''}</div>`
+                      : l.youtube_url ? `<div style="font-size:11px;color:var(--gray-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.youtube_url}</div>` : ''}
                   </div>
                   <button class="btn btn-ghost btn-small" onclick="CoachFormationsPage._editLecon('${f.id}','${m.id}','${l.id}')">✏️</button>
                   <button class="btn btn-ghost btn-small" style="color:var(--error);" onclick="CoachFormationsPage._deleteLecon('${f.id}','${m.id}','${l.id}')">×</button>
@@ -233,37 +239,160 @@ const CoachFormationsPage = {
   },
 
   _openLeconForm(formationId, moduleId, lecon) {
-    const f = this.formations.find(x => x.id === formationId);
-    const m = f?.formation_modules?.find(x => x.id === moduleId);
+    const f    = this.formations.find(x => x.id === formationId);
+    const m    = f?.formation_modules?.find(x => x.id === moduleId);
     if (!m) return;
+    const type = lecon?.type || 'lecon';
+    // questions pour le quizz
+    this._quizzQuestions = lecon?.type === 'quizz' ? JSON.parse(JSON.stringify(lecon.questions || [])) : [];
+    this._leconFormCtx   = { formationId, moduleId, leconId: lecon?.id || '' };
+
     document.getElementById('fModal').innerHTML = `
       <div class="modal-overlay" onclick="">
-        <div class="modal">
-          <div class="modal-title">${lecon ? 'Modifier' : 'Nouvelle'} leçon
+        <div class="modal" style="max-height:90vh;overflow-y:auto;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));">
+          <div class="modal-title">${lecon ? 'Modifier' : 'Nouveau contenu'}
             <button class="modal-close" onclick="CoachFormationsPage._renderEditorModal(CoachFormationsPage.formations.find(x=>x.id==='${formationId}'))">←</button>
           </div>
+
+          <!-- Type selector -->
+          <div class="field">
+            <label class="field-label">Type</label>
+            <div style="display:flex;gap:8px;">
+              <button id="lTypeLecon" onclick="CoachFormationsPage._switchLeconType('lecon')"
+                class="btn ${type==='lecon'?'btn-primary':'btn-secondary'}" style="flex:1;height:44px;">
+                🎬 Leçon
+              </button>
+              <button id="lTypeQuizz" onclick="CoachFormationsPage._switchLeconType('quizz')"
+                class="btn ${type==='quizz'?'btn-primary':'btn-secondary'}" style="flex:1;height:44px;">
+                🧠 Quizz
+              </button>
+            </div>
+          </div>
+
           <div class="field">
             <label class="field-label">Titre</label>
             <input class="input" id="lTitre" value="${lecon?.titre || ''}" placeholder="ex: Introduction à la nutrition">
           </div>
-          <div class="field">
-            <label class="field-label">URL YouTube</label>
-            <input class="input" id="lYoutube" value="${lecon?.youtube_url || ''}" placeholder="https://youtu.be/...">
+
+          <!-- Champs Leçon -->
+          <div id="lLeconFields" style="display:${type==='lecon'?'block':'none'}">
+            <div class="field">
+              <label class="field-label">URL YouTube</label>
+              <input class="input" id="lYoutube" value="${lecon?.youtube_url || ''}" placeholder="https://youtu.be/...">
+            </div>
+            <div class="field">
+              <label class="field-label">Description / Texte (optionnel)</label>
+              <textarea class="input" id="lDesc" rows="3" style="resize:none;">${lecon?.description || ''}</textarea>
+            </div>
+            <div class="field">
+              <label class="field-label">Durée (min)</label>
+              <input class="input" id="lDuree" type="number" value="${lecon?.duree_min || ''}" placeholder="ex: 15">
+            </div>
           </div>
-          <div class="field">
-            <label class="field-label">Description (optionnel)</label>
-            <textarea class="input" id="lDesc" rows="2" style="resize:none;">${lecon?.description || ''}</textarea>
+
+          <!-- Constructeur Quizz -->
+          <div id="lQuizzFields" style="display:${type==='quizz'?'block':'none'}">
+            <div id="lQuizzList"></div>
+            <button class="btn btn-secondary" style="height:44px;margin-top:8px;"
+              onclick="CoachFormationsPage._addQuestion()">+ Ajouter une question</button>
           </div>
-          <div class="field">
-            <label class="field-label">Durée (min)</label>
-            <input class="input" id="lDuree" type="number" value="${lecon?.duree_min || ''}" placeholder="ex: 15">
-          </div>
-          <div id="lMsg"></div>
-          <button class="btn btn-primary" onclick="CoachFormationsPage._saveLecon('${formationId}','${moduleId}','${lecon?.id||''}')">
-            💾 ${lecon ? 'Enregistrer' : 'Ajouter la leçon'}
+
+          <div id="lMsg" style="margin-top:8px;"></div>
+          <button class="btn btn-primary" style="margin-top:12px;"
+            onclick="CoachFormationsPage._saveLecon('${formationId}','${moduleId}','${lecon?.id||''}')">
+            💾 ${lecon ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
       </div>`;
+
+    if (type === 'quizz') this._renderQuizzList();
+  },
+
+  _currentLeconType() {
+    const btn = document.getElementById('lTypeLecon');
+    return btn && btn.classList.contains('btn-primary') ? 'lecon' : 'quizz';
+  },
+
+  _switchLeconType(type) {
+    document.getElementById('lLeconFields').style.display = type === 'lecon' ? 'block' : 'none';
+    document.getElementById('lQuizzFields').style.display = type === 'quizz' ? 'block' : 'none';
+    document.getElementById('lTypeLecon').className = 'btn ' + (type === 'lecon' ? 'btn-primary' : 'btn-secondary');
+    document.getElementById('lTypeQuizz').className = 'btn ' + (type === 'quizz' ? 'btn-primary' : 'btn-secondary');
+    document.getElementById('lTypeLecon').style.flex = '1';
+    document.getElementById('lTypeLecon').style.height = '44px';
+    document.getElementById('lTypeQuizz').style.flex = '1';
+    document.getElementById('lTypeQuizz').style.height = '44px';
+    if (type === 'quizz') this._renderQuizzList();
+  },
+
+  _renderQuizzList() {
+    const el = document.getElementById('lQuizzList');
+    if (!el) return;
+    const qs = this._quizzQuestions;
+    if (qs.length === 0) {
+      el.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);padding:8px 0;">Aucune question. Clique sur + pour en ajouter.</div>`;
+      return;
+    }
+    el.innerHTML = qs.map((q, qi) => `
+      <div class="card card-accent" style="margin-bottom:8px;padding:10px 12px;">
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:700;color:var(--gold);min-width:20px;">Q${qi+1}</div>
+          <input class="input" style="height:38px;font-size:13px;" value="${q.question.replace(/"/g,'&quot;')}"
+            oninput="CoachFormationsPage._quizzQuestions[${qi}].question=this.value"
+            placeholder="Ta question…">
+          <button class="btn btn-ghost btn-small" style="color:var(--error);flex-shrink:0;"
+            onclick="CoachFormationsPage._removeQuestion(${qi})">×</button>
+        </div>
+        ${q.options.map((o, oi) => `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+            <input type="radio" name="correct_${qi}" ${o.correct?'checked':''}
+              onchange="CoachFormationsPage._setCorrect(${qi},${oi})"
+              style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;">
+            <input class="input" style="height:34px;font-size:13px;flex:1;" value="${o.text.replace(/"/g,'&quot;')}"
+              oninput="CoachFormationsPage._quizzQuestions[${qi}].options[${oi}].text=this.value"
+              placeholder="Option ${oi+1}…">
+            ${q.options.length > 2 ? `<button class="btn btn-ghost btn-small" style="color:var(--error);flex-shrink:0;"
+              onclick="CoachFormationsPage._removeOption(${qi},${oi})">×</button>` : ''}
+          </div>`).join('')}
+        ${q.options.length < 4 ? `
+          <button class="btn btn-ghost btn-small" style="font-size:12px;margin-top:4px;"
+            onclick="CoachFormationsPage._addOption(${qi})">+ Option</button>` : ''}
+        <div style="margin-top:8px;">
+          <input class="input" style="height:32px;font-size:12px;" value="${(q.explication||'').replace(/"/g,'&quot;')}"
+            oninput="CoachFormationsPage._quizzQuestions[${qi}].explication=this.value"
+            placeholder="Explication de la bonne réponse (optionnel)">
+        </div>
+      </div>`).join('');
+  },
+
+  _addQuestion() {
+    this._quizzQuestions.push({
+      id: 'q_' + Date.now(),
+      question: '',
+      options: [{ text: '', correct: true }, { text: '', correct: false }],
+      explication: ''
+    });
+    this._renderQuizzList();
+    document.getElementById('lQuizzList')?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  },
+
+  _removeQuestion(qi) {
+    this._quizzQuestions.splice(qi, 1);
+    this._renderQuizzList();
+  },
+
+  _addOption(qi) {
+    this._quizzQuestions[qi].options.push({ text: '', correct: false });
+    this._renderQuizzList();
+  },
+
+  _removeOption(qi, oi) {
+    this._quizzQuestions[qi].options.splice(oi, 1);
+    this._renderQuizzList();
+  },
+
+  _setCorrect(qi, oi) {
+    this._quizzQuestions[qi].options.forEach((o, i) => { o.correct = i === oi; });
   },
 
   _addLecon(formationId, moduleId) { this._openLeconForm(formationId, moduleId, null); },
@@ -275,16 +404,31 @@ const CoachFormationsPage = {
   },
 
   async _saveLecon(formationId, moduleId, leconId) {
-    const titre = document.getElementById('lTitre').value.trim();
+    const titre = document.getElementById('lTitre')?.value.trim();
     if (!titre) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">Titre requis.</div>'; return; }
-    const f = this.formations.find(x => x.id === formationId);
-    const m = f?.formation_modules?.find(x => x.id === moduleId);
+    const type = this._currentLeconType();
+    const f    = this.formations.find(x => x.id === formationId);
+    const m    = f?.formation_modules?.find(x => x.id === moduleId);
     const ordre = leconId ? (m?.formation_lecons?.find(l => l.id === leconId)?.ordre ?? 0) : (m?.formation_lecons || []).length;
+
+    // Validation quizz
+    if (type === 'quizz') {
+      const qs = this._quizzQuestions;
+      if (qs.length === 0) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">Ajoute au moins une question.</div>'; return; }
+      for (const q of qs) {
+        if (!q.question.trim()) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">Une question est vide.</div>'; return; }
+        if (!q.options.some(o => o.correct)) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">Chaque question doit avoir une bonne réponse sélectionnée.</div>'; return; }
+      }
+    }
+
     const payload = {
-      module_id: moduleId, titre,
-      youtube_url: document.getElementById('lYoutube').value.trim() || null,
-      description: document.getElementById('lDesc').value.trim() || null,
-      duree_min: parseInt(document.getElementById('lDuree').value) || null,
+      module_id:   moduleId,
+      titre,
+      type,
+      youtube_url: type === 'lecon' ? (document.getElementById('lYoutube')?.value.trim() || null) : null,
+      description: type === 'lecon' ? (document.getElementById('lDesc')?.value.trim() || null) : null,
+      duree_min:   type === 'lecon' ? (parseInt(document.getElementById('lDuree')?.value) || null) : null,
+      questions:   type === 'quizz' ? this._quizzQuestions : [],
       ordre,
       ...(leconId ? { id: leconId } : {})
     };
@@ -297,7 +441,7 @@ const CoachFormationsPage = {
         m.formation_lecons = [...(m.formation_lecons || []), saved];
       }
       this._renderEditorModal(f);
-      toast('✓ Leçon enregistrée', 'success');
+      toast('✓ ' + (type === 'quizz' ? 'Quizz' : 'Leçon') + ' enregistré(e)', 'success');
     } catch (e) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
   },
 
