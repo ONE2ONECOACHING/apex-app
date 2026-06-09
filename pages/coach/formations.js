@@ -295,7 +295,7 @@ const CoachFormationsPage = {
             </div>
             <div class="field">
               <label class="field-label">Description / Texte (optionnel)</label>
-              <textarea class="input" id="lDesc" rows="3" style="resize:none;">${lecon?.description || ''}</textarea>
+              <textarea class="input" id="lDesc" rows="14" style="resize:vertical;min-height:220px;">${lecon?.description || ''}</textarea>
             </div>
             <div class="field">
               <label class="field-label">Durée (min)</label>
