@@ -273,7 +273,6 @@ function clientNav(activeTab) {
 // ── Navigation partagée — pages client coach ─────────────────
 function coachClientNav(clientId, activeTab) {
   const tabs = [
-    { key: 'coach-client-suivi',      label: '📊 Suivi' },
     { key: 'coach-client-edit',      label: '👤 Infos' },
     { key: 'coach-plan-edit',        label: '📋 Plan' },
     { key: 'coach-habits-edit',      label: '✅ Habitudes' },

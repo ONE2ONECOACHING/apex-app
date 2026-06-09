@@ -690,6 +690,38 @@ const db = {
   },
 
   // ── Coach notes hebdomadaires ─────────────────────────────────────────────
+  async getCoachNotesForWeek(coachId, semaine) {
+    const { data } = await getSupabase()
+      .from('coach_notes')
+      .select('client_id, semaine, note')
+      .eq('coach_id', coachId)
+      .eq('semaine', semaine);
+    return data || [];
+  },
+
+  async getLastPoidsPerClient(clientIds) {
+    if (!clientIds?.length) return {};
+    const { data } = await getSupabase()
+      .from('mesures')
+      .select('profile_id, poids, date_entree')
+      .in('profile_id', clientIds)
+      .not('poids', 'is', null)
+      .order('date_entree', { ascending: false });
+    const result = {};
+    for (const m of (data || [])) {
+      if (!result[m.profile_id]) result[m.profile_id] = m;
+    }
+    return result;
+  },
+
+  async getAllBilanAssignations(coachId) {
+    const { data } = await getSupabase()
+      .from('bilan_assignations')
+      .select('client_id, actif, template_id')
+      .eq('coach_id', coachId);
+    return data || [];
+  },
+
   async getCoachNotes(clientId, limit = 16) {
     const { data, error } = await getSupabase()
       .from('coach_notes')
