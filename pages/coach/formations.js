@@ -216,13 +216,39 @@ const CoachFormationsPage = {
       </div>`;
   },
 
-  async _addModule(formationId) {
-    const titre = prompt('Nom du module :');
-    if (!titre?.trim()) return;
+  _addModule(formationId) {
+    const f = this.formations.find(x => x.id === formationId);
+    // Overlay par-dessus le modal éditeur
+    const overlay = document.createElement('div');
+    overlay.id = 'fModuleOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);display:flex;align-items:flex-end;justify-content:center;';
+    overlay.innerHTML = `
+      <div style="background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:680px;padding:1.5rem;
+                  padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));box-shadow:0 -4px 32px rgba(0,0,0,.12);">
+        <div style="font-size:17px;font-weight:700;margin-bottom:1.25rem;">Nouveau module</div>
+        <div class="field">
+          <label class="field-label">Nom du module</label>
+          <input class="input" id="fModuleTitre" placeholder="ex: Module 1 — Nutrition de base" autofocus>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="btn btn-secondary" style="flex:1;height:44px;"
+            onclick="document.getElementById('fModuleOverlay').remove()">Annuler</button>
+          <button class="btn btn-primary" style="flex:1;height:44px;"
+            onclick="CoachFormationsPage._confirmAddModule('${formationId}')">✓ Créer</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('fModuleTitre')?.focus(), 50);
+  },
+
+  async _confirmAddModule(formationId) {
+    const titre = document.getElementById('fModuleTitre')?.value.trim();
+    if (!titre) return;
+    document.getElementById('fModuleOverlay')?.remove();
     const f = this.formations.find(x => x.id === formationId);
     const ordre = (f.formation_modules || []).length;
     try {
-      const saved = await db.upsertFormationModule({ formation_id: formationId, titre: titre.trim(), ordre });
+      const saved = await db.upsertFormationModule({ formation_id: formationId, titre, ordre });
       f.formation_modules = [...(f.formation_modules || []), { ...saved, formation_lecons: [] }];
       this._renderEditorModal(f);
     } catch (e) { toast('Erreur : ' + e.message, 'error'); }
