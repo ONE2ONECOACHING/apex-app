@@ -85,6 +85,12 @@ Deno.serve(async (req) => {
     .select("client_id, template_id, coach_id, jour_envoi, heure_envoi")
     .eq("actif", true);
 
+  // Calculer le lundi de la semaine courante (clé semaine des instances)
+  const localNowForBilan = new Date(now.getTime() + tzOffset * 3600000);
+  const mondayBilan = new Date(localNowForBilan);
+  mondayBilan.setUTCDate(localNowForBilan.getUTCDate() - ((localNowForBilan.getUTCDay() + 6) % 7));
+  const semaineActuelle = mondayBilan.toISOString().split("T")[0];
+
   for (const asgn of assignations || []) {
     const jourEnvoi = asgn.jour_envoi ?? 6;
     const [hh]      = (asgn.heure_envoi ?? "08:00").split(":").map(Number);
@@ -96,7 +102,7 @@ Deno.serve(async (req) => {
       .from("bilan_instances")
       .select("id")
       .eq("client_id", asgn.client_id)
-      .eq("semaine", todayStr)
+      .eq("semaine", semaineActuelle)
       .maybeSingle();
 
     if (!existing) {
@@ -110,7 +116,7 @@ Deno.serve(async (req) => {
         client_id:          asgn.client_id,
         template_id:        asgn.template_id,
         coach_id:           asgn.coach_id,
-        semaine:            todayStr,
+        semaine:            semaineActuelle,
         statut:             "en_attente",
         questions_snapshot: tmpl?.questions || []
       });

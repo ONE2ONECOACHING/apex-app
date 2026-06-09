@@ -82,24 +82,45 @@ Deno.serve(async (req) => {
   // ── 1. BILAN ─────────────────────────────────────────────────────────────
   const { data: assignations } = await sb
     .from("bilan_assignations")
-    .select("client_id, jour_envoi, heure_envoi")
+    .select("client_id, template_id, coach_id, jour_envoi, heure_envoi")
     .eq("actif", true);
+
+  // Calculer le lundi de la semaine courante (clé semaine des instances)
+  const localNowForBilan = new Date(now.getTime() + tzOffset * 3600000);
+  const mondayBilan = new Date(localNowForBilan);
+  mondayBilan.setUTCDate(localNowForBilan.getUTCDate() - ((localNowForBilan.getUTCDay() + 6) % 7));
+  const semaineActuelle = mondayBilan.toISOString().split("T")[0];
 
   for (const asgn of assignations || []) {
     const jourEnvoi  = asgn.jour_envoi  ?? 6;
     const [hh]       = (asgn.heure_envoi ?? "08:00").split(":").map(Number);
     if (localDay !== jourEnvoi || localHour !== hh) continue;
 
-    // Vérifier bilan en attente
-    const { data: pending } = await sb
+    if (await alreadySent(sb, asgn.client_id, "bilan", todayStr)) continue;
+
+    // Créer l'instance si elle n'existe pas encore (le client n'a peut-être pas ouvert l'app)
+    const { data: existing } = await sb
       .from("bilan_instances")
       .select("id")
       .eq("client_id", asgn.client_id)
-      .eq("statut", "en_attente")
-      .limit(1);
-    if (!pending?.length) continue;
+      .eq("semaine", semaineActuelle)
+      .maybeSingle();
 
-    if (await alreadySent(sb, asgn.client_id, "bilan", todayStr)) continue;
+    if (!existing) {
+      const { data: tmpl } = await sb
+        .from("bilan_templates")
+        .select("questions")
+        .eq("id", asgn.template_id)
+        .single();
+      await sb.from("bilan_instances").insert({
+        client_id:          asgn.client_id,
+        template_id:        asgn.template_id,
+        coach_id:           asgn.coach_id,
+        semaine:            semaineActuelle,
+        statut:             "en_attente",
+        questions_snapshot: tmpl?.questions || []
+      });
+    }
 
     await sendPush(asgn.client_id, "📝 Bilan hebdomadaire", "Ton bilan de la semaine t'attend !", "#client-bilan");
     await logSent(sb, asgn.client_id, "bilan", todayStr);
