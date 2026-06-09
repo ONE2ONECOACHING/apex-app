@@ -122,7 +122,6 @@ const CoachClientsPage = {
             <div class="dash-action-body">
               <div class="dash-action-label">${a.label}</div>
               ${a.sub ? `<div class="dash-action-sub">${a.sub}</div>` : ''}
-              ${a.subHtml ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">${a.subHtml}</div>` : ''}
             </div>
             <div class="dash-action-arrow">›</div>
           </div>`).join('')}
@@ -154,21 +153,10 @@ const CoachClientsPage = {
     for (const bilan of this._completedBilans) {
       const client = clients.find(c => c.id === bilan.client_id);
       if (!client) continue;
-      const scales = (bilan.reponses || []).filter(r => r.type === 'scale').slice(0, 4);
-      const scoresHtml = scales.length > 0
-        ? scales.map(r => {
-            const val   = parseFloat(r.reponse) || 0;
-            const color = val >= 7 ? '#10B981' : val >= 5 ? '#C4820A' : '#EF4444';
-            const short = r.label.split(' ').slice(0, 2).join(' ');
-            return `<span style="background:${color}22;border:1px solid ${color}44;border-radius:5px;padding:1px 5px;font-size:11px;font-weight:700;color:${color};white-space:nowrap;">${short} ${val}/10</span>`;
-          }).join(' ')
-        : '';
-      const hasAlert = scales.some(r => parseFloat(r.reponse) <= 4);
       actions.push({
-        icon: hasAlert ? '🔴' : '📋',
-        label: `Bilan — ${client.prenom} ${client.nom || ''}`,
-        sub: `${this._timeAgo(bilan.completed_at)}${scoresHtml ? ' · ' + scoresHtml.replace(/<[^>]+>/g, (m) => '') : ''}`,
-        subHtml: scoresHtml,
+        icon: '📋',
+        label: `Bilan répondu — ${client.prenom} ${client.nom || ''}`,
+        sub: this._timeAgo(bilan.completed_at),
         onclick: `Router.navigate('coach-bilan-client', { clientId: '${client.id}' })`
       });
     }
