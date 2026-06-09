@@ -10,8 +10,13 @@ const SeanceActivePage = {
   _restTimer:       null,
   _restTotal:       0,
   _restRemaining:   0,
+  _restStartTime:   0,   // timestamp Date.now() au démarrage du chrono de repos
   _sessionTimer:    null,
   _sessionSeconds:  0,
+  _sessionStartTime: 0,  // timestamp Date.now() au démarrage de la séance
+  _amrapCountdownStart: 0, // timestamp démarrage countdown AMRAP
+  _amrapWorkStart:  0,     // timestamp démarrage phase work AMRAP
+  _visibilityHandler: null, // ref pour removeEventListener propre
   _lastSets:        {}, // { exercice_id: sets_data[] } — dernière séance connue
   _lastNotes:       {}, // { exercice_id: note_client } — note laissée la séance précédente
   _noteRessenti:    null, // 'dur' | 'bien' | 'feu' — note obligatoire avant save
@@ -76,6 +81,36 @@ const SeanceActivePage = {
       this._lastNotes = lastData.notes || {};
 
       this._startSessionTimer();
+
+      // Recalcule les timers immédiatement au retour en avant-plan
+      if (this._visibilityHandler) document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = () => {
+        if (document.visibilityState !== 'visible') return;
+        // Repos
+        if (this._restTimer && this._restStartTime) {
+          this._restRemaining = Math.max(0, this._restTotal - Math.floor((Date.now() - this._restStartTime) / 1000));
+          const d = document.getElementById('saRestSecs');
+          const b = document.getElementById('saRestBar');
+          if (d) d.textContent = this._fmt(this._restRemaining);
+          if (b) b.style.width = (this._restTotal > 0 ? (this._restRemaining / this._restTotal * 100) : 0).toFixed(1) + '%';
+          if (this._restRemaining <= 0) {
+            clearInterval(this._restTimer);
+            this._phase = 'exercice'; this._intraRest = false;
+            this._removeBanner(); this._enableValidateBtn();
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          }
+        }
+        // AMRAP work
+        if (this._amrapPhase === 'work' && this._amrapWorkStart) {
+          this._amrapRemaining = Math.max(0, this._amrapTotal - Math.floor((Date.now() - this._amrapWorkStart) / 1000));
+          const el = document.getElementById('saAmrapDisplay');
+          if (el) { el.textContent = this._fmt(this._amrapRemaining); el.style.color = this._amrapRemaining <= 10 ? '#ef4444' : this._amrapRemaining <= 60 ? 'var(--gold)' : 'var(--black)'; }
+          const bar = document.getElementById('saAmrapBar');
+          if (bar) bar.style.width = (this._amrapTotal > 0 ? (this._amrapRemaining / this._amrapTotal * 100) : 0).toFixed(1) + '%';
+        }
+      };
+      document.addEventListener('visibilitychange', this._visibilityHandler);
+
       this._draw();
     } catch (e) {
       document.getElementById('saWrap').innerHTML =
@@ -86,8 +121,9 @@ const SeanceActivePage = {
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
   _startSessionTimer() {
+    this._sessionStartTime = Date.now() - this._sessionSeconds * 1000;
     this._sessionTimer = setInterval(() => {
-      this._sessionSeconds++;
+      this._sessionSeconds = Math.floor((Date.now() - this._sessionStartTime) / 1000);
       const el = document.getElementById('saTimer');
       if (el) el.textContent = this._fmt(this._sessionSeconds);
     }, 1000);
@@ -679,9 +715,10 @@ const SeanceActivePage = {
 
     document.body.appendChild(banner);
 
+    this._restStartTime = Date.now();
     clearInterval(this._restTimer);
     this._restTimer = setInterval(() => {
-      this._restRemaining = Math.max(0, this._restRemaining - 1);
+      this._restRemaining = Math.max(0, this._restTotal - Math.floor((Date.now() - this._restStartTime) / 1000));
       const d = document.getElementById('saRestSecs');
       const b = document.getElementById('saRestBar');
       if (d) d.textContent = this._fmt(this._restRemaining);
@@ -694,7 +731,6 @@ const SeanceActivePage = {
         this._intraRest = false;
         this._removeBanner();
         this._enableValidateBtn();
-        // Bug 28 — ne vibrer que si l'utilisateur est toujours sur cette page
         if (navigator.vibrate && Router.currentPage === 'seance-active') navigator.vibrate([200, 100, 200]);
       }
     }, 1000);
@@ -863,30 +899,34 @@ const SeanceActivePage = {
       window.speechSynthesis.speak(unlock);
     } catch (_) {}
 
-    this._amrapTotal     = this._parseAmrapSecs(ex.reps_cible);
-    this._amrapRemaining = 10;
-    this._amrapPhase     = 'countdown';
+    this._amrapTotal          = this._parseAmrapSecs(ex.reps_cible);
+    this._amrapRemaining      = 10;
+    this._amrapPhase          = 'countdown';
+    this._amrapCountdownStart = Date.now();
     this._draw();
     this._amrapTimer = setInterval(() => this._tickAmrap(), 1000);
   },
 
   _tickAmrap() {
     if (this._amrapPhase === 'countdown') {
-      this._amrapRemaining--;
+      const prev = this._amrapRemaining;
+      this._amrapRemaining = Math.max(0, 10 - Math.floor((Date.now() - this._amrapCountdownStart) / 1000));
       const el = document.getElementById('saAmrapDisplay');
       if (this._amrapRemaining > 0) {
         if (el) el.textContent = this._amrapRemaining;
-        if (this._amrapRemaining <= 3) this._beep(880, 180);
+        if (this._amrapRemaining <= 3 && this._amrapRemaining < prev) this._beep(880, 180);
       } else {
         // GO — transition vers work
         this._beep(1100, 350);
-        this._amrapPhase     = 'work';
+        this._amrapPhase    = 'work';
+        this._amrapWorkStart = Date.now();
         this._amrapRemaining = this._amrapTotal;
         this._draw();
       }
 
     } else if (this._amrapPhase === 'work') {
-      this._amrapRemaining--;
+      const prev = this._amrapRemaining;
+      this._amrapRemaining = Math.max(0, this._amrapTotal - Math.floor((Date.now() - this._amrapWorkStart) / 1000));
 
       // Mises à jour DOM directes (pas de re-render complet)
       const el  = document.getElementById('saAmrapDisplay');
@@ -902,12 +942,12 @@ const SeanceActivePage = {
       // Ambiance warning ≤10s — fond rouge pulse
       setAmrapWarning(this._amrapRemaining <= 10 && this._amrapRemaining > 0);
 
-      // Annonces vocales
-      if (this._amrapRemaining === 60) this._speak('1 minute');
-      if (this._amrapRemaining === 10) this._speak('10 secondes');
+      // Annonces vocales — déclencher si on vient de passer sous le seuil
+      if (prev > 60 && this._amrapRemaining <= 60) this._speak('1 minute');
+      if (prev > 10 && this._amrapRemaining <= 10) this._speak('10 secondes');
 
-      // Bips finaux
-      if (this._amrapRemaining <= 3 && this._amrapRemaining > 0) this._beep(880, 180);
+      // Bips finaux — seulement au passage exact (évite répétitions si background)
+      if (this._amrapRemaining <= 3 && this._amrapRemaining > 0 && this._amrapRemaining < prev) this._beep(880, 180);
 
       // Fin
       if (this._amrapRemaining <= 0) {
@@ -960,6 +1000,7 @@ const SeanceActivePage = {
   },
 
   async _save() {
+    if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
     const btn = document.getElementById('saSaveBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement…'; }
     try {
@@ -1024,6 +1065,7 @@ const SeanceActivePage = {
 
   _quit() {
     if (!confirm('Abandonner la séance ? Ta progression ne sera pas enregistrée.')) return;
+    if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
     clearInterval(this._sessionTimer);
     clearInterval(this._restTimer);
     this._removeBanner();
