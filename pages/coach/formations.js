@@ -54,17 +54,13 @@ const CoachFormationsPage = {
         const nbModules = (f.formation_modules || []).length;
         const nbLecons  = (f.formation_modules || []).reduce((s, m) => s + (m.formation_lecons || []).length, 0);
         const assigned  = this.assignations.filter(a => a.formation_id === f.id).length;
-        const genreIcon = f.genre === 'hommes' ? '♂️' : f.genre === 'femmes' ? '♀️' : '👥';
-        const genreColor = f.genre === 'hommes' ? '#3B82F6' : f.genre === 'femmes' ? '#EC4899' : 'var(--gold)';
 
         html += `
           <div class="card" style="margin-bottom:1rem;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
               <div>
-                <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;">
-                  <span style="font-size:20px;">${genreIcon}</span>
-                  ${f.titre}
-                  <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;background:${genreColor}22;color:${genreColor};">${f.genre}</span>
+                <div style="font-size:16px;font-weight:700;">
+                  📚 ${f.titre}
                 </div>
                 ${f.description ? `<div style="font-size:13px;color:var(--gray-muted);margin-top:3px;">${f.description}</div>` : ''}
                 <div style="font-size:12px;color:var(--gray-muted);margin-top:5px;">
@@ -116,14 +112,6 @@ const CoachFormationsPage = {
             <label class="field-label">Description (optionnel)</label>
             <textarea class="input" id="fDesc" rows="2" style="resize:none;">${f?.description || ''}</textarea>
           </div>
-          <div class="field">
-            <label class="field-label">Genre</label>
-            <select class="input" id="fGenre">
-              <option value="hommes" ${(!f || f.genre==='hommes') ? 'selected' : ''}>♂️ Hommes</option>
-              <option value="femmes" ${f?.genre==='femmes' ? 'selected' : ''}>♀️ Femmes</option>
-              <option value="tous"   ${f?.genre==='tous'   ? 'selected' : ''}>👥 Tous</option>
-            </select>
-          </div>
           <div id="fModalMsg"></div>
           <button class="btn btn-primary" onclick="CoachFormationsPage._saveFormation('${f?.id || ''}')">
             💾 ${f ? 'Enregistrer' : 'Créer la formation'}
@@ -137,7 +125,6 @@ const CoachFormationsPage = {
     if (!titre) { document.getElementById('fModalMsg').innerHTML = '<div class="alert alert-error">Titre requis.</div>'; return; }
     const payload = {
       titre, description: document.getElementById('fDesc').value.trim(),
-      genre: document.getElementById('fGenre').value,
       coach_id: Router.userProfile.id,
       ...(id ? { id } : {})
     };

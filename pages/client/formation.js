@@ -59,7 +59,7 @@ const FormationPage = {
     const doneLecons   = modules.reduce((s, m) => s + (m.formation_lecons || []).filter(l => doneIds.has(l.id)).length, 0);
     const pct          = totalLecons > 0 ? Math.round(doneLecons / totalLecons * 100) : 0;
 
-    const genreIcon  = f.genre === 'hommes' ? '♂️' : f.genre === 'femmes' ? '♀️' : '📚';
+    const genreIcon  = '📚';
 
     let html = `
       <!-- Header formation -->
