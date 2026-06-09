@@ -170,9 +170,20 @@ const CoachFormationsPage = {
 
           ${modules.map((m, mi) => `
             <div class="card card-accent" style="margin-bottom:10px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <div style="font-size:14px;font-weight:700;">📂 ${m.titre}</div>
-                <div style="display:flex;gap:5px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:14px;font-weight:700;">📂 ${m.titre}</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                    <span style="font-size:11px;color:var(--gray-muted);">🔓 Jour</span>
+                    <input type="number" min="0" step="1" value="${m.unlock_day || 0}"
+                      style="width:64px;height:28px;padding:0 8px;font-size:12px;font-weight:700;
+                             border:1.5px solid var(--border-solid);border-radius:8px;
+                             background:var(--white);font-family:var(--font);text-align:center;"
+                      onchange="CoachFormationsPage._saveUnlockDay('${f.id}','${m.id}',this.value)">
+                    <span style="font-size:11px;color:var(--gray-muted);">après assignation</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:5px;flex-shrink:0;">
                   <button class="btn btn-ghost btn-small" onclick="CoachFormationsPage._addLecon('${f.id}','${m.id}')">+ Leçon</button>
                   <button class="btn btn-ghost btn-small" style="color:var(--error);" onclick="CoachFormationsPage._deleteModule('${f.id}','${m.id}')">×</button>
                 </div>
@@ -238,6 +249,17 @@ const CoachFormationsPage = {
       const saved = await db.upsertFormationModule({ formation_id: formationId, titre, ordre });
       f.formation_modules = [...(f.formation_modules || []), { ...saved, formation_lecons: [] }];
       this._renderEditorModal(f);
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  async _saveUnlockDay(formationId, moduleId, value) {
+    const day = Math.max(0, parseInt(value) || 0);
+    const f   = this.formations.find(x => x.id === formationId);
+    const m   = f?.formation_modules?.find(x => x.id === moduleId);
+    if (!m) return;
+    m.unlock_day = day;
+    try {
+      await db.upsertFormationModule({ id: moduleId, formation_id: formationId, titre: m.titre, ordre: m.ordre, unlock_day: day });
     } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 

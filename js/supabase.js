@@ -1361,13 +1361,14 @@ const db = {
   async getClientFormation(clientId) {
     const { data } = await getSupabase()
       .from('formation_assignations')
-      .select('formation_id, formations(*, formation_modules(*, formation_lecons(*)))')
+      .select('formation_id, assigned_at, formations(*, formation_modules(*, formation_lecons(*)))')
       .eq('client_id', clientId)
       .single();
     if (!data) return null;
     const f = data.formations;
     return {
       ...f,
+      assigned_at: data.assigned_at,
       formation_modules: (f.formation_modules || [])
         .sort((a, b) => a.ordre - b.ordre)
         .map(m => ({ ...m, formation_lecons: (m.formation_lecons || []).sort((a, b) => a.ordre - b.ordre) }))

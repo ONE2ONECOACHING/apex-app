@@ -55,6 +55,11 @@ const FormationPage = {
     const f            = this.formation;
     const doneIds      = new Set(this.progression.map(p => p.lecon_id));
     const modules      = f.formation_modules || [];
+
+    // Calculer les jours écoulés depuis l'assignation
+    const assignedAt   = f.assigned_at ? new Date(f.assigned_at) : new Date();
+    const daysSince    = Math.floor((Date.now() - assignedAt.getTime()) / 86400000);
+
     const totalLecons  = modules.reduce((s, m) => s + (m.formation_lecons || []).length, 0);
     const doneLecons   = modules.reduce((s, m) => s + (m.formation_lecons || []).filter(l => doneIds.has(l.id)).length, 0);
     const pct          = totalLecons > 0 ? Math.round(doneLecons / totalLecons * 100) : 0;
@@ -127,22 +132,27 @@ const FormationPage = {
       const doneMod    = lecons.filter(l => doneIds.has(l.id)).length;
       const isOpen     = this._openModuleId === m.id;
       const allDone    = lecons.length > 0 && doneMod === lecons.length;
+      const unlockDay  = m.unlock_day || 0;
+      const isLocked   = daysSince < unlockDay;
+      const daysLeft   = unlockDay - daysSince;
 
       html += `
-        <div class="card" style="margin-bottom:0.75rem;padding:0;overflow:hidden;">
-          <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;"
-            onclick="FormationPage._openModuleId='${isOpen ? '' : m.id}';FormationPage._render()">
-            <div style="font-size:22px;">${allDone ? '✅' : '📂'}</div>
+        <div class="card" style="margin-bottom:0.75rem;padding:0;overflow:hidden;${isLocked ? 'opacity:0.65;' : ''}">
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:${isLocked ? 'default' : 'pointer'};"
+            onclick="${isLocked ? '' : `FormationPage._openModuleId='${isOpen ? '' : m.id}';FormationPage._render()`}">
+            <div style="font-size:22px;">${isLocked ? '🔒' : allDone ? '✅' : '📂'}</div>
             <div style="flex:1;min-width:0;">
               <div style="font-size:15px;font-weight:700;color:var(--black);">${m.titre}</div>
               <div style="font-size:12px;color:var(--gray-muted);margin-top:2px;">
-                ${doneMod}/${lecons.length} leçon${lecons.length !== 1 ? 's' : ''}
+                ${isLocked
+                  ? `<span style="color:var(--gold);font-weight:600;">Disponible dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}</span>`
+                  : `${doneMod}/${lecons.length} leçon${lecons.length !== 1 ? 's' : ''}`}
               </div>
             </div>
-            <div style="font-size:12px;font-weight:700;color:var(--gold);">${lecons.length > 0 ? Math.round(doneMod/lecons.length*100) : 0}%</div>
-            <div style="color:var(--gray-muted);font-size:18px;">${isOpen ? '▲' : '▼'}</div>
+            ${!isLocked ? `<div style="font-size:12px;font-weight:700;color:var(--gold);">${lecons.length > 0 ? Math.round(doneMod/lecons.length*100) : 0}%</div>` : ''}
+            ${!isLocked ? `<div style="color:var(--gray-muted);font-size:18px;">${isOpen ? '▲' : '▼'}</div>` : ''}
           </div>
-          ${isOpen ? `
+          ${isOpen && !isLocked ? `
           <div style="border-top:1px solid var(--border);">
             ${lecons.map((l, li) => {
               const done  = doneIds.has(l.id);
