@@ -251,8 +251,9 @@ const CoachClientSuiviPage = {
                   </div>`;
                 }).join('')}
                 ${inst.reponses.filter(r => r.type === 'text' && r.reponse).map(r => `
-                  <div style="font-size:11px;color:var(--gray-muted);margin-top:2px;font-style:italic;border-top:1px solid var(--border);padding-top:4px;">
-                    ${r.label} : "${r.reponse}"
+                  <div style="margin-top:4px;border-top:1px solid var(--border);padding-top:6px;">
+                    <div style="font-size:11px;font-weight:600;color:var(--gray);margin-bottom:2px;">${r.label}</div>
+                    <div style="font-size:13px;color:var(--black);line-height:1.5;">"${r.reponse}"</div>
                   </div>`).join('')}
               </div>
             </div>`;
