@@ -1275,5 +1275,135 @@ const db = {
       .limit(limit);
     if (error) throw error;
     return data || [];
+  },
+
+  // ── Formations ────────────────────────────────────────────────────────────
+
+  async getFormations(coachId) {
+    const { data, error } = await getSupabase()
+      .from('formations')
+      .select('*, formation_modules(*, formation_lecons(*))')
+      .eq('coach_id', coachId)
+      .order('created_at');
+    if (error) throw error;
+    return (data || []).map(f => ({
+      ...f,
+      formation_modules: (f.formation_modules || [])
+        .sort((a, b) => a.ordre - b.ordre)
+        .map(m => ({ ...m, formation_lecons: (m.formation_lecons || []).sort((a, b) => a.ordre - b.ordre) }))
+    }));
+  },
+
+  async upsertFormation(formation) {
+    const { data, error } = await getSupabase()
+      .from('formations')
+      .upsert(formation).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteFormation(id) {
+    const { error } = await getSupabase().from('formations').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async upsertFormationModule(module) {
+    const { data, error } = await getSupabase()
+      .from('formation_modules')
+      .upsert(module).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteFormationModule(id) {
+    const { error } = await getSupabase().from('formation_modules').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async upsertFormationLecon(lecon) {
+    const { data, error } = await getSupabase()
+      .from('formation_lecons')
+      .upsert(lecon).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteFormationLecon(id) {
+    const { error } = await getSupabase().from('formation_lecons').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async getFormationAssignations(coachId) {
+    const { data } = await getSupabase()
+      .from('formation_assignations')
+      .select('client_id, formation_id')
+      .eq('coach_id', coachId);
+    return data || [];
+  },
+
+  async assignFormation(clientId, formationId, coachId) {
+    const { error } = await getSupabase()
+      .from('formation_assignations')
+      .upsert({ client_id: clientId, formation_id: formationId, coach_id: coachId },
+               { onConflict: 'client_id,formation_id' });
+    if (error) throw error;
+  },
+
+  async unassignFormation(clientId, formationId) {
+    const { error } = await getSupabase()
+      .from('formation_assignations')
+      .delete()
+      .eq('client_id', clientId)
+      .eq('formation_id', formationId);
+    if (error) throw error;
+  },
+
+  async getClientFormation(clientId) {
+    const { data } = await getSupabase()
+      .from('formation_assignations')
+      .select('formation_id, formations(*, formation_modules(*, formation_lecons(*)))')
+      .eq('client_id', clientId)
+      .single();
+    if (!data) return null;
+    const f = data.formations;
+    return {
+      ...f,
+      formation_modules: (f.formation_modules || [])
+        .sort((a, b) => a.ordre - b.ordre)
+        .map(m => ({ ...m, formation_lecons: (m.formation_lecons || []).sort((a, b) => a.ordre - b.ordre) }))
+    };
+  },
+
+  async getFormationProgression(clientId) {
+    const { data } = await getSupabase()
+      .from('formation_progression')
+      .select('lecon_id, completed_at')
+      .eq('client_id', clientId);
+    return data || [];
+  },
+
+  async toggleLeconComplete(clientId, leconId, done) {
+    const sb = getSupabase();
+    if (done) {
+      await sb.from('formation_progression')
+        .upsert({ client_id: clientId, lecon_id: leconId }, { onConflict: 'client_id,lecon_id' });
+    } else {
+      await sb.from('formation_progression')
+        .delete().eq('client_id', clientId).eq('lecon_id', leconId);
+    }
+  },
+
+  async getClientFormationProgressions(clientIds) {
+    if (!clientIds?.length) return {};
+    const { data } = await getSupabase()
+      .from('formation_progression')
+      .select('client_id, lecon_id')
+      .in('client_id', clientIds);
+    const result = {};
+    for (const r of (data || [])) {
+      if (!result[r.client_id]) result[r.client_id] = [];
+      result[r.client_id].push(r.lecon_id);
+    }
+    return result;
   }
 };
