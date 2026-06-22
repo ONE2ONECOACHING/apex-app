@@ -577,26 +577,29 @@ const db = {
       .single();
     if (!asgn) return null;
 
-    // Calculer la date de déclenchement selon jour_envoi / heure_envoi
+    // ── Clé semaine = LUNDI de la semaine courante (identique au cron) ──────────
     const jourEnvoi  = asgn.jour_envoi  ?? 6;          // 0=dim … 6=sam
     const heureEnvoi = asgn.heure_envoi ?? '08:00';    // "HH:MM"
     const [hh, mm]   = heureEnvoi.split(':').map(Number);
     const now = new Date();
-    const d   = new Date(now);
 
-    // Revenir au dernier jour correspondant à jourEnvoi
-    const daysBack = (now.getDay() - jourEnvoi + 7) % 7;
-    d.setDate(d.getDate() - daysBack);
-    d.setHours(0, 0, 0, 0);
+    // Lundi de la semaine courante
+    const monday = new Date(now);
+    const day    = now.getDay();                       // 0=dim … 6=sam
+    monday.setDate(now.getDate() + (day === 0 ? -6 : 1 - day));
+    monday.setHours(0, 0, 0, 0);
 
-    // Si c'est aujourd'hui mais l'heure de déclenchement n'est pas encore passée → semaine précédente
-    if (daysBack === 0) {
-      const triggerTime = new Date(d);
-      triggerTime.setHours(hh, mm, 0, 0);
-      if (now < triggerTime) d.setDate(d.getDate() - 7);
-    }
+    // Heure de déclenchement cette semaine = jour_envoi à heure_envoi
+    // jour_envoi (0=dim..6=sam) → offset depuis lundi (lundi=0 … dimanche=6)
+    const trigger = new Date(monday);
+    trigger.setDate(monday.getDate() + (jourEnvoi === 0 ? 6 : jourEnvoi - 1));
+    trigger.setHours(hh, mm, 0, 0);
 
-    const semaine = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    // Bilan de la semaine pas encore dû → ne rien créer (les semaines passées
+    // existent déjà via le cron). Évite les doublons et les bilans prématurés.
+    if (now < trigger) return null;
+
+    const semaine = `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
 
     // Upsert sans écraser si déjà existant
     await sb.from('bilan_instances').upsert({
@@ -613,8 +616,8 @@ const db = {
       .select('*')
       .eq('client_id', clientId)
       .eq('semaine', semaine)
-      .single();
-    if (error) throw error;
+      .maybeSingle();
+    if (error) return null;
     return data;
   },
 
