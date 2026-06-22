@@ -222,7 +222,7 @@ const CoachProgTemplateEditPage = {
         const reps = document.getElementById(`exreps_${si}_${ei}`);
         if (reps) ex.reps_cible = reps.value;
         const rest = document.getElementById(`exrest_${si}_${ei}`);
-        if (rest) ex.repos_secondes = parseInt(rest.value) || 90;
+        if (rest) { const rv = parseInt(rest.value); ex.repos_secondes = isNaN(rv) ? 90 : rv; }
         const chg  = document.getElementById(`excharge_${si}_${ei}`);
         if (chg)  ex.charge_cible = chg.value;
 

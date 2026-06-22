@@ -364,7 +364,7 @@ const SeanceActivePage = {
           </div>
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Récup</div>
-            <div style="font-size:14px;font-weight:700;color:var(--gray);">💤 ${ex.repos_secondes || 90} s</div>
+            <div style="font-size:14px;font-weight:700;color:var(--gray);">${(ex.repos_secondes ?? 90) === 0 ? '🔗 Enchaîner' : '💤 ' + (ex.repos_secondes ?? 90) + ' s'}</div>
           </div>
         </div>
 
@@ -641,7 +641,7 @@ const SeanceActivePage = {
         this._serieIdx++;
       }
 
-      this._startRest(ex.repos_secondes || 90);
+      this._startRest(ex.repos_secondes ?? 90);
       return;
     }
     // ────────────────────────────────────────────────────────────────────────
@@ -650,10 +650,20 @@ const SeanceActivePage = {
     if (lastSer && lastExo) { this._phase = 'done'; this._draw(); return; }
     if (lastSer) { this._exoIdx++; this._serieIdx = 0; }
     else         { this._serieIdx++; }
-    this._startRest(ex.repos_secondes || 90);
+    this._startRest(ex.repos_secondes ?? 90);
   },
 
   _startRest(secs) {
+    // Repos à 0 (superset / enchaînement) → pas de minuteur, on enchaîne direct
+    if (!secs || secs <= 0) {
+      this._phase     = 'exercice';
+      this._intraRest = false;
+      this._removeBanner();
+      this._draw();
+      this._enableValidateBtn();
+      return;
+    }
+
     this._phase          = 'repos';
     this._restTotal      = secs;
     this._restRemaining  = secs;
