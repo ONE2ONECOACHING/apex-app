@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     .select("client_id, template_id, coach_id, jour_envoi, heure_envoi")
     .eq("actif", true);
 
-  // Calculer le lundi de la semaine courante (clé semaine des instances)
+  // Lundi de la semaine courante (clé semaine des instances)
   const localNowForBilan = new Date(now.getTime() + tzOffset * 3600000);
   const mondayBilan = new Date(localNowForBilan);
   mondayBilan.setUTCDate(localNowForBilan.getUTCDate() - ((localNowForBilan.getUTCDay() + 6) % 7));
@@ -93,12 +93,22 @@ Deno.serve(async (req) => {
 
   for (const asgn of assignations || []) {
     const jourEnvoi  = asgn.jour_envoi  ?? 6;
-    const [hh]       = (asgn.heure_envoi ?? "08:00").split(":").map(Number);
-    if (localDay !== jourEnvoi || localHour !== hh) continue;
+    const [hh, mm]   = (asgn.heure_envoi ?? "08:00").split(":").map(Number);
 
-    if (await alreadySent(sb, asgn.client_id, "bilan", todayStr)) continue;
+    // Heure de déclenchement cette semaine = jour_envoi à heure_envoi
+    // offset depuis lundi : lundi=0 … dimanche=6
+    const triggerOffset = (jourEnvoi === 0 ? 6 : jourEnvoi - 1);
+    const trigger = new Date(mondayBilan);
+    trigger.setUTCDate(mondayBilan.getUTCDate() + triggerOffset);
+    trigger.setUTCHours(hh, mm || 0, 0, 0);
 
-    // Créer l'instance si elle n'existe pas encore (le client n'a peut-être pas ouvert l'app)
+    // Pas encore l'heure de déclenchement → on attend (prochain run rattrapera)
+    if (localNowForBilan < trigger) continue;
+
+    // Déjà notifié cette semaine → skip (dédup par semaine, pas par heure)
+    if (await alreadySent(sb, asgn.client_id, "bilan", semaineActuelle)) continue;
+
+    // Créer l'instance si elle n'existe pas encore
     const { data: existing } = await sb
       .from("bilan_instances")
       .select("id")
@@ -122,8 +132,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    await sendPush(asgn.client_id, "📝 Bilan hebdomadaire", "Ton bilan de la semaine t'attend !", "#client-bilan");
-    await logSent(sb, asgn.client_id, "bilan", todayStr);
+    await sendPush(asgn.client_id, "📝 Ton bilan de la semaine", "Ton bilan est disponible — prends 2 min pour le remplir 💪", "#client-bilan");
+    await logSent(sb, asgn.client_id, "bilan", semaineActuelle);
     results.bilan++;
   }
 
