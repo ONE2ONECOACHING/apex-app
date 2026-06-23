@@ -124,16 +124,28 @@ const EntrainementPage = {
       }`;
   },
 
+  // Semaine en cours du programme = nb de semaines depuis sa date de début
+  _programmeWeek() {
+    const p = this.programme;
+    if (p && p.date_debut) {
+      const start = new Date(p.date_debut + 'T00:00:00');
+      const diff  = Math.floor((Date.now() - start) / (7 * 24 * 3600 * 1000));
+      const nbSem = p.nb_semaines || 99;
+      return Math.min(Math.max(1, diff + 1), nbSem);
+    }
+    return 1;
+  },
+
   _seanceCard(seance) {
     const exos     = seance.exercices || [];
     const jourLabel = seance.jour > 0
       ? `<span style="font-size:11px;color:var(--gray-muted);margin-left:6px;">· ${this._jours[(seance.jour - 1) % 7]}</span>`
       : '';
 
-    // ── Séance CARDIO : afficher le texte de la semaine courante ──────────────
+    // ── Séance CARDIO : texte de la semaine du PROGRAMME (pas semaine_courante) ──
     if (seance.cardio) {
       const weeks   = Array.isArray(seance.cardio_weeks) ? seance.cardio_weeks : [];
-      const semaine = Math.max(1, clientCurrentWeek(Router.userProfile));
+      const semaine = this._programmeWeek();
       const idx     = Math.min(semaine - 1, weeks.length - 1);
       const texte   = (idx >= 0 ? weeks[idx] : '') || '';
       return `
