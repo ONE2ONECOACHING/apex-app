@@ -131,6 +131,8 @@ const CoachProgTemplateEditPage = {
           jour:        s.jour ?? 0,
           notes_coach: s.notes_coach || '',
           exercices:   (s.exercices || []).map(ex => this._mapExo(ex)),
+          cardio:      s.cardio || false,
+          cardio_weeks: Array.isArray(s.cardio_weeks) ? s.cardio_weeks : [],
         }));
         document.getElementById('tplEditTitle').textContent = prog.nom;
 
@@ -150,6 +152,8 @@ const CoachProgTemplateEditPage = {
           jour:        s.jour ?? 0,
           notes_coach: s.notes_coach || '',
           exercices:   (s.exercices || []).map(ex => this._mapExo(ex)),
+          cardio:      s.cardio || false,
+          cardio_weeks: Array.isArray(s.cardio_weeks) ? s.cardio_weeks : [],
         }));
         document.getElementById('tplEditTitle').textContent = tpl.nom;
 
@@ -195,6 +199,19 @@ const CoachProgTemplateEditPage = {
       if (sJour) s.jour = parseInt(sJour.value) || 0;
       const sNote = document.getElementById('snote_' + si);
       if (sNote) s.notes_coach = sNote.value;
+
+      // Cardio : checkbox + textareas par semaine
+      const sCardio = document.getElementById('scardio_' + si);
+      if (sCardio) s.cardio = sCardio.checked;
+      if (s.cardio) {
+        const nbSem = parseInt(this.templateData.nb_semaines) || 4;
+        const weeks = [];
+        for (let w = 0; w < nbSem; w++) {
+          const ta = document.getElementById(`scardiow_${si}_${w}`);
+          weeks.push(ta ? ta.value : (s.cardio_weeks?.[w] || ''));
+        }
+        s.cardio_weeks = weeks;
+      }
 
       s.exercices.forEach((ex, ei) => {
         // 1. Effort type (toujours en premier)
@@ -330,12 +347,13 @@ const CoachProgTemplateEditPage = {
   },
 
   _renderSeanceCol(s, si) {
+    const isCardio = !!s.cardio;
     return `
       <div style="flex-shrink:0;width:290px;background:var(--card-bg);
-                  border-radius:14px;padding:12px;border:1px solid var(--border-solid);">
+                  border-radius:14px;padding:12px;border:1px solid ${isCardio ? '#EF4444' : 'var(--border-solid)'};">
         <!-- En-tête -->
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-          <input id="snom_${si}" class="input" value="${s.nom.replace(/"/g,'&quot;')}"
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <input id="snom_${si}" class="input" value="${(s.nom||'').replace(/"/g,'&quot;')}"
             placeholder="Nom de la séance"
             style="flex:1;height:36px;font-weight:700;font-size:14px;padding:0 8px;">
           <select id="sjour_${si}" class="input"
@@ -349,6 +367,18 @@ const CoachProgTemplateEditPage = {
             onclick="CoachProgTemplateEditPage.removeSeance(${si})">×</button>
         </div>
 
+        <!-- Toggle Cardio -->
+        <label style="display:flex;align-items:center;gap:7px;margin-bottom:10px;cursor:pointer;
+                      font-size:12px;font-weight:600;color:${isCardio ? '#EF4444' : 'var(--gray)'};">
+          <input type="checkbox" id="scardio_${si}" ${isCardio ? 'checked' : ''}
+            onchange="CoachProgTemplateEditPage._toggleCardio(${si})"
+            style="width:16px;height:16px;accent-color:#EF4444;">
+          🏃 Séance cardio (progression par semaine)
+        </label>
+
+        ${isCardio
+          ? this._renderCardioBlocks(s, si)
+          : `
         <!-- Exercices -->
         <div>
           ${s.exercices.length === 0
@@ -360,18 +390,46 @@ const CoachProgTemplateEditPage = {
           }
         </div>
 
-        <!-- Notes coach (optionnel) -->
-        <input id="snote_${si}" class="input" value="${(s.notes_coach||'').replace(/"/g,'&quot;')}"
-          placeholder="Notes coach (optionnel)"
-          style="margin-top:8px;height:32px;font-size:12px;color:var(--gray);">
-
         <!-- Ajouter exercice -->
         <button class="btn btn-ghost btn-small"
           style="width:100%;margin-top:8px;border:1px dashed var(--border-solid);"
           onclick="CoachProgTemplateEditPage.openPicker(${si})">
           + Exercice
-        </button>
+        </button>`}
+
+        <!-- Notes coach (optionnel) -->
+        <input id="snote_${si}" class="input" value="${(s.notes_coach||'').replace(/"/g,'&quot;')}"
+          placeholder="Notes coach (optionnel)"
+          style="margin-top:8px;height:32px;font-size:12px;color:var(--gray);">
       </div>`;
+  },
+
+  _renderCardioBlocks(s, si) {
+    const nbSem = parseInt(this.templateData.nb_semaines) || 4;
+    const weeks = Array.isArray(s.cardio_weeks) ? s.cardio_weeks : [];
+    let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+    for (let w = 0; w < nbSem; w++) {
+      html += `
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#EF4444;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;">
+            Semaine ${w + 1}
+          </div>
+          <textarea id="scardiow_${si}_${w}" rows="3"
+            placeholder="ex : 30 min course à 8 km/h, ou 5×(3min rapide / 2min lent)…"
+            style="width:100%;border:1px solid var(--border-solid);border-radius:8px;
+                   background:var(--white);color:var(--black);font-size:13px;
+                   padding:8px 10px;font-family:var(--font);resize:vertical;
+                   box-sizing:border-box;line-height:1.45;">${(weeks[w]||'').replace(/</g,'&lt;')}</textarea>
+        </div>`;
+    }
+    html += '</div>';
+    return html;
+  },
+
+  _toggleCardio(si) {
+    this._syncFromDOM();
+    this.seances[si].cardio = !this.seances[si].cardio;
+    this.renderContent();
   },
 
   // ── Superset helpers ────────────────────────────────────────────────────────
@@ -690,11 +748,13 @@ const CoachProgTemplateEditPage = {
     this._syncFromDOM();
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     this.seances.push({
-      id:          null,
-      nom:         'Séance ' + (letters[this.seances.length] || (this.seances.length + 1)),
-      jour:        0,
-      notes_coach: '',
-      exercices:   [],
+      id:           null,
+      nom:          'Séance ' + (letters[this.seances.length] || (this.seances.length + 1)),
+      jour:         0,
+      notes_coach:  '',
+      cardio:       false,
+      cardio_weeks: [],
+      exercices:    [],
     });
     this.renderContent();
   },
@@ -927,6 +987,8 @@ const CoachProgTemplateEditPage = {
           jour:        s.jour ?? 0,
           notes_coach: s.notes_coach || '',
           exercices:   (s.exercices || []).map(ex => this._mapExo(ex)),
+          cardio:      s.cardio || false,
+          cardio_weeks: Array.isArray(s.cardio_weeks) ? s.cardio_weeks : [],
         }));
 
       } else {
@@ -957,6 +1019,8 @@ const CoachProgTemplateEditPage = {
           jour:        s.jour ?? 0,
           notes_coach: s.notes_coach || '',
           exercices:   (s.exercices || []).map(ex => this._mapExo(ex)),
+          cardio:      s.cardio || false,
+          cardio_weeks: Array.isArray(s.cardio_weeks) ? s.cardio_weeks : [],
         }));
         document.getElementById('tplEditTitle').textContent = nom;
       }

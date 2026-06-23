@@ -956,15 +956,17 @@ const db = {
     const result = [];
     for (let i = 0; i < seances.length; i++) {
       const s = seances[i];
+      const seanceRow = {
+        template_id: templateId,
+        nom:         s.nom || ('Séance ' + (i + 1)),
+        jour:        s.jour ?? 0,
+        ordre:       i,
+        notes_coach: s.notes_coach || null,
+      };
+      if (s.cardio) { seanceRow.cardio = true; seanceRow.cardio_weeks = s.cardio_weeks || []; }
       const { data: seanceData, error: e1 } = await sb
         .from('prog_template_seances')
-        .insert({
-          template_id: templateId,
-          nom:         s.nom || ('Séance ' + (i + 1)),
-          jour:        s.jour ?? 0,
-          ordre:       i,
-          notes_coach: s.notes_coach || null,
-        })
+        .insert(seanceRow)
         .select()
         .single();
       if (e1) throw e1;
@@ -1074,17 +1076,20 @@ const db = {
 
     // Copier séances et exercices
     for (const s of (template.seances || [])) {
-      const { data: seance, error: e2 } = await sb
-        .from('client_prog_seances')
-        .insert({
-          programme_id: prog.id,
-          nom:          s.nom,
-          jour:         s.jour ?? 0,
-          ordre:        s.ordre ?? 0,
-          notes_coach:  s.notes_coach || null,
-        })
-        .select()
-        .single();
+      const seanceRow = {
+        programme_id: prog.id,
+        nom:          s.nom,
+        jour:         s.jour ?? 0,
+        ordre:        s.ordre ?? 0,
+        notes_coach:  s.notes_coach || null,
+      };
+      if (s.cardio) { seanceRow.cardio = true; seanceRow.cardio_weeks = s.cardio_weeks || []; }
+      let seance, e2;
+      ({ data: seance, error: e2 } = await sb.from('client_prog_seances').insert(seanceRow).select().single());
+      if (e2 && s.cardio) { // compat avant migration
+        delete seanceRow.cardio; delete seanceRow.cardio_weeks;
+        ({ data: seance, error: e2 } = await sb.from('client_prog_seances').insert(seanceRow).select().single());
+      }
       if (e2) throw e2;
 
       for (const ex of (s.exercices || [])) {
@@ -1135,16 +1140,24 @@ const db = {
       const s = seances[i];
       let seanceId;
 
+      const seanceFields = { nom: s.nom, jour: s.jour ?? 0, ordre: i, notes_coach: s.notes_coach || null };
+      if (s.cardio) { seanceFields.cardio = true; seanceFields.cardio_weeks = s.cardio_weeks || []; }
+      else          { seanceFields.cardio = false; seanceFields.cardio_weeks = []; }
+
       if (s.id && existingIds.has(s.id)) {
-        await sb.from('client_prog_seances')
-          .update({ nom: s.nom, jour: s.jour ?? 0, ordre: i, notes_coach: s.notes_coach || null })
-          .eq('id', s.id);
+        const { error: ue } = await sb.from('client_prog_seances')
+          .update(seanceFields).eq('id', s.id);
+        // Compat avant migration : retry sans les champs cardio si colonne absente
+        if (ue) { delete seanceFields.cardio; delete seanceFields.cardio_weeks;
+          await sb.from('client_prog_seances').update(seanceFields).eq('id', s.id); }
         seanceId = s.id;
       } else {
-        const { data: ns, error } = await sb.from('client_prog_seances')
-          .insert({ programme_id: programmeId, nom: s.nom, jour: s.jour ?? 0,
-                    ordre: i, notes_coach: s.notes_coach || null })
-          .select().single();
+        let ns, error;
+        ({ data: ns, error } = await sb.from('client_prog_seances')
+          .insert({ programme_id: programmeId, ...seanceFields }).select().single());
+        if (error) { delete seanceFields.cardio; delete seanceFields.cardio_weeks;
+          ({ data: ns, error } = await sb.from('client_prog_seances')
+            .insert({ programme_id: programmeId, ...seanceFields }).select().single()); }
         if (error) throw error;
         seanceId = ns.id;
       }

@@ -129,6 +129,32 @@ const EntrainementPage = {
     const jourLabel = seance.jour > 0
       ? `<span style="font-size:11px;color:var(--gray-muted);margin-left:6px;">· ${this._jours[(seance.jour - 1) % 7]}</span>`
       : '';
+
+    // ── Séance CARDIO : afficher le texte de la semaine courante ──────────────
+    if (seance.cardio) {
+      const weeks   = Array.isArray(seance.cardio_weeks) ? seance.cardio_weeks : [];
+      const semaine = Math.max(1, clientCurrentWeek(Router.userProfile));
+      const idx     = Math.min(semaine - 1, weeks.length - 1);
+      const texte   = (idx >= 0 ? weeks[idx] : '') || '';
+      return `
+        <div class="card" style="margin-bottom:0.75rem;border-left:3px solid #EF4444;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-weight:700;font-size:15px;">🏃 ${seance.nom}${jourLabel}</div>
+            <span style="font-size:11px;font-weight:700;color:#EF4444;background:#fef2f2;
+                  border:1px solid #fecaca;border-radius:8px;padding:2px 8px;">Semaine ${semaine}</span>
+          </div>
+          ${seance.notes_coach ? `
+            <div style="font-size:12px;color:var(--gold);background:var(--gold-bg,#fffbeb);
+                 border-left:3px solid var(--gold);padding:6px 10px;border-radius:4px;margin-bottom:10px;">
+              📌 ${seance.notes_coach}
+            </div>` : ''}
+          ${texte.trim()
+            ? `<div style="font-size:14px;color:var(--black);line-height:1.7;white-space:pre-wrap;
+                          background:var(--card-bg);border-radius:10px;padding:12px 14px;">${texte.replace(/</g,'&lt;')}</div>`
+            : `<div style="font-size:13px;color:var(--gray-muted);">Pas de séance définie pour cette semaine.</div>`}
+        </div>`;
+    }
+
     return `
       <div class="card" style="margin-bottom:0.75rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
