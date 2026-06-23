@@ -1293,6 +1293,42 @@ const db = {
     return data || [];
   },
 
+  // ── Validations cardio ────────────────────────────────────────────────────
+  async getCardioValidations(clientId) {
+    const { data } = await getSupabase()
+      .from('cardio_validations')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('completed_at', { ascending: false });
+    return data || [];
+  },
+
+  async validateCardio(clientId, seanceId, semaine, ressenti, note) {
+    const { data, error } = await getSupabase()
+      .from('cardio_validations')
+      .upsert({
+        client_id:     clientId,
+        seance_id:     seanceId,
+        semaine,
+        note_ressenti: ressenti || null,
+        note_client:   note || null,
+        completed_at:  new Date().toISOString(),
+      }, { onConflict: 'client_id,seance_id,semaine' })
+      .select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getCardioValidationsForCoach(clientId, limit = 40) {
+    const { data } = await getSupabase()
+      .from('cardio_validations')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('completed_at', { ascending: false })
+      .limit(limit);
+    return data || [];
+  },
+
   // ── Formations ────────────────────────────────────────────────────────────
 
   async getFormations(coachId) {

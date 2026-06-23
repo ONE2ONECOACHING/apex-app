@@ -6,6 +6,9 @@ const EntrainementPage = {
   _logs:        [],
   _logsLoaded:  false,
   _expanded:    null,         // log.id currently expanded
+  _cardioVals:  [],           // validations cardio du client
+  _cardioOpen:  null,         // seance.id de la séance cardio ouverte
+  _cardioRessenti: null,      // ressenti sélectionné dans la vue validation
 
   _jours: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
 
@@ -31,9 +34,14 @@ const EntrainementPage = {
     this._logs       = [];
     this._logsLoaded = false;
     this._expanded   = null;
+    this._cardioOpen = null;
+    this._cardioRessenti = null;
 
     try {
-      this.programme = await db.getClientProgrammeActif(profile.id);
+      [this.programme, this._cardioVals] = await Promise.all([
+        db.getClientProgrammeActif(profile.id),
+        db.getCardioValidations(profile.id).catch(() => []),
+      ]);
       this._renderContent();
     } catch (e) {
       document.getElementById('trainContent').innerHTML =
@@ -136,34 +144,153 @@ const EntrainementPage = {
     return 1;
   },
 
+  // Nb de semaines validées pour une séance cardio (séquentiel)
+  _cardioCompletedCount(seanceId) {
+    return this._cardioVals.filter(v => v.seance_id === seanceId).length;
+  },
+
+  // Semaine cardio affichée = min(prochaine non validée, semaine temps)
+  // → on n'avance pas tant que la semaine en cours n'est pas validée
+  _cardioDisplayWeek(seance) {
+    const done    = this._cardioCompletedCount(seance.id);
+    const time    = this._programmeWeek();
+    const weeks   = Array.isArray(seance.cardio_weeks) ? seance.cardio_weeks : [];
+    const maxWeek = Math.max(1, weeks.length || (this.programme?.nb_semaines || 1));
+    return Math.min(done + 1, time, maxWeek);
+  },
+
+  _openCardio(seanceId) {
+    this._cardioOpen = seanceId;
+    this._cardioRessenti = null;
+    this._rerenderProgrammeTab();
+  },
+
+  _closeCardio() {
+    this._cardioOpen = null;
+    this._cardioRessenti = null;
+    this._rerenderProgrammeTab();
+  },
+
+  _setCardioRessenti(key) {
+    this._cardioRessenti = key;
+    this._rerenderProgrammeTab();
+  },
+
+  async _validateCardio(seanceId, week) {
+    if (!this._cardioRessenti) { toast('Choisis comment s\'est passée ta séance', 'error'); return; }
+    const noteEl = document.getElementById('cardioNote_' + seanceId);
+    const note   = noteEl ? noteEl.value.trim() : '';
+    try {
+      const saved = await db.validateCardio(Router.userProfile.id, seanceId, week, this._cardioRessenti, note);
+      // MAJ locale
+      const existing = this._cardioVals.findIndex(v => v.seance_id === seanceId && v.semaine === week);
+      if (existing >= 0) this._cardioVals[existing] = saved; else this._cardioVals.unshift(saved);
+      this._cardioRessenti = null;
+      this._cardioOpen = null;
+      this._rerenderProgrammeTab();
+      toast('🏃 Séance validée !', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  _rerenderProgrammeTab() {
+    const el = document.getElementById('trainTabContent');
+    if (el) el.innerHTML = this._renderProgramme();
+  },
+
   _seanceCard(seance) {
     const exos     = seance.exercices || [];
     const jourLabel = seance.jour > 0
       ? `<span style="font-size:11px;color:var(--gray-muted);margin-left:6px;">· ${this._jours[(seance.jour - 1) % 7]}</span>`
       : '';
 
-    // ── Séance CARDIO : texte de la semaine du PROGRAMME (pas semaine_courante) ──
+    // ── Séance CARDIO : progression validée par le client ─────────────────────
     if (seance.cardio) {
-      const weeks   = Array.isArray(seance.cardio_weeks) ? seance.cardio_weeks : [];
-      const semaine = this._programmeWeek();
-      const idx     = Math.min(semaine - 1, weeks.length - 1);
-      const texte   = (idx >= 0 ? weeks[idx] : '') || '';
+      const weeks    = Array.isArray(seance.cardio_weeks) ? seance.cardio_weeks : [];
+      const week     = this._cardioDisplayWeek(seance);
+      const done     = this._cardioCompletedCount(seance.id);
+      const validated = week <= done; // la semaine affichée est-elle déjà validée ?
+      const texte    = (weeks[week - 1] || '').trim();
+      const isOpen   = this._cardioOpen === seance.id;
+      const val      = this._cardioVals.find(v => v.seance_id === seance.id && v.semaine === week);
+
+      // Vue compacte (repliée)
+      if (!isOpen) {
+        return `
+          <div class="card" style="margin-bottom:0.75rem;border-left:3px solid #EF4444;cursor:pointer;"
+            onclick="EntrainementPage._openCardio('${seance.id}')">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-weight:700;font-size:15px;">🏃 ${seance.nom}${jourLabel}</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:11px;font-weight:700;color:#EF4444;background:#fef2f2;
+                      border:1px solid #fecaca;border-radius:8px;padding:2px 8px;">Semaine ${week}</span>
+                ${validated
+                  ? '<span style="font-size:11px;font-weight:700;color:var(--success);">✓ Validée</span>'
+                  : '<span style="color:var(--gray-muted);font-size:18px;">›</span>'}
+              </div>
+            </div>
+          </div>`;
+      }
+
+      // Vue ouverte (texte + validation)
+      const ressentis = [
+        { key: 'dur',  emoji: '😓', label: 'Difficile' },
+        { key: 'bien', emoji: '😊', label: 'Bien'      },
+        { key: 'feu',  emoji: '🤩', label: 'En feu !'  },
+      ];
+      const selRessenti = this._cardioRessenti || val?.note_ressenti || null;
+
       return `
         <div class="card" style="margin-bottom:0.75rem;border-left:3px solid #EF4444;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <div style="font-weight:700;font-size:15px;">🏃 ${seance.nom}${jourLabel}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <button onclick="EntrainementPage._closeCardio()"
+              style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);">←</button>
+            <div style="flex:1;font-weight:700;font-size:15px;">🏃 ${seance.nom}</div>
             <span style="font-size:11px;font-weight:700;color:#EF4444;background:#fef2f2;
-                  border:1px solid #fecaca;border-radius:8px;padding:2px 8px;">Semaine ${semaine}</span>
+                  border:1px solid #fecaca;border-radius:8px;padding:2px 8px;">Semaine ${week}</span>
           </div>
           ${seance.notes_coach ? `
             <div style="font-size:12px;color:var(--gold);background:var(--gold-bg,#fffbeb);
                  border-left:3px solid var(--gold);padding:6px 10px;border-radius:4px;margin-bottom:10px;">
               📌 ${seance.notes_coach}
             </div>` : ''}
-          ${texte.trim()
+          ${texte
             ? `<div style="font-size:14px;color:var(--black);line-height:1.7;white-space:pre-wrap;
-                          background:var(--card-bg);border-radius:10px;padding:12px 14px;">${texte.replace(/</g,'&lt;')}</div>`
-            : `<div style="font-size:13px;color:var(--gray-muted);">Pas de séance définie pour cette semaine.</div>`}
+                          background:var(--card-bg);border-radius:10px;padding:12px 14px;margin-bottom:12px;">${texte.replace(/</g,'&lt;')}</div>`
+            : `<div style="font-size:13px;color:var(--gray-muted);margin-bottom:12px;">Pas de séance définie pour cette semaine.</div>`}
+
+          ${validated ? `
+            <div style="background:var(--success-bg);border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;">
+              <div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:${val?.note_client ? '4px' : '0'};">
+                ✓ Séance validée ${val?.note_ressenti ? ({dur:'😓',bien:'😊',feu:'🤩'})[val.note_ressenti] : ''}
+              </div>
+              ${val?.note_client ? `<div style="font-size:13px;color:var(--black);">💬 ${val.note_client}</div>` : ''}
+            </div>
+            <div style="font-size:12px;color:var(--gray-muted);text-align:center;margin-top:10px;">
+              Prochaine séance débloquée la semaine suivante.
+            </div>
+          ` : `
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Comment s'est passée ta séance ?</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+              ${ressentis.map(r => `
+                <button onclick="EntrainementPage._setCardioRessenti('${r.key}')"
+                  style="flex:1;padding:10px 4px;border-radius:12px;
+                         border:2px solid ${selRessenti===r.key ? '#EF4444' : 'var(--border-solid)'};
+                         background:${selRessenti===r.key ? '#fef2f2' : 'var(--white)'};
+                         cursor:pointer;font-family:var(--font);">
+                  <div style="font-size:26px;">${r.emoji}</div>
+                  <div style="font-size:10px;font-weight:600;color:var(--gray);margin-top:2px;">${r.label}</div>
+                </button>`).join('')}
+            </div>
+            <input id="cardioNote_${seance.id}" type="text" placeholder="💬 Note pour ton coach (optionnel)"
+              value="${(val?.note_client || '').replace(/"/g,'&quot;')}"
+              style="width:100%;height:44px;padding:0 14px;border:1.5px solid var(--border-solid);
+                     border-radius:12px;background:var(--card-bg);color:var(--black);
+                     font-family:var(--font);font-size:14px;box-sizing:border-box;margin-bottom:10px;">
+            <button class="btn btn-primary" style="width:100%;height:50px;background:#EF4444;"
+              onclick="EntrainementPage._validateCardio('${seance.id}', ${week})">
+              ✓ Valider la séance
+            </button>
+          `}
         </div>`;
     }
 

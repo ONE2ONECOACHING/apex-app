@@ -3,6 +3,7 @@
 const CoachTrainingClientPage = {
   client:    null,
   _logs:     [],
+  _cardio:   [],
   _expanded: null,
 
   render() {
@@ -28,6 +29,7 @@ const CoachTrainingClientPage = {
     // Reset état pour éviter les fuites entre clients
     this.client    = null;
     this._logs     = [];
+    this._cardio   = [];
     this._expanded = null;
 
     try {
@@ -35,7 +37,10 @@ const CoachTrainingClientPage = {
       document.getElementById('ctcTitle').textContent =
         'Entraînement — ' + (this.client.prenom || 'Client');
 
-      this._logs = await db.getCoachClientSeancesLog(params.clientId, 50);
+      [this._logs, this._cardio] = await Promise.all([
+        db.getCoachClientSeancesLog(params.clientId, 50),
+        db.getCardioValidationsForCoach(params.clientId).catch(() => []),
+      ]);
       this._renderContent();
     } catch (e) {
       document.getElementById('ctcContent').innerHTML =
@@ -52,7 +57,33 @@ const CoachTrainingClientPage = {
       ${coachClientNav(c.id, 'coach-training-client')}
 
       ${this._renderStats()}
+      ${this._renderCardio()}
       ${this._renderLogs()}`;
+  },
+
+  _renderCardio() {
+    if (!this._cardio.length) return '';
+    const emojis = { dur: '😓', bien: '😊', feu: '🤩' };
+    return `
+      <div class="card" style="margin-bottom:1rem;border-left:3px solid #EF4444;">
+        <div class="card-title">🏃 Séances cardio validées</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${this._cardio.map(v => {
+            const date = v.completed_at
+              ? new Date(v.completed_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+              : '';
+            return `<div style="background:var(--card-bg);border-radius:10px;padding:9px 12px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;font-weight:700;color:#EF4444;background:#fef2f2;
+                      border:1px solid #fecaca;border-radius:6px;padding:1px 7px;">Sem. ${v.semaine}</span>
+                <span style="font-size:18px;">${emojis[v.note_ressenti] || ''}</span>
+                <span style="font-size:11px;color:var(--gray-muted);margin-left:auto;">${date}</span>
+              </div>
+              ${v.note_client ? `<div style="font-size:13px;color:var(--black);margin-top:5px;line-height:1.5;">💬 ${v.note_client}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
   },
 
   _renderStats() {
