@@ -1050,13 +1050,51 @@ const db = {
     };
   },
 
-  async assignProgrammeFromTemplate(template, clientId, coachId, dateDebut = null) {
-    const sb = getSupabase();
-    // Désactiver les programmes actifs existants
-    await sb.from('client_programmes')
-      .update({ actif: false })
+  // Tous les programmes actifs d'un client (multi-programmes)
+  async getClientProgrammesActifs(clientId) {
+    const { data, error } = await getSupabase()
+      .from('client_programmes')
+      .select('*, client_prog_seances(*, client_prog_exercices(*, exercices_bdd(*)))')
       .eq('client_id', clientId)
-      .eq('actif', true);
+      .eq('actif', true)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(p => ({
+      ...p,
+      seances: (p.client_prog_seances || []).sort((a, b) => a.ordre - b.ordre).map(s => ({
+        ...s,
+        exercices: (s.client_prog_exercices || []).sort((a, b) => a.ordre - b.ordre),
+      })),
+    }));
+  },
+
+  // Un programme client précis par id (pour l'éditeur)
+  async getClientProgrammeById(progId) {
+    const { data, error } = await getSupabase()
+      .from('client_programmes')
+      .select('*, client_prog_seances(*, client_prog_exercices(*, exercices_bdd(*)))')
+      .eq('id', progId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      ...data,
+      seances: (data.client_prog_seances || []).sort((a, b) => a.ordre - b.ordre).map(s => ({
+        ...s,
+        exercices: (s.client_prog_exercices || []).sort((a, b) => a.ordre - b.ordre),
+      })),
+    };
+  },
+
+  async assignProgrammeFromTemplate(template, clientId, coachId, dateDebut = null, deactivateOthers = false) {
+    const sb = getSupabase();
+    // Multi-programmes : par défaut on AJOUTE (ne désactive pas les autres)
+    if (deactivateOthers) {
+      await sb.from('client_programmes')
+        .update({ actif: false })
+        .eq('client_id', clientId)
+        .eq('actif', true);
+    }
 
     // Créer le programme client
     const { data: prog, error: e1 } = await sb

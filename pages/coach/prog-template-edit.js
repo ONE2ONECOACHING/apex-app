@@ -120,9 +120,11 @@ const CoachProgTemplateEditPage = {
       this._allExos = await db.getExercicesBdd();
 
       if (this._clientMode) {
-        // ── Mode client : charge depuis les tables client_prog_* ──
-        const prog = await db.getClientProgrammeActif(this._clientId);
-        if (!prog) throw new Error('Aucun programme actif pour ce client.');
+        // ── Mode client : charge le programme précis par id ──
+        const prog = this._clientProgrammeId
+          ? await db.getClientProgrammeById(this._clientProgrammeId)
+          : await db.getClientProgrammeActif(this._clientId);
+        if (!prog) throw new Error('Programme introuvable.');
         this._clientProgrammeId = prog.id;
         this.templateData = { nom: prog.nom, description: '', nb_semaines: 1, consignes: prog.consignes || '' };
         this.seances = (prog.seances || []).map(s => ({
@@ -980,7 +982,7 @@ const CoachProgTemplateEditPage = {
         document.getElementById('tplEditTitle').textContent = nomClient;
 
         // Recharger pour obtenir les vrais IDs
-        const prog = await db.getClientProgrammeActif(this._clientId);
+        const prog = await db.getClientProgrammeById(this._clientProgrammeId);
         this.seances = (prog.seances || []).map(s => ({
           id:          s.id,
           nom:         s.nom,

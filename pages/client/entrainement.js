@@ -1,7 +1,7 @@
 ﻿// APEX APP — Client : Module Entraînement (Programme + Historique)
 
 const EntrainementPage = {
-  programme:    null,
+  programmes:   [],           // tous les programmes actifs du client
   _tab:         'programme',  // 'programme' | 'historique'
   _logs:        [],
   _logsLoaded:  false,
@@ -38,8 +38,8 @@ const EntrainementPage = {
     this._cardioRessenti = null;
 
     try {
-      [this.programme, this._cardioVals] = await Promise.all([
-        db.getClientProgrammeActif(profile.id),
+      [this.programmes, this._cardioVals] = await Promise.all([
+        db.getClientProgrammesActifs(profile.id),
         db.getCardioValidations(profile.id).catch(() => []),
       ]);
       this._renderContent();
@@ -97,35 +97,43 @@ const EntrainementPage = {
 
   // ── Onglet Programme ─────────────────────────────────────────────────────────
 
+  // Toutes les séances de tous les programmes actifs, avec réf au programme parent
+  _allSeances() {
+    const out = [];
+    (this.programmes || []).forEach(p => {
+      (p.seances || []).forEach(s => out.push({ ...s, _prog: p }));
+    });
+    return out;
+  },
+
+  _findSeance(id) {
+    return this._allSeances().find(s => s.id === id) || null;
+  },
+
   _renderProgramme() {
-    if (!this.programme) {
+    const progs = this.programmes || [];
+    if (!progs.length) {
       return `<div class="empty-state" style="margin-top:2rem;">
         <div class="empty-icon">💪</div>
         <div class="empty-text">Aucun programme actif.<br>Contacte ton coach pour qu'il t'en assigne un.</div>
       </div>`;
     }
-    const p = this.programme;
-    const dateDebut = p.date_debut
-      ? new Date(p.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-      : null;
-    return `
-      <div style="margin-bottom:1rem;">
-        <div style="font-size:18px;font-weight:700;color:var(--black);">📋 ${p.nom}</div>
-        ${dateDebut ? `<div style="font-size:13px;color:var(--gray-muted);margin-top:3px;">Démarré le ${dateDebut}</div>` : ''}
-      </div>
-      ${p.consignes ? `
-        <div class="card card-tap" onclick="EntrainementPage._openConsignes()"
-             style="cursor:pointer;margin-bottom:1rem;border-left:3px solid var(--gold);">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="font-size:26px;line-height:1;">📋</div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:14px;margin-bottom:2px;">Consignes du programme</div>
-              <div style="font-size:12px;color:var(--gray-light);">Méthode d'entraînement · Appuie pour lire</div>
-            </div>
-            <div style="color:var(--gray-muted);font-size:18px;">›</div>
+
+    // Consignes : une carte par programme qui en a
+    const consignesHtml = progs.filter(p => p.consignes).map(p => `
+      <div class="card card-tap" onclick="EntrainementPage._openConsignes('${p.id}')"
+           style="cursor:pointer;margin-bottom:0.75rem;border-left:3px solid var(--gold);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="font-size:24px;line-height:1;">📋</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:2px;">Consignes — ${p.nom}</div>
+            <div style="font-size:12px;color:var(--gray-light);">Appuie pour lire</div>
           </div>
-        </div>` : ''}
-      ${this._renderSeancesGrouped(p.seances || [])}`;
+          <div style="color:var(--gray-muted);font-size:18px;">›</div>
+        </div>
+      </div>`).join('');
+
+    return consignesHtml + this._renderSeancesGrouped(this._allSeances());
   },
 
   _renderSeancesGrouped(seances) {
@@ -157,9 +165,9 @@ const EntrainementPage = {
       ${cardio.map(s => this._seanceCard(s)).join('')}`;
   },
 
-  // Semaine en cours du programme = nb de semaines depuis sa date de début
-  _programmeWeek() {
-    const p = this.programme;
+  // Semaine en cours d'un programme = nb de semaines depuis sa date de début
+  _programmeWeekFor(seance) {
+    const p = seance?._prog;
     if (p && p.date_debut) {
       const start = new Date(p.date_debut + 'T00:00:00');
       const diff  = Math.floor((Date.now() - start) / (7 * 24 * 3600 * 1000));
@@ -178,9 +186,9 @@ const EntrainementPage = {
   // → on n'avance pas tant que la semaine en cours n'est pas validée
   _cardioDisplayWeek(seance) {
     const done    = this._cardioCompletedCount(seance.id);
-    const time    = this._programmeWeek();
+    const time    = this._programmeWeekFor(seance);
     const weeks   = Array.isArray(seance.cardio_weeks) ? seance.cardio_weeks : [];
-    const maxWeek = Math.max(1, weeks.length || (this.programme?.nb_semaines || 1));
+    const maxWeek = Math.max(1, weeks.length || (seance._prog?.nb_semaines || 1));
     return Math.min(done + 1, time, maxWeek);
   },
 
@@ -394,8 +402,9 @@ const EntrainementPage = {
         </div>` : ''}`;
   },
 
-  _openConsignes() {
-    const text = this.programme?.consignes || '';
+  _openConsignes(progId) {
+    const prog = (this.programmes || []).find(p => p.id === progId) || this.programmes[0];
+    const text = prog?.consignes || '';
     if (!text) return;
     const modal = document.createElement('div');
     modal.id = 'consignesModal';
@@ -437,11 +446,12 @@ ${text.replace(/</g,'&lt;')}</div>
 
   _startSeance(seanceId) {
     this._closeApercu();
-    Router.navigate('seance-active', { seanceId, programmeId: this.programme?.id });
+    const seance = this._findSeance(seanceId);
+    Router.navigate('seance-active', { seanceId, programmeId: seance?._prog?.id });
   },
 
   _openApercu(seanceId) {
-    const seance = (this.programme?.seances || []).find(s => s.id === seanceId);
+    const seance = this._findSeance(seanceId);
     if (!seance) return;
     const exos = seance.exercices || [];
 

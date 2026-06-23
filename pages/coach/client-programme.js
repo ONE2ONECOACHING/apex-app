@@ -2,7 +2,7 @@
 
 const CoachClientProgrammePage = {
   client:      null,
-  programme:   null,
+  programmes:  [],
   templates:   [],
   _assigning:  false,
 
@@ -27,7 +27,7 @@ const CoachClientProgrammePage = {
   async init() {
     // Reset état pour éviter les fuites entre clients
     this.client     = null;
-    this.programme  = null;
+    this.programmes = [];
     this.templates  = [];
     this._assigning = false;
 
@@ -38,9 +38,9 @@ const CoachClientProgrammePage = {
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
 
     try {
-      [this.client, this.programme, this.templates] = await Promise.all([
+      [this.client, this.programmes, this.templates] = await Promise.all([
         db.getProfile(params.clientId),
-        db.getClientProgrammeActif(params.clientId),
+        db.getClientProgrammesActifs(params.clientId),
         db.getProgTemplates(profile.id),
       ]);
 
@@ -61,21 +61,16 @@ const CoachClientProgrammePage = {
   _render(tabsHtml = '') {
     const el = document.getElementById('cpContent');
     if (!el) return;
-    const p = this.programme;
+    const progs = this.programmes || [];
 
-    el.innerHTML = tabsHtml + (p ? this._programmeCard(p) : this._emptyCard()) + `
-      <div style="display:flex;gap:10px;margin-top:1rem;flex-wrap:wrap;">
-        ${p ? `
-        <button class="btn btn-secondary" style="flex:1;"
-          onclick="CoachClientProgrammePage.openEditor()">
-          ✏️ Modifier le programme
-        </button>` : ''}
-        <button class="btn btn-primary" style="flex:1;"
-          onclick="CoachClientProgrammePage.openAssignModal()">
-          ${p ? '🔄 Changer de programme' : '+ Assigner un programme'}
-        </button>
-      </div>
-      ${p ? `
+    el.innerHTML = tabsHtml
+      + (progs.length ? progs.map(p => this._programmeCard(p)).join('') : this._emptyCard())
+      + `
+      <button class="btn btn-primary" style="width:100%;margin-top:1rem;"
+        onclick="CoachClientProgrammePage.openAssignModal()">
+        + Assigner un programme
+      </button>
+      ${progs.length ? `
       <button id="cpNotifyBtn" class="btn btn-secondary" style="width:100%;margin-top:8px;"
         onclick="CoachClientProgrammePage.notifyClient()">
         🔔 Notifier le client
@@ -88,6 +83,14 @@ const CoachClientProgrammePage = {
       : 'Non définie';
 
     const seancesHtml = (p.seances || []).map(s => {
+      if (s.cardio) {
+        return `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="font-weight:600;font-size:13px;color:#EF4444;">🏃 ${s.nom}
+            <span style="font-size:11px;font-weight:400;color:var(--gray-muted);">· cardio (progression par semaine)</span>
+          </div>
+        </div>`;
+      }
       const exos = s.exercices || [];
       return `
         <div style="padding:10px 0;border-bottom:1px solid var(--border);">
@@ -109,19 +112,20 @@ const CoachClientProgrammePage = {
     }).join('');
 
     return `
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-          <div>
+      <div class="card" style="margin-bottom:0.75rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;">
+          <div style="flex:1;min-width:0;">
             <div style="font-weight:700;font-size:16px;">${p.nom}</div>
             <div style="font-size:12px;color:var(--gray-muted);margin-top:3px;">
-              Démarré le ${dateDebut}
+              Démarré le ${dateDebut} · ${(p.seances || []).length} séance${(p.seances || []).length > 1 ? 's' : ''}
             </div>
           </div>
-          <span style="font-size:11px;padding:3px 10px;border-radius:12px;
-            background:#dcfce7;color:#16a34a;font-weight:600;">Actif</span>
-        </div>
-        <div style="font-size:12px;color:var(--gray-muted);margin-bottom:8px;">
-          ${(p.seances || []).length} séance${(p.seances || []).length > 1 ? 's' : ''}
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="btn btn-secondary btn-small" title="Modifier"
+              onclick="CoachClientProgrammePage.openEditor('${p.id}')">✏️</button>
+            <button class="btn btn-ghost btn-small" style="color:var(--error);" title="Retirer"
+              onclick="CoachClientProgrammePage.removeProgramme('${p.id}','${(p.nom||'').replace(/'/g,"\\'")}')">×</button>
+          </div>
         </div>
         ${seancesHtml || '<div style="font-size:13px;color:var(--gray-muted);">Aucune séance.</div>'}
       </div>`;
@@ -137,13 +141,24 @@ const CoachClientProgrammePage = {
       </div>`;
   },
 
-  openEditor() {
-    if (!this.programme) return;
+  openEditor(progId) {
+    if (!progId) return;
     Router.navigate('coach-prog-template-edit', {
-      clientProgrammeId: this.programme.id,
+      clientProgrammeId: progId,
       clientId:          this.client.id,
       clientPrenom:      this.client.prenom || '',
     });
+  },
+
+  async removeProgramme(progId, nom) {
+    if (!confirm(`Retirer le programme "${nom}" de ce client ?\nL'historique de séances est conservé.`)) return;
+    try {
+      await db.deactivateClientProgramme(progId);
+      this.programmes = this.programmes.filter(p => p.id !== progId);
+      const tabsHtml = coachClientNav(this.client.id, 'coach-client-programme');
+      this._render(tabsHtml);
+      toast('Programme retiré', 'info');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   openAssignModal() {
@@ -214,10 +229,11 @@ const CoachClientProgrammePage = {
         this.client.id,
         Router.userProfile.id,
         dateDebut
+        // deactivateOthers omis → ajoute sans remplacer les autres
       );
 
-      // Recharger le programme
-      this.programme = await db.getClientProgrammeActif(this.client.id);
+      // Recharger la liste des programmes actifs
+      this.programmes = await db.getClientProgrammesActifs(this.client.id);
       document.getElementById('cpModal').innerHTML = '';
       this._assigning = false;
 
@@ -236,14 +252,14 @@ const CoachClientProgrammePage = {
   },
 
   async notifyClient() {
-    if (!this.programme || !this.client) return;
+    if (!this.programmes.length || !this.client) return;
     const btn = document.getElementById('cpNotifyBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
     try {
       await db.sendPush(
         this.client.id,
         '💪 Programme mis à jour',
-        `${Router.userProfile?.prenom || 'Ton coach'} a mis à jour ton programme : ${this.programme.nom}`,
+        `${Router.userProfile?.prenom || 'Ton coach'} a mis à jour ton entraînement`,
         '#entrainement'
       );
       if (btn) { btn.textContent = '✓ Notification envoyée !'; }
