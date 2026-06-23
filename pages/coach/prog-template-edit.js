@@ -154,7 +154,7 @@ const CoachProgTemplateEditPage = {
         document.getElementById('tplEditTitle').textContent = tpl.nom;
 
       } else {
-        this.templateData = { nom: '', description: '', nb_semaines: 4 };
+        this.templateData = { nom: '', description: '', nb_semaines: 4, tag: null, consignes: '' };
         document.getElementById('tplEditTitle').textContent = 'Nouveau programme';
       }
 
@@ -263,14 +263,14 @@ const CoachProgTemplateEditPage = {
           ${this._clientMode ? `
           <div style="flex:2;min-width:220px;">
             <div style="font-size:12px;color:var(--gray-muted);margin-bottom:4px;">Programme de ${this._clientPrenom}</div>
-            <input class="input" id="tplNom" value="${d.nom.replace(/"/g,'&quot;')}"
+            <input class="input" id="tplNom" value="${(d.nom||'').replace(/"/g,'&quot;')}"
               placeholder="Nom du programme"
               oninput="document.getElementById('tplEditTitle').textContent=this.value||'Programme'">
             <div style="font-size:11px;color:var(--gold);margin-top:4px;">✏️ Modifications pour ce client uniquement — le template n'est pas modifié</div>
           </div>` : `
           <div style="flex:2;min-width:220px;">
             <div class="form-label">Nom du programme</div>
-            <input class="input" id="tplNom" value="${d.nom.replace(/"/g,'&quot;')}"
+            <input class="input" id="tplNom" value="${(d.nom||'').replace(/"/g,'&quot;')}"
               placeholder="ex : Push Pull Legs — 3j/sem"
               oninput="document.getElementById('tplEditTitle').textContent=this.value||'Nouveau programme'">
           </div>
@@ -281,7 +281,7 @@ const CoachProgTemplateEditPage = {
           </div>
           <div style="flex:2;min-width:220px;">
             <div class="form-label">Description (optionnel)</div>
-            <input class="input" id="tplDesc" value="${d.description.replace(/"/g,'&quot;')}"
+            <input class="input" id="tplDesc" value="${(d.description||'').replace(/"/g,'&quot;')}"
               placeholder="ex : Hypertrophie, 3 séances/semaine">
           </div>
           <div style="min-width:200px;">
@@ -307,7 +307,7 @@ const CoachProgTemplateEditPage = {
                    background:var(--card-bg);color:var(--black);font-size:13px;
                    padding:10px 12px;font-family:var(--font);resize:vertical;
                    box-sizing:border-box;line-height:1.5;"
-          >${d.consignes.replace(/</g,'&lt;')}</textarea>
+          >${(d.consignes||'').replace(/</g,'&lt;')}</textarea>
         </div>
       </div>
 
