@@ -427,8 +427,8 @@ const CoachProgTemplateEditPage = {
   },
 
   _toggleCardio(si) {
+    // _syncFromDOM lit déjà l'état coché de la case → pas de flip manuel
     this._syncFromDOM();
-    this.seances[si].cardio = !this.seances[si].cardio;
     this.renderContent();
   },
 
