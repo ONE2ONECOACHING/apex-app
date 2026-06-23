@@ -125,11 +125,36 @@ const EntrainementPage = {
             <div style="color:var(--gray-muted);font-size:18px;">›</div>
           </div>
         </div>` : ''}
-      ${(p.seances || []).length === 0
-        ? `<div class="empty-state"><div class="empty-icon">📭</div>
-           <div class="empty-text">Aucune séance dans ce programme.</div></div>`
-        : (p.seances || []).map(s => this._seanceCard(s)).join('')
-      }`;
+      ${this._renderSeancesGrouped(p.seances || [])}`;
+  },
+
+  _renderSeancesGrouped(seances) {
+    if (seances.length === 0) {
+      return `<div class="empty-state"><div class="empty-icon">📭</div>
+        <div class="empty-text">Aucune séance dans ce programme.</div></div>`;
+    }
+    const renfo  = seances.filter(s => !s.cardio);
+    const cardio = seances.filter(s => s.cardio);
+
+    // Si un seul type → pas de séparateur (affichage simple)
+    if (!renfo.length || !cardio.length) {
+      return seances.map(s => this._seanceCard(s)).join('');
+    }
+
+    const header = (icon, label, color) => `
+      <div style="display:flex;align-items:center;gap:8px;margin:4px 0 10px;">
+        <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:${color};">
+          ${icon} ${label}
+        </div>
+        <div style="flex:1;height:1px;background:${color};opacity:.25;"></div>
+      </div>`;
+
+    return `
+      ${header('💪', 'Renforcement', 'var(--gold)')}
+      ${renfo.map(s => this._seanceCard(s)).join('')}
+      <div style="height:8px;"></div>
+      ${header('🏃', 'Cardio', '#EF4444')}
+      ${cardio.map(s => this._seanceCard(s)).join('')}`;
   },
 
   // Semaine en cours du programme = nb de semaines depuis sa date de début
