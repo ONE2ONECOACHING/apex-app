@@ -20,6 +20,9 @@ const PlanPage = {
     { nom: 'Semoule',           kcal: 360, p: 12,  g: 73, l: 1   },
     { nom: 'Lentilles',         kcal: 353, p: 24,  g: 60, l: 1.1 },
     { nom: 'Pain complet',      kcal: 247, p: 9,   g: 41, l: 3.5 },
+    { nom: 'Frites friteuse',   kcal: 312, p: 3.4, g: 41, l: 15  },
+    { nom: 'Frites au four',    kcal: 190, p: 3.2, g: 30, l: 6   },
+    { nom: 'Frites airfryer',   kcal: 160, p: 3,   g: 27, l: 4   },
   ],
   _proteines: [
     { nom: 'Blanc de poulet',      kcal: 110, p: 23, g: 0,   l: 1.5 },
