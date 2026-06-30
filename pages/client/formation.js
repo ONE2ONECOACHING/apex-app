@@ -114,7 +114,7 @@ const FormationPage = {
                   allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
                 </iframe>
               </div>` : ''}
-              ${l.description ? `<div style="font-size:14px;color:var(--black);line-height:1.7;margin-bottom:14px;">${l.description}</div>` : ''}
+              ${l.description ? `<div style="margin-bottom:14px;">${this._formatLesson(l.description)}</div>` : ''}
               <button class="btn ${done ? 'btn-secondary' : 'btn-primary'}" style="height:48px;"
                 onclick="FormationPage._toggleComplete('${l.id}', ${!done})">
                 ${done ? '↩ Marquer comme non vue' : '✅ Marquer comme vue'}
@@ -312,5 +312,70 @@ const FormationPage = {
     if (!url) return null;
     const m = url.match(/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/);
     return m ? m[1] : null;
+  },
+
+  // Met en forme le texte brut d'une leçon : titres, puces, encadrés, espacements
+  _formatLesson(raw) {
+    if (!raw) return '';
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const isEmoji = l => /^[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}\u{2700}-\u{27BF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/u.test(l);
+    const lines = raw.replace(/\r/g, '').split('\n');
+    let out = '', listBuf = [], listMode = false;
+
+    const flush = () => {
+      if (listBuf.length) {
+        out += `<ul style="margin:6px 0 12px;padding:0;list-style:none;">${listBuf.map(t =>
+          `<li style="position:relative;padding-left:20px;margin-bottom:6px;font-size:14px;line-height:1.6;color:var(--black);">
+             <span style="position:absolute;left:2px;top:0;color:var(--gold);font-weight:700;">›</span>${t}</li>`).join('')}</ul>`;
+        listBuf = [];
+      }
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) { flush(); listMode = false; continue; }
+
+      // Encadré (insight / avertissement)
+      if (/^(👉|⚠️|💡|🔴|✋|❗)/.test(line)) {
+        flush(); listMode = false;
+        const warn = /^(⚠️|🔴|❗)/.test(line);
+        out += `<div style="background:${warn ? '#fef2f2' : 'var(--gold-light)'};
+          border-left:3px solid ${warn ? '#EF4444' : 'var(--gold)'};border-radius:8px;
+          padding:9px 12px;margin:10px 0;font-size:14px;line-height:1.6;color:var(--black);">${esc(line)}</div>`;
+        continue;
+      }
+
+      // Titre de section : ligne emoji, courte, sans ponctuation finale
+      if (isEmoji(line) && line.length < 60 && !/[.?!]$/.test(line)) {
+        flush();
+        listMode = /:$/.test(line);
+        out += `<div style="font-size:16px;font-weight:800;color:var(--black);
+          margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${esc(line)}</div>`;
+        continue;
+      }
+
+      // Puce explicite
+      if (/^[-•▪✅✔]\s*/.test(line)) {
+        listBuf.push(esc(line.replace(/^[-•▪✅✔]\s*/, '')));
+        continue;
+      }
+
+      // Intro de liste (ligne courte finissant par : ou ?)
+      if (/[:?]$/.test(line) && line.length < 75) {
+        flush();
+        out += `<div style="font-weight:700;font-size:14px;margin:12px 0 4px;color:var(--black);">${esc(line)}</div>`;
+        listMode = true;
+        continue;
+      }
+
+      // En mode liste, ligne courte → puce
+      if (listMode && line.length < 95) { listBuf.push(esc(line)); continue; }
+
+      // Paragraphe
+      flush();
+      out += `<p style="margin:0 0 11px;font-size:14px;line-height:1.7;color:var(--black);">${esc(line)}</p>`;
+    }
+    flush();
+    return out;
   }
 };
