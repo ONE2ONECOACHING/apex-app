@@ -97,10 +97,13 @@ const CoachClientProgrammePage = {
           <div style="font-weight:600;font-size:13px;margin-bottom:4px;">📌 ${s.nom}</div>
           ${exos.slice(0, 4).map(e => {
             const te  = e.type_effort || 'reps';
+            // Reps réelles : dérivées de series_data (reps_cible peut être obsolète)
+            const sd  = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
+            const reps = sd.length ? ([...new Set(sd)].length <= 1 ? sd[0] : [...new Set(sd)].join('/')) : (e.reps_cible || '10');
             const qty = te === 'amrap'    ? `AMRAP ${e.reps_cible}`
                       : te === 'temps'    ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)
                       : te === 'distance' ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)
-                      : `${e.series}×${e.reps_cible}`;
+                      : `${e.series}×${reps}`;
             return `<div style="font-size:12px;color:var(--gray-muted);padding:1px 0;">
               · ${e.exercices_bdd?.nom || '—'} — ${qty}
             </div>`;

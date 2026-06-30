@@ -233,6 +233,8 @@ const CoachProgTemplateEditPage = {
         if (newSeriesData.length > 0) {
           ex.series_data = newSeriesData;
           ex.series = newSeriesData.length;
+          // Garder reps_cible cohérent avec la 1ère série (sinon valeur figée obsolète)
+          ex.reps_cible = newSeriesData[0].reps || '10';
         }
 
         // 3. Champs non-indexés (modes non-reps)
