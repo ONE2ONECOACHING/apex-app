@@ -266,6 +266,7 @@ function clientNav(activeTab) {
     { key: 'entrainement', icon: '💪', label: 'Entraîn.' },
     { key: 'formation',    icon: '📚', label: 'Formation' },
     { key: 'mesure',       icon: '📏', label: 'Mesures' },
+    { key: 'outils',       icon: '🛠️', label: 'Outils' },
   ];
   return `<nav class="nav-bottom"><div class="nav-inner">${items.map(i =>
     `<a class="nav-item${i.key === activeTab ? ' active' : ''}" href="#${i.key}"><span class="nav-icon">${i.icon}</span><span class="nav-label">${i.label}</span></a>`

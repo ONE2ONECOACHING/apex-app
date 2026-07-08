@@ -245,10 +245,15 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   box-shadow: 0 -1px 0 rgba(0,0,0,0.04), 0 -8px 24px rgba(0,0,0,0.04);
 }
-.nav-inner { display: flex; max-width: 680px; width: 100%; }
+.nav-inner {
+  display: flex; max-width: 680px; width: 100%;
+  overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.nav-inner::-webkit-scrollbar { display: none; }
 .nav-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  padding: 10px 0 8px; cursor: pointer; text-decoration: none;
+  flex: 1 0 auto; min-width: 58px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 9px 0 7px; cursor: pointer; text-decoration: none;
   border: none; background: none; font-family: var(--font);
   transition: all 0.2s; position: relative;
 }
@@ -258,9 +263,9 @@ textarea.input { height: auto; padding: 12px 14px; resize: vertical; min-height:
   transition: width 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 .nav-item.active::after { width: 28px; }
-.nav-item .nav-icon { font-size: 20px; margin-bottom: 2px; transition: transform 0.2s; }
+.nav-item .nav-icon { font-size: 19px; margin-bottom: 2px; transition: transform 0.2s; }
 .nav-item.active .nav-icon { transform: scale(1.12); }
-.nav-item .nav-label { font-size: 10px; font-weight: 600; color: var(--gray-muted); letter-spacing: 0.02em; text-transform: uppercase; }
+.nav-item .nav-label { font-size: 9px; font-weight: 600; color: var(--gray-muted); letter-spacing: 0.01em; text-transform: uppercase; white-space: nowrap; padding: 0 4px; }
 .nav-item.active .nav-label { color: var(--gold); }
 
 /* ── UPLOAD ZONE ── */
