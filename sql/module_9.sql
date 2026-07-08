@@ -50,7 +50,7 @@ L'effet thermique des aliments
 
 👉 C'est ton point d'ancrage stratégique.
 
-Pour l'estimer, tu peux utiliser un calculateur énergétique en ligne.
+📱 Pour l'estimer, utilise le Calculateur TDEE directement dans l'app : onglet Outils 🛠️ → Calculateur TDEE. Il est pré-rempli avec ton profil.
 
 Important : ce chiffre est une estimation. La réalité s'observe via :
 Ton poids moyen
@@ -147,7 +147,7 @@ Les suppléments sont secondaires par rapport aux bases.
 🎯 Actions à mettre en place
 
 ✅ 1. Calculer ta TDEE
-Note ton estimation actuelle.
+Utilise le Calculateur TDEE (onglet Outils 🛠️) et note ton estimation.
 
 ✅ 2. Estimer ton taux de masse grasse
 Situe-toi dans l'une des zones : 10–15 %, 15–20 %, > 20 %.
