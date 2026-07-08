@@ -500,6 +500,11 @@ const CoachFormationsPage = {
   _openAssignModal(formationId) {
     const f        = this.formations.find(x => x.id === formationId);
     const assigned = this.assignations.filter(a => a.formation_id === formationId).map(a => a.client_id);
+    const mods     = (f.formation_modules || []);
+
+    // Options "débloquer jusqu'à" : value = unlock_day du module
+    const offsetOptions = (selected) => mods.map(m =>
+      `<option value="${m.unlock_day || 0}" ${(m.unlock_day||0)===selected?'selected':''}>${(m.titre||'').replace(/"/g,'&quot;')}</option>`).join('');
 
     document.getElementById('fModal').innerHTML = `
       <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('fModal').innerHTML=''">
@@ -507,27 +512,38 @@ const CoachFormationsPage = {
           <div class="modal-title">👥 Assigner — ${f.titre}
             <button class="modal-close" onclick="document.getElementById('fModal').innerHTML=''">×</button>
           </div>
-          <div style="font-size:12px;color:var(--gray-muted);margin-bottom:12px;">
-            Coche les clients qui doivent avoir accès à cette formation.
+          <div style="font-size:12px;color:var(--gray-muted);margin-bottom:12px;line-height:1.5;">
+            Coche les clients. Pour ceux qui ont déjà avancé (ex. Podia), choisis
+            <b>jusqu'à quel module débloquer maintenant</b> — les suivants s'ouvriront ensuite au rythme normal (+15j) depuis aujourd'hui.
           </div>
-          <div style="display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto;">
+          <div style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;">
             ${this.clients.map(c => {
-              const isAssigned = assigned.includes(c.id);
+              const asg = this.assignations.find(a => a.client_id === c.id && a.formation_id === formationId);
+              const isAssigned = !!asg;
+              const offset = asg?.unlock_offset || 0;
               const initials = ((c.prenom||'C')[0]+(c.nom?c.nom[0]:'')).toUpperCase();
               return `
-                <label style="display:flex;align-items:center;gap:12px;padding:10px 12px;
-                               background:${isAssigned ? 'var(--gold-light)' : 'var(--card-bg)'};
-                               border:1.5px solid ${isAssigned ? 'var(--gold-border)' : 'var(--border-solid)'};
-                               border-radius:12px;cursor:pointer;">
-                  <input type="checkbox" ${isAssigned ? 'checked' : ''}
-                    onchange="CoachFormationsPage._toggleAssign(this,'${c.id}','${formationId}')"
-                    style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0;">
-                  <div class="client-avatar" style="width:32px;height:32px;font-size:11px;flex-shrink:0;">${initials}</div>
-                  <div style="flex:1;">
-                    <div style="font-size:14px;font-weight:600;">${c.prenom} ${c.nom || ''}</div>
-                    ${c.coach_tag ? `<div style="font-size:11px;color:var(--gray-muted);">${c.coach_tag}</div>` : ''}
+                <div style="padding:10px 12px;border-radius:12px;
+                            background:${isAssigned ? 'var(--gold-light)' : 'var(--card-bg)'};
+                            border:1.5px solid ${isAssigned ? 'var(--gold-border)' : 'var(--border-solid)'};">
+                  <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                    <input type="checkbox" ${isAssigned ? 'checked' : ''}
+                      onchange="CoachFormationsPage._toggleAssign(this,'${c.id}','${formationId}')"
+                      style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0;">
+                    <div class="client-avatar" style="width:32px;height:32px;font-size:11px;flex-shrink:0;">${initials}</div>
+                    <div style="flex:1;">
+                      <div style="font-size:14px;font-weight:600;">${c.prenom} ${c.nom || ''}</div>
+                      ${c.coach_tag ? `<div style="font-size:11px;color:var(--gray-muted);">${c.coach_tag}</div>` : ''}
+                    </div>
+                  </label>
+                  <div id="foffwrap_${c.id}" style="display:${isAssigned?'flex':'none'};align-items:center;gap:8px;margin-top:8px;padding-left:30px;">
+                    <span style="font-size:11px;color:var(--gray-muted);white-space:nowrap;">🔓 Débloquer jusqu'à</span>
+                    <select id="foffset_${c.id}" class="input" style="height:34px;font-size:12px;flex:1;"
+                      onchange="CoachFormationsPage._setOffset('${c.id}','${formationId}',this.value)">
+                      ${offsetOptions(offset)}
+                    </select>
                   </div>
-                </label>`;
+                </div>`;
             }).join('')}
           </div>
         </div>
@@ -535,21 +551,36 @@ const CoachFormationsPage = {
   },
 
   async _toggleAssign(checkbox, clientId, formationId) {
+    const wrap = document.getElementById('foffwrap_' + clientId);
     try {
       if (checkbox.checked) {
-        await db.assignFormation(clientId, formationId, Router.userProfile.id);
-        if (!this.assignations.find(a => a.client_id === clientId && a.formation_id === formationId)) {
-          this.assignations.push({ client_id: clientId, formation_id: formationId });
-        }
+        const offset = parseInt(document.getElementById('foffset_' + clientId)?.value) || 0;
+        await db.assignFormation(clientId, formationId, Router.userProfile.id, offset);
+        const ex = this.assignations.find(a => a.client_id === clientId && a.formation_id === formationId);
+        if (ex) ex.unlock_offset = offset;
+        else this.assignations.push({ client_id: clientId, formation_id: formationId, unlock_offset: offset });
+        if (wrap) wrap.style.display = 'flex';
         toast('Formation assignée', 'success');
       } else {
         await db.unassignFormation(clientId, formationId);
         this.assignations = this.assignations.filter(a => !(a.client_id === clientId && a.formation_id === formationId));
+        if (wrap) wrap.style.display = 'none';
         toast('Formation retirée', 'info');
       }
     } catch (e) {
       checkbox.checked = !checkbox.checked;
       toast('Erreur : ' + e.message, 'error');
     }
+  },
+
+  async _setOffset(clientId, formationId, value) {
+    const offset = parseInt(value) || 0;
+    const asg = this.assignations.find(a => a.client_id === clientId && a.formation_id === formationId);
+    if (!asg) return; // pas encore assigné
+    try {
+      await db.setFormationOffset(clientId, formationId, offset);
+      asg.unlock_offset = offset;
+      toast('Déblocage mis à jour', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   }
 };

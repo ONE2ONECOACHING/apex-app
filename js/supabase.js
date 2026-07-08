@@ -1424,18 +1424,36 @@ const db = {
   },
 
   async getFormationAssignations(coachId) {
-    const { data } = await getSupabase()
+    let { data, error } = await getSupabase()
       .from('formation_assignations')
-      .select('client_id, formation_id')
+      .select('client_id, formation_id, unlock_offset')
       .eq('coach_id', coachId);
+    if (error) { // compat sans la colonne
+      ({ data } = await getSupabase().from('formation_assignations')
+        .select('client_id, formation_id').eq('coach_id', coachId));
+    }
     return data || [];
   },
 
-  async assignFormation(clientId, formationId, coachId) {
+  async assignFormation(clientId, formationId, coachId, unlockOffset = 0) {
+    const row = { client_id: clientId, formation_id: formationId, coach_id: coachId, unlock_offset: unlockOffset };
+    let { error } = await getSupabase()
+      .from('formation_assignations')
+      .upsert(row, { onConflict: 'client_id,formation_id' });
+    // Compat si la colonne unlock_offset n'existe pas encore
+    if (error) {
+      delete row.unlock_offset;
+      ({ error } = await getSupabase().from('formation_assignations')
+        .upsert(row, { onConflict: 'client_id,formation_id' }));
+    }
+    if (error) throw error;
+  },
+
+  async setFormationOffset(clientId, formationId, unlockOffset) {
     const { error } = await getSupabase()
       .from('formation_assignations')
-      .upsert({ client_id: clientId, formation_id: formationId, coach_id: coachId },
-               { onConflict: 'client_id,formation_id' });
+      .update({ unlock_offset: unlockOffset })
+      .eq('client_id', clientId).eq('formation_id', formationId);
     if (error) throw error;
   },
 
@@ -1451,7 +1469,7 @@ const db = {
   async getClientFormation(clientId) {
     const { data } = await getSupabase()
       .from('formation_assignations')
-      .select('formation_id, assigned_at, formations(*, formation_modules(*, formation_lecons(*)))')
+      .select('formation_id, assigned_at, unlock_offset, formations(*, formation_modules(*, formation_lecons(*)))')
       .eq('client_id', clientId)
       .single();
     if (!data) return null;
@@ -1459,6 +1477,7 @@ const db = {
     return {
       ...f,
       assigned_at: data.assigned_at,
+      unlock_offset: data.unlock_offset || 0,
       formation_modules: (f.formation_modules || [])
         .sort((a, b) => a.ordre - b.ordre)
         .map(m => ({ ...m, formation_lecons: (m.formation_lecons || []).sort((a, b) => a.ordre - b.ordre) }))

@@ -132,7 +132,10 @@ const FormationPage = {
       const doneMod    = lecons.filter(l => doneIds.has(l.id)).length;
       const isOpen     = this._openModuleId === m.id;
       const allDone    = lecons.length > 0 && doneMod === lecons.length;
-      const unlockDay  = m.unlock_day || 0;
+      // Décalage client (déjà avancé sur Podia) : les modules jusqu'à l'offset
+      // sont débloqués tout de suite, les suivants suivent le rythme +15j.
+      const offset     = this.formation.unlock_offset || 0;
+      const unlockDay  = Math.max(0, (m.unlock_day || 0) - offset);
       const isLocked   = daysSince < unlockDay;
       const daysLeft   = unlockDay - daysSince;
 
