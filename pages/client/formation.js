@@ -345,8 +345,8 @@ const FormationPage = {
         continue;
       }
 
-      // Titre de section : ligne emoji, courte, sans ponctuation finale
-      if (isEmoji(line) && line.length < 60 && !/[.?!]$/.test(line)) {
+      // Titre de section : ligne emoji, courte, pas une phrase (ne finit pas par un point)
+      if (isEmoji(line) && line.length < 60 && !/\.$/.test(line)) {
         flush();
         listMode = /:$/.test(line);
         out += `<div style="font-size:16px;font-weight:800;color:var(--black);
