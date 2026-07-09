@@ -95,6 +95,7 @@ const SeanceActivePage = {
           if (b) b.style.width = (this._restTotal > 0 ? (this._restRemaining / this._restTotal * 100) : 0).toFixed(1) + '%';
           if (this._restRemaining <= 0) {
             clearInterval(this._restTimer);
+            this._restTimer = null; this._restStartTime = 0;
             this._phase = 'exercice'; this._intraRest = false;
             this._removeBanner(); this._enableValidateBtn();
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
@@ -575,6 +576,12 @@ const SeanceActivePage = {
     if (!ex) return;
     const effort = ex.type_effort || 'reps';
 
+    // Exercice déjà entièrement loggé (revenu dessus en lecture) → ne rien pousser
+    if (effort === 'reps' && this._serieIdx >= this._nbSeries(ex)) {
+      this._nextExo();
+      return;
+    }
+
     // Reset phase AMRAP après validation du score
     if (effort === 'amrap' && this._amrapPhase === 'done') this._amrapPhase = 'idle';
 
@@ -747,6 +754,8 @@ const SeanceActivePage = {
 
       if (this._restRemaining <= 0) {
         clearInterval(this._restTimer);
+        this._restTimer     = null;
+        this._restStartTime = 0;
         this._phase     = 'exercice';
         this._intraRest = false;
         this._removeBanner();
@@ -992,6 +1001,8 @@ const SeanceActivePage = {
 
   _skipRest() {
     clearInterval(this._restTimer);
+    this._restTimer     = null;
+    this._restStartTime = 0;
     this._restRemaining = 0;
     this._phase         = 'exercice';
     this._intraRest     = false;
@@ -1051,6 +1062,10 @@ const SeanceActivePage = {
     clearInterval(this._amrapTimer);
     this._amrapTimer = null;
     this._amrapPhase = 'idle';
+    // Réinitialiser l'état 2e effort (sinon corruption du set de l'exo suivant)
+    this._effortIdx = 0;
+    this._pendingE1 = null;
+    this._intraRest = false;
     if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
     this._removeBanner();
     const ex = this._seance.exercices[idx];
@@ -1058,7 +1073,8 @@ const SeanceActivePage = {
     this._exoIdx   = idx;
     const logged   = this._logs[idx]?.sets_data?.length || 0;
     const maxSer   = this._nbSeries(ex);
-    this._serieIdx = Math.max(0, Math.min(logged, maxSer - 1));
+    // Si toutes les séries sont déjà loggées → pas de série "courante" (lecture seule)
+    this._serieIdx = Math.max(0, Math.min(logged, maxSer));
     this._phase    = 'exercice';
     this._draw();
   },
@@ -1078,6 +1094,9 @@ const SeanceActivePage = {
     if (!confirm('Terminer la séance maintenant ?\nSeules les séries déjà validées seront enregistrées.')) return;
     clearInterval(this._restTimer);
     clearInterval(this._sessionTimer);
+    clearInterval(this._amrapTimer);
+    this._amrapTimer = null;
+    this._amrapPhase = 'idle';
     this._removeBanner();
     this._phase = 'done';
     this._draw();
@@ -1088,6 +1107,8 @@ const SeanceActivePage = {
     if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
     clearInterval(this._sessionTimer);
     clearInterval(this._restTimer);
+    clearInterval(this._amrapTimer);
+    this._amrapTimer = null;
     this._removeBanner();
     this._seance        = null;
     this._logs          = [];

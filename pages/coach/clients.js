@@ -103,7 +103,17 @@ const CoachClientsPage = {
 
   setSearch(q) {
     this._searchQuery = q.trim().toLowerCase();
+    // Mémoriser quel champ avait le focus pour le restaurer après re-render
+    const activeId = document.activeElement?.id;
     this.renderDashboard();
+    if (activeId === 'clientSearchInput' || activeId === 'suiviSearchInput') {
+      const input = document.getElementById(activeId);
+      if (input) {
+        input.focus();
+        const end = input.value.length;
+        try { input.setSelectionRange(end, end); } catch (e) {}
+      }
+    }
   },
 
   renderDashboard() {
@@ -168,7 +178,7 @@ const CoachClientsPage = {
         <div class="dash-section-title" style="margin-bottom:0;">👥 Clients <span class="dash-badge dash-badge-gray">${filtered.length}</span></div>
         <input id="clientSearchInput" class="input" type="search"
           placeholder="🔍 Chercher…"
-          value="${this._searchQuery}"
+          value="${escHtml(this._searchQuery)}"
           oninput="CoachClientsPage.setSearch(this.value)"
           style="height:32px;font-size:13px;padding:0 10px;flex:1;min-width:0;border-radius:10px;">
       </div>
@@ -199,7 +209,7 @@ const CoachClientsPage = {
       </div>
       <div style="position:relative;margin-bottom:1rem;">
         <input id="suiviSearchInput" class="input" type="search" placeholder="🔍 Chercher…"
-          value="${this._searchQuery}"
+          value="${escHtml(this._searchQuery)}"
           oninput="CoachClientsPage.setSearch(this.value)"
           style="height:38px;font-size:14px;">
       </div>`;
@@ -379,7 +389,7 @@ const CoachClientsPage = {
       <div class="client-avatar">${initials}</div>
       <div class="client-info">
         <div class="client-name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          ${client.prenom} ${client.nom || ''} ${tagHtml}${badges}
+          ${escHtml(client.prenom)} ${escHtml(client.nom || '')} ${tagHtml}${badges}
         </div>
         <div class="client-meta">Semaine ${clientCurrentWeek(client)}</div>
       </div>
@@ -389,7 +399,7 @@ const CoachClientsPage = {
         <button class="icon-btn" title="Plan"
           onclick="event.stopPropagation();Router.navigate('coach-plan-edit',{clientId:'${client.id}'})">📋</button>
         <button class="icon-btn" title="Mesures"
-          onclick="event.stopPropagation();Router.navigate('coach-mesure-client',{clientId:'${client.id}',clientName:'${client.prenom}'})">📏</button>
+          onclick="event.stopPropagation();Router.navigate('coach-mesure-client',{clientId:'${client.id}',clientName:'${escJs(client.prenom)}'})">📏</button>
         <div class="client-arrow">›</div>
       </div>
     </div>`;

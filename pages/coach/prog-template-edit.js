@@ -126,7 +126,6 @@ const CoachProgTemplateEditPage = {
           : await db.getClientProgrammeActif(this._clientId);
         if (!prog) throw new Error('Programme introuvable.');
         this._clientProgrammeId = prog.id;
-        this.templateData = { nom: prog.nom, description: '', nb_semaines: 1, consignes: prog.consignes || '' };
         this.seances = (prog.seances || []).map(s => ({
           id:          s.id,
           nom:         s.nom,
@@ -136,6 +135,11 @@ const CoachProgTemplateEditPage = {
           cardio:      s.cardio || false,
           cardio_weeks: Array.isArray(s.cardio_weeks) ? s.cardio_weeks : [],
         }));
+        // Nb de semaines = max de semaines cardio déjà saisies (sinon 1) → ne pas
+        // écraser une progression cardio multi-semaines au prochain enregistrement.
+        const maxCardioWeeks = this.seances.reduce(
+          (m, s) => Math.max(m, s.cardio ? (s.cardio_weeks?.length || 0) : 0), 1);
+        this.templateData = { nom: prog.nom, description: '', nb_semaines: maxCardioWeeks, consignes: prog.consignes || '' };
         document.getElementById('tplEditTitle').textContent = prog.nom;
 
       } else if (this.templateId) {
@@ -427,7 +431,26 @@ const CoachProgTemplateEditPage = {
         </div>`;
     }
     html += '</div>';
+    // En mode client (pas de champ "durée" global), permettre d'ajuster le nb de semaines
+    if (this._clientMode) {
+      html += `<div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-secondary btn-small" onclick="CoachProgTemplateEditPage._addCardioWeek()">+ Semaine</button>
+        ${nbSem > 1 ? `<button class="btn btn-secondary btn-small" onclick="CoachProgTemplateEditPage._removeCardioWeek()">− Semaine</button>` : ''}
+      </div>`;
+    }
     return html;
+  },
+
+  _addCardioWeek() {
+    this._syncFromDOM();
+    this.templateData.nb_semaines = (parseInt(this.templateData.nb_semaines) || 1) + 1;
+    this.renderContent();
+  },
+
+  _removeCardioWeek() {
+    this._syncFromDOM();
+    this.templateData.nb_semaines = Math.max(1, (parseInt(this.templateData.nb_semaines) || 1) - 1);
+    this.renderContent();
   },
 
   _toggleCardio(si) {

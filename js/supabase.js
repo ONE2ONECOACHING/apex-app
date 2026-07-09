@@ -1131,7 +1131,7 @@ const db = {
       if (e2) throw e2;
 
       for (const ex of (s.exercices || [])) {
-        await sb.from('client_prog_exercices').insert({
+        const exRow = {
           seance_id:       seance.id,
           exercice_id:     ex.exercice_id,
           ordre:           ex.ordre ?? 0,
@@ -1143,7 +1143,15 @@ const db = {
           superset_groupe: ex.superset_groupe || null,
           series_data:     ex.series_data || null,
           notes:           ex.notes || null,
-        });
+        };
+        if (ex.reps_secondaire)         exRow.reps_secondaire = ex.reps_secondaire;
+        if (ex.repos_intra_sec != null) exRow.repos_intra_sec = ex.repos_intra_sec;
+        let { error: ee } = await sb.from('client_prog_exercices').insert(exRow);
+        if (ee) { // compat avant migration 2e effort
+          delete exRow.reps_secondaire; delete exRow.repos_intra_sec;
+          ({ error: ee } = await sb.from('client_prog_exercices').insert(exRow));
+        }
+        if (ee) throw ee;
       }
     }
     return prog;
@@ -1467,12 +1475,15 @@ const db = {
   },
 
   async getClientFormation(clientId) {
+    // Un client peut avoir plusieurs formations assignées → on prend la plus récente
     const { data } = await getSupabase()
       .from('formation_assignations')
       .select('formation_id, assigned_at, unlock_offset, formations(*, formation_modules(*, formation_lecons(*)))')
       .eq('client_id', clientId)
-      .single();
-    if (!data) return null;
+      .order('assigned_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data || !data.formations) return null;
     const f = data.formations;
     return {
       ...f,

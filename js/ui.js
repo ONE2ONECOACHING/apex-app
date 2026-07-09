@@ -1,6 +1,29 @@
 // APEX APP — UI Utilities : Toast · Ripple · Stagger · Modal Close · AMRAP ambiance
 
 /* ═══════════════════════════════════════════════════════════
+   🅐 HTML ESCAPE — texte utilisateur injecté dans du HTML
+   escHtml(s) → sûr pour texte ET attributs (value="...", etc.)
+   escJs(s)   → sûr pour une string JS dans onclick="fn('...')"
+   ═══════════════════════════════════════════════════════════ */
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function escJs(s) {
+  return String(s == null ? '' : s)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '')
+    .replace(/</g, '\\x3C');
+}
+
+/* ═══════════════════════════════════════════════════════════
    🅑 TOAST SYSTEM
    Usage : toast('Message', 'success' | 'error' | 'info')
    ═══════════════════════════════════════════════════════════ */

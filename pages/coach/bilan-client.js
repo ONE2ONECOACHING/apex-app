@@ -140,7 +140,7 @@ const CoachBilanClientPage = {
                 ? `<span style="font-size:10px;font-weight:700;color:${diff > 0 ? '#10B981' : diff < 0 ? '#EF4444' : 'var(--gray-muted)'};">${diff > 0 ? '↑+' + diff : diff < 0 ? '↓' + diff : '='}</span>`
                 : '';
               card += `<div style="background:var(--card-bg);border-radius:10px;padding:10px;">
-                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${r.label}</div>
+                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${escHtml(r.label)}</div>
                 <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:5px;">
                   <span style="font-size:26px;font-weight:800;color:${barColor};">${val}</span>
                   <span style="font-size:12px;color:var(--gray-muted);">/10</span>
@@ -155,16 +155,16 @@ const CoachBilanClientPage = {
               const prev = prevR?.reponse;
               const diff = prev && val !== '—' ? (parseFloat(val) - parseFloat(prev)).toFixed(1) : null;
               card += `<div style="background:var(--card-bg);border-radius:10px;padding:10px;">
-                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${r.label}</div>
-                <div style="font-size:22px;font-weight:700;color:var(--black);">${val}
+                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${escHtml(r.label)}</div>
+                <div style="font-size:22px;font-weight:700;color:var(--black);">${escHtml(val)}
                   ${r.reponse && r.label.toLowerCase().includes('poids') ? '<span style="font-size:12px;color:var(--gray-muted);">kg</span>' : ''}
                   ${diff !== null ? `<span style="font-size:11px;font-weight:700;color:${parseFloat(diff) < 0 ? '#10B981' : parseFloat(diff) > 0 ? '#EF4444' : 'var(--gray-muted)'};">${parseFloat(diff) > 0 ? '+' : ''}${diff}</span>` : ''}
                 </div>
               </div>`;
             } else {
               card += `<div style="background:var(--card-bg);border-radius:10px;padding:10px;grid-column:span 2;">
-                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${r.label}</div>
-                <div style="font-size:14px;color:var(--black);line-height:1.5;">${r.reponse || '—'}</div>
+                <div style="font-size:11px;color:var(--gray-muted);margin-bottom:4px;">${escHtml(r.label)}</div>
+                <div style="font-size:14px;color:var(--black);line-height:1.5;white-space:pre-wrap;">${escHtml(r.reponse) || '—'}</div>
               </div>`;
             }
           });
