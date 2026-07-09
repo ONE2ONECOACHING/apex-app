@@ -205,8 +205,12 @@ const SeanceActivePage = {
       const isDone    = k < this._serieIdx;
       const isCurrent = k === this._serieIdx;
 
-      // Charge pré-remplie : dernière séance série k, sinon série 0, sinon cible coach
-      const lastCharge = lastExoSets[k]?.charge ?? lastExoSets[0]?.charge ?? tgt.charge ?? '';
+      // Charge pré-remplie : la charge déjà saisie cette séance (report) >
+      // dernière séance série k > série 0 > cible coach
+      const prevSessionCharge = prevSets.length ? prevSets[prevSets.length - 1]?.charge : null;
+      const lastCharge = (prevSessionCharge != null && prevSessionCharge !== '')
+        ? prevSessionCharge
+        : (lastExoSets[k]?.charge ?? lastExoSets[0]?.charge ?? tgt.charge ?? '');
 
       if (isDone) {
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
@@ -241,7 +245,7 @@ const SeanceActivePage = {
             <div>
               <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;
                           letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
-              <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
+              <input id="saCharge" type="text" inputmode="decimal"
                 value="${chargeVal}" placeholder="0"
                 style="width:100%;height:54px;text-align:center;font-size:26px;font-weight:800;
                        border:2px solid var(--border-solid);border-radius:10px;
@@ -387,7 +391,7 @@ const SeanceActivePage = {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <div>
                 <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
-                <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
+                <input id="saCharge" type="text" inputmode="decimal"
                   value="${this._lastSets[ex.exercice_id]?.[0]?.charge ?? target.charge ?? ''}" placeholder="0"
                   style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
                          border:2px solid var(--border-solid);border-radius:12px;
@@ -559,6 +563,12 @@ const SeanceActivePage = {
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
+  // Lit la charge en normalisant la virgule décimale (clavier FR) → point
+  _readCharge() {
+    const raw = document.getElementById('saCharge')?.value || '';
+    return raw.trim().replace(',', '.');
+  },
+
   _validate() {
     this._syncNote();
     const ex = this._exo();
@@ -573,7 +583,7 @@ const SeanceActivePage = {
       // Sauvegarder effort 1, démarrer repos intra-série
       this._pendingE1 = {
         reps:   document.getElementById('saReps')?.value   || '0',
-        charge: document.getElementById('saCharge')?.value || '',
+        charge: this._readCharge(),
       };
       this._effortIdx = 1;
       this._intraRest = true;
@@ -585,7 +595,7 @@ const SeanceActivePage = {
     let set;
     if (effort === 'reps') {
       const reps   = document.getElementById('saReps')?.value   || '0';
-      const charge = document.getElementById('saCharge')?.value || '';
+      const charge = this._readCharge();
       if (this._effortIdx === 1 && this._pendingE1) {
         // Combiner effort 1 + effort 2
         set = { reps: (this._pendingE1.reps || '0') + '→' + reps, charge: this._pendingE1.charge };
@@ -599,7 +609,7 @@ const SeanceActivePage = {
       const note  = document.getElementById('saNote')?.value || '';
       set = {
         reps:   [score, note].filter(Boolean).join(' — ') || ex.reps_cible || '',
-        charge: document.getElementById('saCharge')?.value || '',
+        charge: this._readCharge(),
       };
     }
 
@@ -879,7 +889,7 @@ const SeanceActivePage = {
           </div>
           <div>
             <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
-            <input id="saCharge" type="number" inputmode="decimal" min="0" step="0.5"
+            <input id="saCharge" type="text" inputmode="decimal"
               value="${lastSets[0]?.charge ?? ''}" placeholder="0"
               style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
                      border:2px solid var(--border-solid);border-radius:12px;
