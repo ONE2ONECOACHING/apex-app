@@ -87,7 +87,7 @@ const CoachBilanTemplatesPage = {
 
           <div class="field">
             <label class="field-label">Nom du template</label>
-            <input class="input" id="btNom" value="${t.nom}" placeholder="ex: Bilan hebdo standard">
+            <input class="input" id="btNom" value="${escHtml(t.nom)}" placeholder="ex: Bilan hebdo standard">
           </div>
 
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin-bottom:6px;">
@@ -116,7 +116,7 @@ const CoachBilanTemplatesPage = {
       : qs.map((q, i) => `
           <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
             <span style="font-size:18px;flex-shrink:0;">${q.poids ? '⚖️' : (icons[q.type] || '📝')}</span>
-            <div style="flex:1;font-size:13px;color:var(--black);">${q.label}</div>
+            <div style="flex:1;font-size:13px;color:var(--black);">${escHtml(q.label)}</div>
             <button class="btn btn-ghost btn-small" style="padding:0 7px;" onclick="CoachBilanTemplatesPage._moveQ(${i},-1)" ${i === 0 ? 'disabled style="opacity:0.3;"' : ''}>↑</button>
             <button class="btn btn-ghost btn-small" style="padding:0 7px;" onclick="CoachBilanTemplatesPage._moveQ(${i},1)" ${i === qs.length-1 ? 'disabled style="opacity:0.3;"' : ''}>↓</button>
             <button class="btn btn-ghost btn-small" style="padding:0 7px;" onclick="CoachBilanTemplatesPage._editQ(${i})">✏️</button>
@@ -240,13 +240,23 @@ const CoachBilanTemplatesPage = {
     const qs = this._tpl.questions;
     const to = idx + dir;
     if (to < 0 || to >= qs.length) return;
+    this._cancelQEdit();
     [qs[idx], qs[to]] = [qs[to], qs[idx]];
     this._refreshQList();
   },
 
   _removeQ(idx) {
+    this._cancelQEdit();
     this._tpl.questions.splice(idx, 1);
     this._refreshQList();
+  },
+
+  // Ferme un éventuel formulaire d'édition ouvert (évite un _editIdx périmé
+  // qui écraserait la mauvaise question après un réordonnancement/suppression)
+  _cancelQEdit() {
+    this._editIdx = null;
+    const form = document.getElementById('btAddQForm');
+    if (form) form.innerHTML = '';
   },
 
   async saveTemplate() {

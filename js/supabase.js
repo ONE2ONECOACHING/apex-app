@@ -771,14 +771,16 @@ const db = {
   // ── Mesures ───────────────────────────────────────────────────────────────
 
   async getMesures(profileId, limit = 50) {
+    // Récupérer les plus RÉCENTES (desc + limit) puis remettre en ordre
+    // chronologique — sinon on tronquait les mesures récentes pour un client de longue date.
     const { data, error } = await getSupabase()
       .from('mesures')
       .select('*')
       .eq('profile_id', profileId)
-      .order('date_entree', { ascending: true })
+      .order('date_entree', { ascending: false })
       .limit(limit);
     if (error) throw error;
-    return data || [];
+    return (data || []).reverse();
   },
 
   async getMesure(profileId, date) {

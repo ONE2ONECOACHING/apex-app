@@ -75,6 +75,14 @@ const DashboardPage = {
         db.getHabitudesJournal(profile.id, todayStr()).catch(() => []),
         db.getPendingBilans(profile.id).catch(() => [])
       ]);
+      // Conserver les cases cochées de manière optimiste dont l'enregistrement
+      // est encore en vol : sinon un refresh en arrière-plan les décoche. #39
+      const pending = this._pendingHabits || {};
+      Object.keys(pending).forEach(hid => {
+        const row = habitudesJournal.find(j => j.habitude_id === hid);
+        if (row) row.checked = pending[hid];
+        else habitudesJournal.push({ habitude_id: hid, checked: pending[hid] });
+      });
       this.habitudes        = habitudes;
       this.habitudesJournal = habitudesJournal;
       this.pendingBilans    = pendingBilans;
@@ -89,8 +97,10 @@ const DashboardPage = {
   renderContent() {
     const p = this.profile;
     const poidsActuel  = p.poids          ? parseFloat(p.poids)          : null;
-    const poidsDepart  = p.poids_depart   || null;
-    const poidsObjectif = p.poids_objectif || null;
+    // parseFloat requis : NUMERIC arrive en chaîne → sinon comparaisons lexicographiques
+    // faussées (ex '90' < '100' faux) et direction d'objectif inversée. #18
+    const poidsDepart  = p.poids_depart   != null && p.poids_depart   !== '' ? parseFloat(p.poids_depart)   : null;
+    const poidsObjectif = p.poids_objectif != null && p.poids_objectif !== '' ? parseFloat(p.poids_objectif) : null;
 
     let html = '';
 
@@ -140,8 +150,8 @@ const DashboardPage = {
               style="width:20px;height:20px;accent-color:var(--gold);cursor:pointer;" ${checked ? 'checked' : ''}
               onchange="DashboardPage.saveHabitude('${h.id}', this.checked)">
             <div>
-              <div style="font-weight:500;font-size:14px;">${h.label}</div>
-              ${h.tips ? `<div style="font-size:12px;color:var(--gray-muted);font-style:italic;">💡 ${h.tips}</div>` : ''}
+              <div style="font-weight:500;font-size:14px;">${escHtml(h.label)}</div>
+              ${h.tips ? `<div style="font-size:12px;color:var(--gray-muted);font-style:italic;">💡 ${escHtml(h.tips)}</div>` : ''}
             </div>
           </label>
         </div>`;
@@ -191,6 +201,9 @@ const DashboardPage = {
     const prevChecked = prev ? prev.checked : false;
     if (prev) prev.checked = checked;
     else this.habitudesJournal.push({ habitude_id: habitudeId, checked });
+    // Marquer comme en vol pour qu'un refresh concurrent ne l'écrase pas
+    if (!this._pendingHabits) this._pendingHabits = {};
+    this._pendingHabits[habitudeId] = checked;
     // Invalider le cache pour forcer un refresh complet au prochain retour
     if (this._cache) this._cache.ts = 0;
 
@@ -211,6 +224,8 @@ const DashboardPage = {
       const idx = this.habitudesJournal.findIndex(j => j.habitude_id === habitudeId);
       if (idx >= 0) this.habitudesJournal[idx].checked = prevChecked;
       console.error('Erreur habitude :', e);
+    } finally {
+      if (this._pendingHabits) delete this._pendingHabits[habitudeId];
     }
   }
 };

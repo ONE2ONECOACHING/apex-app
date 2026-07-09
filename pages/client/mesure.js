@@ -304,12 +304,32 @@ const MesurePage = {
     }
   },
 
+  // Lit les champs saisis (DOM) en repli sur la mesure enregistrée : évite
+  // d'écraser des poids/mensurations non encore sauvegardés lors d'un upload/suppression photo. #16
+  _readInputs() {
+    const m = this.mesure || {};
+    const num = (id, fb) => {
+      const el = document.getElementById(id);
+      if (!el) return fb != null ? fb : null;
+      return parseFloat(el.value) || (fb != null ? fb : null);
+    };
+    return {
+      poids:       num('mesurePoids', m.poids),
+      tour_taille: num('mesure_tour_taille', m.tour_taille),
+      hanches:     num('mesure_hanches', m.hanches),
+      poitrine:    num('mesure_poitrine', m.poitrine),
+      bras:        num('mesure_bras', m.bras),
+      cuisse:      num('mesure_cuisse', m.cuisse),
+    };
+  },
+
   async uploadPhotos(input) {
     const files = Array.from(input.files);
     if (!files.length) return;
     const resultEl = document.getElementById('mesurePhotoResult');
     resultEl.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi… (0 / ${files.length})</div>`;
     try {
+      const vals = this._readInputs();
       const newPaths = [];
       for (let i = 0; i < files.length; i++) {
         resultEl.innerHTML = `<div style="font-size:13px;color:var(--gray-muted);">📤 Envoi… (${i+1} / ${files.length})</div>`;
@@ -318,9 +338,7 @@ const MesurePage = {
       const m = this.mesure || {};
       const saved = await db.upsertMesure({
         profile_id: this.profileId, date_entree: this.currentDate,
-        poids: m.poids||null, tour_taille: m.tour_taille||null,
-        hanches: m.hanches||null, poitrine: m.poitrine||null,
-        bras: m.bras||null, cuisse: m.cuisse||null,
+        ...vals,
         photos: [...(m.photos||[]), ...newPaths]
       });
       this.mesure    = saved;
@@ -336,12 +354,11 @@ const MesurePage = {
     if (!confirm('Supprimer cette photo ?')) return;
     try {
       await db.deleteMesurePhoto(path);
-      const m     = this.mesure;
+      const vals = this._readInputs();
+      const m    = this.mesure || {};
       const saved = await db.upsertMesure({
         profile_id: this.profileId, date_entree: this.currentDate,
-        poids: m.poids||null, tour_taille: m.tour_taille||null,
-        hanches: m.hanches||null, poitrine: m.poitrine||null,
-        bras: m.bras||null, cuisse: m.cuisse||null,
+        ...vals,
         photos: (m.photos||[]).filter(p => p !== path)
       });
       this.mesure    = saved;

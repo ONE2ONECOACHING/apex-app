@@ -199,6 +199,11 @@ const CoachClientEditPage = {
 
   async save() {
     const id = this.client.id;
+    // Champ "Semaine courante" vide → conserver la valeur existante (ne pas
+    // réinitialiser à 1 ni recalculer date_debut). #44
+    const semRaw = document.getElementById('ceSemaine').value.trim();
+    const semaine = semRaw !== '' ? (parseInt(semRaw) || this.client.semaine_courante || 1)
+                                  : (this.client.semaine_courante || 1);
     const updates = {
       sexe: document.getElementById('ceSexe').value,
       age: +document.getElementById('ceAge').value || null,
@@ -209,9 +214,8 @@ const CoachClientEditPage = {
       type_metier: document.getElementById('ceMetier').value,
       pas_par_jour: +document.getElementById('cePas').value || 5000,
       objectif: document.getElementById('ceObjectif').value,
-      semaine_courante: +document.getElementById('ceSemaine').value || 1,
+      semaine_courante: semaine,
       date_debut: (() => {
-        const semaine = +document.getElementById('ceSemaine').value || 1;
         // Rétro-calculer date_debut depuis le lundi de la semaine courante
         const today = new Date();
         const dow = today.getDay();

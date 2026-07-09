@@ -84,14 +84,22 @@ const LogbookPage = {
     // Skeleton pendant le chargement (changement de date inclus)
     const el = document.getElementById('logContent');
     if (el) el.innerHTML = this._skeletonHTML();
+    // Séquencement : une navigation de date rapide ne doit pas afficher un
+    // jour périmé qui résout après le jour demandé le plus récent.
+    const seq = (this._loadSeq = (this._loadSeq || 0) + 1);
+    const reqDate = this.currentDate;
     try {
-      [this.plan, this.entries] = await Promise.all([
+      const [plan, entries] = await Promise.all([
         db.getActivePlan(profile.id),
-        db.getJournalEntries(profile.id, this.currentDate)
+        db.getJournalEntries(profile.id, reqDate)
       ]);
+      if (seq !== this._loadSeq) return; // une requête plus récente a pris le relais
+      this.plan = plan; this.entries = entries;
       this.renderContent();
     } catch (e) {
-      document.getElementById('logContent').innerHTML = '<div class="alert alert-error">Erreur de chargement. Réessaie.</div>';
+      if (seq !== this._loadSeq) return;
+      const t = document.getElementById('logContent');
+      if (t) t.innerHTML = '<div class="alert alert-error">Erreur de chargement. Réessaie.</div>';
     }
   },
 
@@ -181,7 +189,7 @@ const LogbookPage = {
       html += `</div>`;
     });
 
-    if (this.entries.length >= 2) {
+    if (this.plan && this.entries.length >= 2) {
       html += `<button class="btn btn-secondary" style="margin-top:0.5rem;" onclick="LogbookPage.generateRecap()">📊 Récap de la journée</button>`;
     }
 

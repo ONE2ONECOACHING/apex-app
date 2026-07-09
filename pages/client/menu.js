@@ -67,12 +67,16 @@ const MenuPage = {
     // Bug 31 — révoquer l'URL précédente avant d'en créer une nouvelle
     if (this._previewUrl) { URL.revokeObjectURL(this._previewUrl); this._previewUrl = null; }
     this._previewUrl = URL.createObjectURL(file);
+    // Réinitialiser : une nouvelle photo ne doit jamais analyser l'ancienne. #19
+    this._base64 = null;
     this._renderPreview();
 
     try {
       this._base64 = await this._resizeImage(file);
     } catch (_) {
-      document.getElementById('menuErr').innerHTML = '<div class="alert alert-error">Erreur lors du chargement de l\'image.</div>';
+      this._base64 = null;
+      const err = document.getElementById('menuErr');
+      if (err) err.innerHTML = '<div class="alert alert-error">Erreur lors du chargement de l\'image.</div>';
     }
   },
 
@@ -138,16 +142,22 @@ const MenuPage = {
 
       this._result = await SnapCalories.analyzeMenu(this._base64, planProfile);
       clearInterval(timer);
+      // L'utilisateur a pu quitter la page pendant l'analyse → ne pas écrire dans un DOM absent. #38
+      if (!document.getElementById('menuContent')) return;
       this._renderResult();
     } catch (err) {
       clearInterval(timer);
-      document.getElementById('menuContent').innerHTML = `
-        <div class="alert alert-error" style="margin-bottom:1rem;">${err.message}</div>
+      const el = document.getElementById('menuContent');
+      if (!el) return;
+      el.innerHTML = `
+        <div class="alert alert-error" style="margin-bottom:1rem;">${escHtml(err.message)}</div>
         <button class="btn btn-secondary" style="width:100%;" onclick="MenuPage._renderUpload()">← Recommencer</button>`;
     }
   },
 
   _renderResult() {
+    const el0 = document.getElementById('menuContent');
+    if (!el0) return;
     const r = this._result;
     const topPick = r.top?.find(p => p.best) || r.top?.[0];
 
@@ -157,7 +167,7 @@ const MenuPage = {
         <img src="${this._previewUrl}" alt="" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;">
         <div>
           <div style="font-size:12px;color:var(--gray-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Restaurant détecté</div>
-          <div style="font-size:15px;font-weight:700;">${r.restaurant || 'Restaurant'}</div>
+          <div style="font-size:15px;font-weight:700;">${escHtml(r.restaurant || 'Restaurant')}</div>
         </div>
       </div>
 
@@ -169,11 +179,11 @@ const MenuPage = {
       html += `
         <div class="card${isBest ? ' card-accent' : ''}" style="margin-bottom:10px;${isBest ? 'border:1.5px solid var(--gold);' : ''}">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">
-            <div style="font-weight:700;font-size:15px;">${plat.nom}</div>
+            <div style="font-weight:700;font-size:15px;">${escHtml(plat.nom)}</div>
             ${isBest ? `<span style="background:var(--gold);color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;flex-shrink:0;">Top choix</span>` : ''}
           </div>
-          <div style="font-size:13px;color:var(--gray);margin-bottom:6px;">${plat.raison}</div>
-          ${plat.macros ? `<div style="font-size:12px;color:var(--gray-muted);font-style:italic;">📊 ${plat.macros}</div>` : ''}
+          <div style="font-size:13px;color:var(--gray);margin-bottom:6px;">${escHtml(plat.raison)}</div>
+          ${plat.macros ? `<div style="font-size:12px;color:var(--gray-muted);font-style:italic;">📊 ${escHtml(plat.macros)}</div>` : ''}
         </div>`;
     });
 
@@ -182,8 +192,8 @@ const MenuPage = {
       html += `
         <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-muted);margin:1.25rem 0 10px;">⚠️ À éviter</div>
         <div class="card" style="border:1.5px solid #FFCDD2;background:#FFF8F8;">
-          <div style="font-weight:700;font-size:15px;margin-bottom:4px;color:var(--error);">${r.a_eviter.nom}</div>
-          <div style="font-size:13px;color:var(--gray);">${r.a_eviter.raison}</div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px;color:var(--error);">${escHtml(r.a_eviter.nom)}</div>
+          <div style="font-size:13px;color:var(--gray);">${escHtml(r.a_eviter.raison)}</div>
         </div>`;
     }
 
@@ -192,7 +202,7 @@ const MenuPage = {
       html += `
         <div style="background:var(--gold-light);border:1.5px solid var(--gold);border-radius:var(--radius-sm);padding:12px 14px;margin-top:1.25rem;">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);margin-bottom:4px;">💡 Conseil</div>
-          <div style="font-size:14px;color:var(--black);line-height:1.5;">${r.conseil}</div>
+          <div style="font-size:14px;color:var(--black);line-height:1.5;">${escHtml(r.conseil)}</div>
         </div>`;
     }
 

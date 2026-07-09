@@ -16,9 +16,12 @@ const InstallPrompt = {
       setTimeout(() => this.show(), 3000);
     });
 
-    // iOS Safari : pas d'event natif, on détecte manuellement
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    // iOS Safari : pas d'event natif, on détecte manuellement.
+    // Exclure Chrome (CriOS), Firefox (FxiOS), Edge (EdgiOS) iOS qui contiennent
+    // aussi 'Safari' dans l'UA → sinon mauvaises instructions d'installation. #46
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/.test(ua) && !window.MSStream;
+    const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|Chrome/.test(ua);
     if (isIOS && isSafari) {
       setTimeout(() => this.show(), 3000);
     }
@@ -90,9 +93,11 @@ const InstallPrompt = {
   async install() {
     if (!this._deferredPrompt) return;
     this._deferredPrompt.prompt();
-    const { outcome } = await this._deferredPrompt.userChoice;
-    if (outcome === 'accepted') this.dismiss();
+    await this._deferredPrompt.userChoice;
+    // L'invite native n'est utilisable qu'une fois : retirer la bannière quel que
+    // soit le choix (sinon un bouton Installer devient inopérant). #47
     this._deferredPrompt = null;
+    this.dismiss();
   },
 
   dismiss() {

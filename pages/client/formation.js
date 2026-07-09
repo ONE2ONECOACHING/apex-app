@@ -24,6 +24,10 @@ const FormationPage = {
     this.progression = [];
     this._openModuleId = null;
     this._openLeconId  = null;
+    // Réinitialiser l'état quizz (sinon fuite entre visites/comptes)
+    this._quizzAnswers   = {};
+    this._quizzSubmitted = {};
+    this._quizzRetake    = {};
 
     const profile = Router.userProfile;
     if (!profile || profile.role === 'coach') { window.location.hash = '#dashboard'; return; }
@@ -41,6 +45,7 @@ const FormationPage = {
 
   _quizzAnswers: {}, // { leconId: { qIdx: optionIdx } }
   _quizzSubmitted: {}, // { leconId: true }
+  _quizzRetake: {}, // { leconId: true } — refaire un quizz déjà validé
 
   _render() {
     const el = document.getElementById('formationContent');
@@ -192,9 +197,31 @@ const FormationPage = {
     const qs         = l.questions || [];
     const answers    = this._quizzAnswers[l.id] || {};
     const submitted  = this._quizzSubmitted[l.id] || false;
+    const retaking   = (this._quizzRetake || {})[l.id] || false;
     const allAnswered = qs.every((_, qi) => answers[qi] !== undefined);
 
-    if (submitted || done) {
+    // Quizz déjà validé lors d'une session précédente (réponses non persistées) :
+    // afficher une carte "validé" plutôt qu'un faux score 0/N. #14
+    if (done && !submitted && !retaking) {
+      return `
+        <div class="card" style="margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <button onclick="FormationPage._openLeconId=null;FormationPage._render()"
+              style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);">←</button>
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;">${escHtml(l.titre)}</div>
+              <div style="font-size:12px;color:var(--gray-muted);">${escHtml(m.titre)}</div></div>
+          </div>
+          <div style="text-align:center;padding:24px 0 16px;">
+            <div style="font-size:48px;margin-bottom:8px;">✅</div>
+            <div style="font-size:20px;font-weight:800;color:var(--success);">Quizz validé</div>
+            <div style="font-size:14px;color:var(--gray-muted);margin-top:6px;">Tu as déjà terminé ce quizz.</div>
+          </div>
+          <button class="btn btn-secondary" style="height:44px;margin-top:4px;"
+            onclick="FormationPage._retakeQuizz('${l.id}')">🔄 Refaire le quizz</button>
+        </div>`;
+    }
+
+    if (submitted) {
       // Résultats — scoring multi-réponses
       const score = qs.filter((q, qi) => {
         const selected = new Set(answers[qi] || []);
@@ -236,7 +263,7 @@ const FormationPage = {
           ${!done ? `<button class="btn btn-primary" style="height:48px;margin-top:14px;"
             onclick="FormationPage._toggleComplete('${l.id}', true)">✅ Valider le quizz</button>` : ''}
           <button class="btn btn-secondary" style="height:44px;margin-top:8px;"
-            onclick="delete FormationPage._quizzAnswers['${l.id}'];delete FormationPage._quizzSubmitted['${l.id}'];FormationPage._render()">
+            onclick="FormationPage._retakeQuizz('${l.id}')">
             🔄 Recommencer
           </button>
         </div>`;
@@ -301,6 +328,16 @@ const FormationPage = {
       this._render();
       if (done) toast('✅ Leçon complétée !', 'success');
     } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  // Refaire un quizz (déjà validé ou déjà soumis cette session) : on remet à zéro
+  // les réponses locales et on force l'affichage des questions. #15
+  _retakeQuizz(leconId) {
+    if (this._quizzAnswers)   delete this._quizzAnswers[leconId];
+    if (this._quizzSubmitted) delete this._quizzSubmitted[leconId];
+    if (!this._quizzRetake) this._quizzRetake = {};
+    this._quizzRetake[leconId] = true;
+    this._render();
   },
 
   _findLecon(leconId) {

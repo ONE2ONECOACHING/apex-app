@@ -153,19 +153,19 @@ const CoachExercicesPage = {
 
     return `<div class="card" style="padding:14px;margin:0;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="font-weight:700;font-size:14px;line-height:1.3;flex:1;">${ex.nom}</div>
+        <div style="font-weight:700;font-size:14px;line-height:1.3;flex:1;">${escHtml(ex.nom)}</div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
           <button class="icon-btn" title="Modifier"
             onclick="CoachExercicesPage.openEditById('${ex.id}')">✎</button>
           <button class="icon-btn" title="Supprimer"
-            onclick="CoachExercicesPage.deleteExo('${ex.id}','${ex.nom.replace(/'/g,"\\'")}')">×</button>
+            onclick="CoachExercicesPage.deleteExo('${ex.id}','${escJs(ex.nom)}')">×</button>
         </div>
       </div>
       <div style="margin:8px 0 6px;display:flex;flex-wrap:wrap;gap:4px;">
         <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:${color}22;color:${color};font-weight:600;">${muscleLabel}</span>
         <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--card-bg);color:var(--gray-light);">${equipLabel}</span>
       </div>
-      ${ex.description ? `<div style="font-size:12px;color:var(--gray);margin-top:4px;line-height:1.5;">${ex.description}</div>` : ''}
+      ${ex.description ? `<div style="font-size:12px;color:var(--gray);margin-top:4px;line-height:1.5;">${escHtml(ex.description)}</div>` : ''}
       ${ytId ? `
         <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:8px;
                     overflow:hidden;background:#000;margin-top:10px;">
@@ -209,7 +209,7 @@ const CoachExercicesPage = {
 
             <div>
               <div class="form-label">Nom</div>
-              <input class="input" id="exoNom" value="${ex.nom || ''}"
+              <input class="input" id="exoNom" value="${escHtml(ex.nom || '')}"
                 placeholder="ex : Développé couché">
             </div>
 
@@ -234,14 +234,14 @@ const CoachExercicesPage = {
 
             <div>
               <div class="form-label">Lien YouTube (optionnel)</div>
-              <input class="input" id="exoYT" value="${ex.youtube_url || ''}"
+              <input class="input" id="exoYT" value="${escHtml(ex.youtube_url || '')}"
                 placeholder="https://youtu.be/…">
             </div>
 
             <div>
               <div class="form-label">Description (optionnel)</div>
               <textarea class="input" id="exoDesc" rows="2"
-                style="resize:vertical;">${ex.description || ''}</textarea>
+                style="resize:vertical;">${escHtml(ex.description || '')}</textarea>
             </div>
 
             <div id="exoSaveErr"></div>

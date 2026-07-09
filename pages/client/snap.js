@@ -293,6 +293,9 @@ const SnapPage = {
   selectBase(index) {
     const a = this._baseCache[index];
     if (!a) return;
+    // Annuler une recherche Open Food Facts en attente : sinon elle rouvre la
+    // liste de résultats après que l'utilisateur a déjà choisi un aliment.
+    clearTimeout(this._offDebounce);
     this._baseSelected = a;
     document.getElementById('baseResults').classList.remove('show');
     document.getElementById('baseSearchInput').value = a.nom;
@@ -376,6 +379,9 @@ const SnapPage = {
   async submitCart(andSave) {
     const profile = Router.userProfile;
     if (!profile || this._cart.length === 0) return;
+    // Anti double-tap : un second appui avant la fin de l'await créerait des doublons
+    if (this._submitting) return;
+    this._submitting = true;
     try {
       for (const item of this._cart) {
         await db.addJournalEntry({
@@ -401,6 +407,7 @@ const SnapPage = {
         Router.navigate('logbook');
       }
     } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+    finally { this._submitting = false; }
   },
 
   // ── UTILITAIRE : redimensionner + compresser une image avant envoi API ───────
@@ -438,7 +445,10 @@ const SnapPage = {
     document.getElementById('snapPreview').style.display = 'block';
     document.getElementById('snapUploadZone').style.display = 'none';
     // Compression avant envoi API (limite 5 MB)
-    this._resizeImage(file).then(b64 => { this.base64 = b64; });
+    this.base64 = null;
+    this._resizePromise = this._resizeImage(file)
+      .then(b64 => { this.base64 = b64; })
+      .catch(() => { this.base64 = null; });
   },
 
   resetPhoto() {
@@ -462,16 +472,27 @@ const SnapPage = {
   },
 
   async analyze() {
-    if (!this.base64) return;
+    // Photo pas encore compressée : attendre la préparation plutôt que d'échouer en silence
+    if (!this.base64) {
+      if (this._resizePromise) {
+        toast('Préparation de la photo…', 'info');
+        await this._resizePromise;
+      }
+      if (!this.base64) { toast('Photo introuvable, reprends-la', 'error'); return; }
+    }
     const btn = document.getElementById('snapBtn');
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
     document.getElementById('snapModePhoto').style.display = 'none';
     document.getElementById('snapLoading').style.display = 'block';
 
     const steps = ['Identification du plat…', 'Estimation des portions…', 'Calcul des macros…', 'Analyse nutritionnelle…'];
     let si = 0;
     const stepEl = document.getElementById('snapStep');
-    const timer = setInterval(() => { si = (si + 1) % steps.length; stepEl.textContent = steps[si]; }, 1800);
+    const timer = setInterval(() => {
+      // Stopper si l'utilisateur a quitté la page (élément détaché du DOM)
+      if (!stepEl || !document.body.contains(stepEl)) { clearInterval(timer); return; }
+      si = (si + 1) % steps.length; stepEl.textContent = steps[si];
+    }, 1800);
 
     try {
       const profile = Router.userProfile;
@@ -492,14 +513,18 @@ const SnapPage = {
 
       this.result = await SnapCalories.analyze(this.base64, this.context, this.portions, planMacros);
       clearInterval(timer);
+      // L'utilisateur a pu quitter la page pendant l'analyse → ne pas toucher un DOM absent
+      if (!document.getElementById('snapLoading')) return;
       document.getElementById('snapLoading').style.display = 'none';
       this.renderResult();
     } catch (err) {
       clearInterval(timer);
+      if (!document.getElementById('snapLoading')) return;
       document.getElementById('snapLoading').style.display = 'none';
       document.getElementById('snapModePhoto').style.display = 'block';
-      btn.disabled = false;
-      document.getElementById('snapError').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      if (btn) btn.disabled = false;
+      const errEl = document.getElementById('snapError');
+      if (errEl) errEl.innerHTML = `<div class="alert alert-error">${escHtml(err.message)}</div>`;
     }
   },
 

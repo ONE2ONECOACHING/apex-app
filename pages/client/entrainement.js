@@ -366,7 +366,8 @@ const EntrainementPage = {
     const series = e.series || 3;
     // Reps réelles dérivées de series_data (reps_cible peut être obsolète)
     const sd     = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
-    const repsS  = sd.length ? ([...new Set(sd)].length <= 1 ? sd[0] : [...new Set(sd)].join('/')) : null;
+    // Ne pas dédupliquer : [10,10,8] doit rester '10/10/8' (ne pas masquer le vrai schéma). #33
+    const repsS  = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : null;
     const reps   = repsS || e.reps_cible || '10';
     const charge = e.charge_cible ? ` · ${e.charge_cible} kg` : '';
     const te     = e.type_effort || 'reps';
@@ -508,7 +509,8 @@ ${text.replace(/</g,'&lt;')}</div>
     const te     = e.type_effort || 'reps';
     const series = e.series || 3;
     const sd     = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
-    const repsS  = sd.length ? ([...new Set(sd)].length <= 1 ? sd[0] : [...new Set(sd)].join('/')) : null;
+    // Ne pas dédupliquer : [10,10,8] doit rester '10/10/8' (ne pas masquer le vrai schéma). #33
+    const repsS  = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : null;
     const reps   = repsS || e.reps_cible || '10';
     const label  = te === 'amrap'    ? `AMRAP ${e.reps_cible || reps}`
                  : te === 'temps'    ? `${series} × ${e.reps_cible}`

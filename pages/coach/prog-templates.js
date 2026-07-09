@@ -90,18 +90,18 @@ const CoachProgTemplatesPage = {
           gap:12px;margin:0;padding:14px 18px;">
           <div style="flex:1;min-width:0;">
             <div style="font-weight:700;font-size:15px;margin-bottom:3px;">
-              ${t.nom}${tagBadge(t.tag)}
+              ${escHtml(t.nom)}${tagBadge(t.tag)}
             </div>
             <div style="font-size:12px;color:var(--gray-light);">
               ${t.nb_semaines} semaine${t.nb_semaines > 1 ? 's' : ''}
-              ${t.description ? ` · ${t.description}` : ''}
+              ${t.description ? ` · ${escHtml(t.description)}` : ''}
             </div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
             <button class="btn btn-ghost btn-small"
               onclick="CoachProgTemplatesPage.editTemplate('${t.id}')">✎ Modifier</button>
             <button class="btn btn-ghost btn-small"
-              onclick="CoachProgTemplatesPage.deleteTemplate('${t.id}','${t.nom.replace(/'/g,"\\'")}')">× Supprimer</button>
+              onclick="CoachProgTemplatesPage.deleteTemplate('${t.id}','${escJs(t.nom)}')">× Supprimer</button>
           </div>
         </div>`).join('')}
     </div>`;

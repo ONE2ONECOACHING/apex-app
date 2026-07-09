@@ -427,11 +427,11 @@ const SeanceActivePage = {
                 border:1px solid var(--gold-border);border-radius:10px;
                 padding:7px 12px;margin-bottom:6px;line-height:1.5;">
               💬 <span style="color:var(--gold);font-weight:600;">Ta note sem. passée :</span>
-              <span style="color:var(--black);">${prevNote}</span>
+              <span style="color:var(--black);">${escHtml(prevNote)}</span>
             </div>` : '';
         })()}
         <input id="saClientNote" type="text"
-          value="${this._logs[this._exoIdx]?.note_client || ''}"
+          value="${escHtml(this._logs[this._exoIdx]?.note_client || '')}"
           placeholder="💬 Note pour ton coach (optionnel)"
           oninput="SeanceActivePage._syncNote()"
           style="width:100%;height:44px;padding:0 14px;

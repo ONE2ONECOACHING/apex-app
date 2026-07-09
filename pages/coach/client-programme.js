@@ -99,7 +99,8 @@ const CoachClientProgrammePage = {
             const te  = e.type_effort || 'reps';
             // Reps réelles : dérivées de series_data (reps_cible peut être obsolète)
             const sd  = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
-            const reps = sd.length ? ([...new Set(sd)].length <= 1 ? sd[0] : [...new Set(sd)].join('/')) : (e.reps_cible || '10');
+            // Ne pas dédupliquer : [10,10,8] doit rester '10/10/8'. #33
+            const reps = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : (e.reps_cible || '10');
             const qty = te === 'amrap'    ? `AMRAP ${e.reps_cible}`
                       : te === 'temps'    ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)
                       : te === 'distance' ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)

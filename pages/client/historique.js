@@ -106,7 +106,7 @@ const HistoriquePage = {
       <div style="margin-top:10px;background:var(--card-bg);border-radius:10px;padding:10px 12px;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
           <span style="font-size:14px;">💪</span>
-          <span style="font-size:13px;font-weight:700;color:var(--black);">${s.seance_nom || 'Séance'}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--black);">${escHtml(s.nom_seance || s.seance_nom || 'Séance')}</span>
           ${dureeMin ? `<span style="font-size:11px;color:var(--gray-muted);margin-left:auto;">${dureeMin} min</span>` : ''}
         </div>
         ${rows}

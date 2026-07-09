@@ -74,7 +74,7 @@ const ClientBilanPage = {
     } else {
       qs.forEach(q => {
         html += `<div class="bilan-question">
-          <div class="bilan-q-label">${q.label}</div>`;
+          <div class="bilan-q-label">${escHtml(q.label)}</div>`;
 
         if (q.type === 'scale') {
           html += `
@@ -104,10 +104,10 @@ const ClientBilanPage = {
           opts.forEach(opt => {
             html += `
               <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;padding:8px 10px;background:var(--card-bg);border-radius:var(--radius-sm);border:1.5px solid var(--border);">
-                <input type="radio" name="bq_${q.id}" value="${opt}"
+                <input type="radio" name="bq_${q.id}" value="${escHtml(opt)}"
                   style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0;"
                   onchange="ClientBilanPage.setAnswer('${q.id}',this.value)">
-                <span>${opt}</span>
+                <span>${escHtml(opt)}</span>
               </label>`;
           });
           html += `</div>`;

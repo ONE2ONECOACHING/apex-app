@@ -5,6 +5,9 @@ const Router = {
   userProfile: null,
 
   async init() {
+    // Attacher le listener AVANT tout return anticipé : sinon après le flux
+    // invite/recovery (set-password), les navigations suivantes restent bloquées. #45
+    window.addEventListener('hashchange', () => this.route());
     // Detect Supabase password recovery redirect (retour Supabase avec access_token)
     // Ne pas confondre avec le lien d'invitation initial #invite?t=TOKEN&type=recovery
     if (window.location.hash.includes('access_token') && window.location.hash.includes('type=recovery')) {
@@ -34,7 +37,6 @@ const Router = {
       SetPasswordPage.init();
       return;
     }
-    window.addEventListener('hashchange', () => this.route());
     await this.route();
   },
 
@@ -174,9 +176,14 @@ const Router = {
   navigate(page, params) {
     if (params) sessionStorage.setItem('routeParams', JSON.stringify(params));
     window.location.hash = '#' + page;
+    // Attacher les params à l'entrée d'historique courante : le bouton Retour
+    // restaure alors le bon état (bon clientId) au lieu des derniers params écrits. #30
+    if (params) { try { history.replaceState({ routeParams: params }, ''); } catch (_) {} }
   },
 
   getParams() {
+    // Priorité à l'état d'historique (correct après Précédent/Suivant), repli sessionStorage
+    if (history.state && history.state.routeParams) return history.state.routeParams;
     try { return JSON.parse(sessionStorage.getItem('routeParams') || '{}'); } catch { return {}; }
   },
 

@@ -526,28 +526,53 @@ const CoachProgTemplateEditPage = {
     const next = exos[ei + 1];
     if (!next) return;
 
-    if (curr.superset_groupe && curr.superset_groupe === next.superset_groupe) {
-      // Dissocier next du groupe
+    const linked = curr.superset_groupe && curr.superset_groupe === next.superset_groupe;
+    if (linked) {
+      // Casser la chaîne ENTRE ei et ei+1 : le run de droite reçoit une nouvelle
+      // lettre (le run de gauche garde la sienne). #20
       const grp = curr.superset_groupe;
-      next.superset_groupe = null;
-      // Si curr est maintenant seul dans son groupe → le vider aussi
-      const remaining = exos.filter((e, i) => i !== ei + 1 && e.superset_groupe === grp);
-      if (remaining.length <= 1) remaining.forEach(e => { e.superset_groupe = null; });
-    } else {
-      // Coupler
-      if (curr.superset_groupe) {
-        next.superset_groupe = curr.superset_groupe;
-      } else if (next.superset_groupe) {
-        curr.superset_groupe = next.superset_groupe;
-      } else {
-        const used = new Set(exos.map(e => e.superset_groupe).filter(Boolean));
-        let letter = 'A';
-        while (used.has(letter)) letter = String.fromCharCode(letter.charCodeAt(0) + 1);
-        curr.superset_groupe = letter;
-        next.superset_groupe = letter;
+      const newLetter = this._nextGroupLetter(exos);
+      for (let i = ei + 1; i < exos.length && exos[i].superset_groupe === grp; i++) {
+        exos[i].superset_groupe = newLetter;
       }
+    } else if (curr.superset_groupe && next.superset_groupe) {
+      // Frontière de deux supersets → fusionner tout le run droit dans le groupe gauche. #21
+      const from = next.superset_groupe, to = curr.superset_groupe;
+      for (let i = ei + 1; i < exos.length && exos[i].superset_groupe === from; i++) {
+        exos[i].superset_groupe = to;
+      }
+    } else if (curr.superset_groupe) {
+      next.superset_groupe = curr.superset_groupe;
+    } else if (next.superset_groupe) {
+      curr.superset_groupe = next.superset_groupe;
+    } else {
+      const letter = this._nextGroupLetter(exos);
+      curr.superset_groupe = letter;
+      next.superset_groupe = letter;
     }
+    this._normalizeSupersets(exos);
     this.renderContent();
+  },
+
+  _nextGroupLetter(exos) {
+    const used = new Set(exos.map(e => e.superset_groupe).filter(Boolean));
+    let letter = 'A';
+    while (used.has(letter)) letter = String.fromCharCode(letter.charCodeAt(0) + 1);
+    return letter;
+  },
+
+  // Un groupe superset = run CONTIGU d'au moins 2 exercices de même lettre.
+  // Nettoie tout membre isolé (run de longueur 1). #20 #21 #41
+  _normalizeSupersets(exos) {
+    let i = 0;
+    while (i < exos.length) {
+      const g = exos[i].superset_groupe;
+      if (!g) { i++; continue; }
+      let j = i;
+      while (j < exos.length && exos[j].superset_groupe === g) j++;
+      if (j - i < 2) exos[i].superset_groupe = null;
+      i = j;
+    }
   },
 
   _parseMinSec(val) {
@@ -796,6 +821,8 @@ const CoachProgTemplateEditPage = {
   removeExo(si, ei) {
     this._syncFromDOM();
     this.seances[si].exercices.splice(ei, 1);
+    // Nettoyer un éventuel superset devenu orphelin (1 seul membre restant). #41
+    this._normalizeSupersets(this.seances[si].exercices);
     this.renderContent();
   },
 

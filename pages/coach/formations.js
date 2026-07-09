@@ -106,11 +106,11 @@ const CoachFormationsPage = {
           </div>
           <div class="field">
             <label class="field-label">Titre</label>
-            <input class="input" id="fTitre" value="${f?.titre || ''}" placeholder="ex: Formation HOMMES">
+            <input class="input" id="fTitre" value="${escHtml(f?.titre || '')}" placeholder="ex: Formation HOMMES">
           </div>
           <div class="field">
             <label class="field-label">Description (optionnel)</label>
-            <textarea class="input" id="fDesc" rows="2" style="resize:none;">${f?.description || ''}</textarea>
+            <textarea class="input" id="fDesc" rows="2" style="resize:none;">${escHtml(f?.description || '')}</textarea>
           </div>
           <div id="fModalMsg"></div>
           <button class="btn btn-primary" onclick="CoachFormationsPage._saveFormation('${f?.id || ''}')">
@@ -244,7 +244,8 @@ const CoachFormationsPage = {
     if (!titre) return;
     document.getElementById('fModuleOverlay')?.remove();
     const f = this.formations.find(x => x.id === formationId);
-    const ordre = (f.formation_modules || []).length;
+    // max(ordre)+1 plutôt que length : évite une collision d'ordre après suppression
+    const ordre = (f.formation_modules || []).reduce((mx, m) => Math.max(mx, (m.ordre ?? 0) + 1), 0);
     try {
       const saved = await db.upsertFormationModule({ formation_id: formationId, titre, ordre });
       f.formation_modules = [...(f.formation_modules || []), { ...saved, formation_lecons: [] }];
@@ -306,18 +307,18 @@ const CoachFormationsPage = {
 
           <div class="field">
             <label class="field-label">Titre</label>
-            <input class="input" id="lTitre" value="${lecon?.titre || ''}" placeholder="ex: Introduction à la nutrition">
+            <input class="input" id="lTitre" value="${escHtml(lecon?.titre || '')}" placeholder="ex: Introduction à la nutrition">
           </div>
 
           <!-- Champs Leçon -->
           <div id="lLeconFields" style="display:${type==='lecon'?'block':'none'}">
             <div class="field">
               <label class="field-label">URL YouTube</label>
-              <input class="input" id="lYoutube" value="${lecon?.youtube_url || ''}" placeholder="https://youtu.be/...">
+              <input class="input" id="lYoutube" value="${escHtml(lecon?.youtube_url || '')}" placeholder="https://youtu.be/...">
             </div>
             <div class="field">
               <label class="field-label">Description / Texte (optionnel)</label>
-              <textarea class="input" id="lDesc" rows="14" style="resize:vertical;min-height:220px;">${lecon?.description || ''}</textarea>
+              <textarea class="input" id="lDesc" rows="14" style="resize:vertical;min-height:220px;">${escHtml(lecon?.description || '')}</textarea>
             </div>
             <div class="field">
               <label class="field-label">Durée (min)</label>
@@ -450,7 +451,9 @@ const CoachFormationsPage = {
     const type = this._currentLeconType();
     const f    = this.formations.find(x => x.id === formationId);
     const m    = f?.formation_modules?.find(x => x.id === moduleId);
-    const ordre = leconId ? (m?.formation_lecons?.find(l => l.id === leconId)?.ordre ?? 0) : (m?.formation_lecons || []).length;
+    const ordre = leconId
+      ? (m?.formation_lecons?.find(l => l.id === leconId)?.ordre ?? 0)
+      : (m?.formation_lecons || []).reduce((mx, l) => Math.max(mx, (l.ordre ?? 0) + 1), 0);
 
     // Validation quizz
     if (type === 'quizz') {
@@ -503,13 +506,37 @@ const CoachFormationsPage = {
     const mods     = (f.formation_modules || []);
 
     // Options "débloquer jusqu'à" : value = unlock_day du module
-    const offsetOptions = (selected) => mods.map(m =>
-      `<option value="${m.unlock_day || 0}" ${(m.unlock_day||0)===selected?'selected':''}>${(m.titre||'').replace(/"/g,'&quot;')}</option>`).join('');
+    const offsetOptions = (selected) => {
+      selected = parseInt(selected) || 0;
+      const seen = new Set();
+      let hasZero = false;
+      const modOpts = [];
+      mods.forEach(m => {
+        const v = m.unlock_day || 0;
+        if (v === 0) hasZero = true;
+        if (seen.has(v)) return;
+        seen.add(v);
+        modOpts.push({ v, label: m.titre || '' });
+      });
+      let html = '';
+      // Toujours proposer "depuis le début" si aucun module n'est à J0
+      if (!hasZero) {
+        html += `<option value="0" ${selected===0?'selected':''}>— Depuis le début (rythme normal) —</option>`;
+        seen.add(0);
+      }
+      html += modOpts.map(o =>
+        `<option value="${o.v}" ${o.v===selected?'selected':''}>${escHtml(o.label)}</option>`).join('');
+      // Décalage enregistré ne correspondant à aucun module (modules modifiés depuis) → ne pas le perdre
+      if (!seen.has(selected)) {
+        html += `<option value="${selected}" selected>Décalage personnalisé (${selected} j)</option>`;
+      }
+      return html;
+    };
 
     document.getElementById('fModal').innerHTML = `
       <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('fModal').innerHTML=''">
         <div class="modal" style="max-height:88vh;">
-          <div class="modal-title">👥 Assigner — ${f.titre}
+          <div class="modal-title">👥 Assigner — ${escHtml(f.titre)}
             <button class="modal-close" onclick="document.getElementById('fModal').innerHTML=''">×</button>
           </div>
           <div style="font-size:12px;color:var(--gray-muted);margin-bottom:12px;line-height:1.5;">
@@ -532,8 +559,8 @@ const CoachFormationsPage = {
                       style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0;">
                     <div class="client-avatar" style="width:32px;height:32px;font-size:11px;flex-shrink:0;">${initials}</div>
                     <div style="flex:1;">
-                      <div style="font-size:14px;font-weight:600;">${c.prenom} ${c.nom || ''}</div>
-                      ${c.coach_tag ? `<div style="font-size:11px;color:var(--gray-muted);">${c.coach_tag}</div>` : ''}
+                      <div style="font-size:14px;font-weight:600;">${escHtml(c.prenom)} ${escHtml(c.nom || '')}</div>
+                      ${c.coach_tag ? `<div style="font-size:11px;color:var(--gray-muted);">${escHtml(c.coach_tag)}</div>` : ''}
                     </div>
                   </label>
                   <div id="foffwrap_${c.id}" style="display:${isAssigned?'flex':'none'};align-items:center;gap:8px;margin-top:8px;padding-left:30px;">

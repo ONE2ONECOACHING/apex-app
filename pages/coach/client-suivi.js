@@ -59,7 +59,12 @@ const CoachClientSuiviPage = {
     const diff = day === 0 ? -6 : 1 - day;
     const m    = new Date(d);
     m.setDate(d.getDate() + diff);
-    return m.toISOString().split('T')[0];
+    // Formatage en date LOCALE (pas toISOString/UTC) : sinon la clé de semaine
+    // est décalée d'un jour tôt le matin en France (UTC+1/+2). #28
+    const y  = m.getFullYear();
+    const mo = String(m.getMonth() + 1).padStart(2, '0');
+    const da = String(m.getDate()).padStart(2, '0');
+    return `${y}-${mo}-${da}`;
   },
 
   _render() {
