@@ -59,10 +59,10 @@ const LogbookPage = {
   async changeDate(delta) {
     const d = new Date(this.currentDate + 'T00:00:00');
     d.setDate(d.getDate() + delta);
-    // Autoriser les jours futurs (pratique pour le batch cooking) jusqu'à 14 j à l'avance
+    // Autoriser les jours futurs (pratique pour le batch cooking) jusqu'à 7 j à l'avance
     const maxAhead = new Date();
     maxAhead.setHours(0, 0, 0, 0);
-    maxAhead.setDate(maxAhead.getDate() + 14);
+    maxAhead.setDate(maxAhead.getDate() + 7);
     if (d > maxAhead) return;
     this.currentDate = formatDate(d);
     this.updateDateLabel();
