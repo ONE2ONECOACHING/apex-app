@@ -48,13 +48,22 @@ const LogbookPage = {
 
   updateDateLabel() {
     const label = document.getElementById('logDate');
-    if (label) label.textContent = this.currentDate === todayStr() ? "Aujourd'hui" : formatDateFR(this.currentDate);
+    if (!label) return;
+    const today = todayStr();
+    if (this.currentDate === today) { label.textContent = "Aujourd'hui"; return; }
+    // Libellé "Demain" pour le lendemain (batch cooking)
+    const t = new Date(today + 'T00:00:00'); t.setDate(t.getDate() + 1);
+    label.textContent = this.currentDate === formatDate(t) ? 'Demain' : formatDateFR(this.currentDate);
   },
 
   async changeDate(delta) {
     const d = new Date(this.currentDate + 'T00:00:00');
     d.setDate(d.getDate() + delta);
-    if (d > new Date()) return;
+    // Autoriser les jours futurs (pratique pour le batch cooking) jusqu'à 14 j à l'avance
+    const maxAhead = new Date();
+    maxAhead.setHours(0, 0, 0, 0);
+    maxAhead.setDate(maxAhead.getDate() + 14);
+    if (d > maxAhead) return;
     this.currentDate = formatDate(d);
     this.updateDateLabel();
     await this.loadData();
