@@ -80,6 +80,32 @@ const SeanceActivePage = {
       this._lastSets  = lastData.sets  || {};
       this._lastNotes = lastData.notes || {};
 
+      // ── Reprise d'une séance interrompue (brouillon local) ──────────────────
+      const draft = this._loadDraft(this._seance.id, profile.id);
+      if (draft) {
+        const doneSets = draft.logs.reduce((n, l) => n + (l.sets_data?.length || 0), 0);
+        if (confirm(`Reprendre ta séance en cours ?\n\n${doneSets} série(s) déjà enregistrée(s).\n\nOK = reprendre où tu t'étais arrêté\nAnnuler = tout recommencer`)) {
+          // Réinjecter les séries saisies dans la structure actuelle (par exercice)
+          this._logs.forEach(l => {
+            const dl = draft.logs.find(x => x.client_prog_exercice_id === l.client_prog_exercice_id)
+                    || draft.logs.find(x => x.exercice_id === l.exercice_id);
+            if (dl) {
+              l.sets_data   = Array.isArray(dl.sets_data) ? dl.sets_data : [];
+              l.note_client = dl.note_client || null;
+            }
+          });
+          this._sessionSeconds = draft.sessionSeconds || 0;
+          this._noteRessenti   = draft.noteRessenti || null;
+          const resumeIdx = this._firstUnfinishedExo();
+          this._exoIdx    = resumeIdx;
+          const rex       = this._seance.exercices[resumeIdx];
+          const logged    = this._logs[resumeIdx]?.sets_data?.length || 0;
+          this._serieIdx  = Math.max(0, Math.min(logged, this._nbSeries(rex)));
+        } else {
+          this._clearDraft();
+        }
+      }
+
       this._startSessionTimer();
 
       // Recalcule les timers immédiatement au retour en avant-plan
@@ -461,11 +487,15 @@ const SeanceActivePage = {
         </button>
         `}
         <button onclick="SeanceActivePage._finishEarly()"
-          style="width:100%;height:34px;background:none;border:none;
-                 color:var(--gray-muted);font-size:12px;cursor:pointer;
-                 margin-top:2px;font-family:var(--font);text-decoration:underline;">
-          🏁 Terminer la séance
+          style="width:100%;height:44px;background:none;
+                 border:1.5px solid var(--border-solid);border-radius:12px;
+                 color:var(--gray);font-size:13px;font-weight:600;cursor:pointer;
+                 margin-top:8px;font-family:var(--font);">
+          🏁 Terminer & enregistrer maintenant
         </button>
+        <div style="text-align:center;font-size:11px;color:var(--gray-muted);margin-top:6px;line-height:1.4;">
+          Tu peux t'arrêter à tout moment : tes séries validées sont enregistrées.
+        </div>
       </div>`;
   },
 
@@ -538,6 +568,7 @@ const SeanceActivePage = {
 
   _selectNote(key) {
     this._noteRessenti = key;
+    this._persistDraft();
     const notes = ['dur', 'bien', 'feu'];
     notes.forEach(k => {
       const btn = document.getElementById('saNote_' + k);
@@ -621,6 +652,8 @@ const SeanceActivePage = {
     }
 
     this._logs[this._exoIdx].sets_data.push(set);
+    // Sauvegarde immédiate : la série validée ne peut plus être perdue
+    this._persistDraft();
 
     const exos    = this._seance.exercices;
     const nbSer   = this._nbSeries(ex);
@@ -995,7 +1028,11 @@ const SeanceActivePage = {
   _syncNote() {
     const el = document.getElementById('saClientNote');
     if (el && this._logs[this._exoIdx] !== undefined) {
-      this._logs[this._exoIdx].note_client = el.value.trim() || null;
+      const val = el.value.trim() || null;
+      if (val !== this._logs[this._exoIdx].note_client) {
+        this._logs[this._exoIdx].note_client = val;
+        this._persistDraft();
+      }
     }
   },
 
@@ -1048,12 +1085,77 @@ const SeanceActivePage = {
       });
 
       await db.saveSeanceSets(log.id, this._logs);
+      this._clearDraft();
       toast('💪 Séance enregistrée !', 'success');
       setTimeout(() => { window.location.hash = '#entrainement'; }, 600);
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer la séance'; }
       toast('Erreur : ' + e.message, 'error');
     }
+  },
+
+  // ── Brouillon local : ne jamais perdre une séance en cours ────────────────
+  // Sauvegarde après chaque série validée. Si le client ferme l'appli avant la
+  // fin, il peut reprendre là où il s'était arrêté à la réouverture.
+  _draftKey(seanceId, clientId) {
+    return `apex_seance_draft_${clientId || ''}_${seanceId || ''}`;
+  },
+
+  // Premier exercice dont toutes les séries ne sont pas encore validées
+  _firstUnfinishedExo() {
+    const exos = this._seance?.exercices || [];
+    for (let i = 0; i < exos.length; i++) {
+      const logged = this._logs[i]?.sets_data?.length || 0;
+      if (logged < this._nbSeries(exos[i])) return i;
+    }
+    return Math.max(0, exos.length - 1);
+  },
+
+  _persistDraft() {
+    try {
+      if (!this._seance || this._phase === 'done') return;
+      const profile = Router.userProfile;
+      if (!profile) return;
+      // Ne rien écrire tant qu'aucune série n'a été validée
+      const totalSets = this._logs.reduce((n, l) => n + (l.sets_data?.length || 0), 0);
+      if (totalSets === 0) return;
+      const draft = {
+        v: 1,
+        seanceId:       this._seance.id,
+        clientId:       profile.id,
+        savedAt:        Date.now(),
+        exoIdx:         this._exoIdx,
+        serieIdx:       this._serieIdx,
+        sessionSeconds: this._sessionSeconds,
+        noteRessenti:   this._noteRessenti,
+        logs: this._logs.map(l => ({
+          client_prog_exercice_id: l.client_prog_exercice_id,
+          exercice_id:             l.exercice_id,
+          sets_data:               l.sets_data,
+          note_client:             l.note_client,
+        })),
+      };
+      localStorage.setItem(this._draftKey(this._seance.id, profile.id), JSON.stringify(draft));
+    } catch (_) { /* quota / mode privé : on ignore */ }
+  },
+
+  _clearDraft() {
+    try {
+      const profile = Router.userProfile;
+      if (this._seance && profile) {
+        localStorage.removeItem(this._draftKey(this._seance.id, profile.id));
+      }
+    } catch (_) {}
+  },
+
+  _loadDraft(seanceId, clientId) {
+    try {
+      const raw = localStorage.getItem(this._draftKey(seanceId, clientId));
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      const total = (d.logs || []).reduce((n, l) => n + (l.sets_data?.length || 0), 0);
+      return total > 0 ? d : null;
+    } catch (_) { return null; }
   },
 
   _goToExo(idx) {
@@ -1104,6 +1206,7 @@ const SeanceActivePage = {
 
   _quit() {
     if (!confirm('Abandonner la séance ? Ta progression ne sera pas enregistrée.')) return;
+    this._clearDraft();
     if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
     clearInterval(this._sessionTimer);
     clearInterval(this._restTimer);
