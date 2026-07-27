@@ -293,16 +293,16 @@ const PlanPage = {
     this._renderReplaceModal();
   },
 
-  _renderReplaceModal() {
-    const { repasId, calories, nom, cat } = this._replaceTarget;
-    const meta  = this._catMeta(cat);
-    // Féculents : proposer les équivalences crues OU cuites selon le mode choisi
+  // Construit les lignes d'équivalences selon le mode courant (utilisé au rendu
+  // initial ET lors du changement cru/cuit — sans re-render de toute la modale)
+  _buildReplaceRows() {
+    const { repasId, calories, cat } = this._replaceTarget;
     const items = cat === 'feculents'
       ? (this._feculentMode === 'cuit' ? this._feculentsCuits : this._feculents)
-      : meta.list;
+      : this._catMeta(cat).list;
     const origKcal = Math.round(calories);
 
-    const rows = items.map(f => {
+    return items.map(f => {
       let qty = Math.round(calories / f.kcal * 100 / 5) * 5;
       qty = Math.max(20, qty);
       const newKcal = Math.round(f.kcal * qty / 100);
@@ -322,11 +322,17 @@ const PlanPage = {
           </div>
         </div>
         <button class="btn btn-primary btn-small" style="flex-shrink:0;"
-          onclick="PlanPage.applyReplace('${repasId}','${f.nom.replace(/'/g,"\\'")}',${qty},${newKcal},${newP},${newG},${newL})">
+          onclick="PlanPage.applyReplace('${repasId}','${escJs(f.nom)}',${qty},${newKcal},${newP},${newG},${newL})">
           Choisir
         </button>
       </div>`;
     }).join('');
+  },
+
+  _renderReplaceModal() {
+    const { calories, nom, cat } = this._replaceTarget;
+    const meta     = this._catMeta(cat);
+    const origKcal = Math.round(calories);
 
     document.getElementById('planReplaceModal').innerHTML = `
       <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('planReplaceModal').innerHTML=''">
@@ -341,22 +347,33 @@ const PlanPage = {
           ${cat === 'feculents' ? `
           <div style="display:flex;gap:6px;background:var(--card-bg);border-radius:12px;padding:4px;margin-bottom:1rem;">
             ${['cru', 'cuit'].map(m => `
-              <button onclick="PlanPage._setFeculentMode('${m}')"
+              <button id="planFecBtn_${m}" onclick="PlanPage._setFeculentMode('${m}')"
                 style="flex:1;height:34px;border:none;border-radius:9px;cursor:pointer;
-                       font-family:var(--font);font-size:13px;font-weight:700;
+                       font-family:var(--font);font-size:13px;font-weight:700;transition:background .15s,color .15s;
                        background:${this._feculentMode === m ? 'var(--gold)' : 'transparent'};
                        color:${this._feculentMode === m ? '#fff' : 'var(--gray-muted)'};">
                 ${m === 'cru' ? 'Pesé cru / sec' : 'Pesé cuit'}
               </button>`).join('')}
           </div>` : ''}
-          <div style="display:flex;flex-direction:column;gap:8px;">${rows}</div>
+          <div id="planReplaceRows" style="display:flex;flex-direction:column;gap:8px;">${this._buildReplaceRows()}</div>
         </div>
       </div>`;
   },
 
   _setFeculentMode(mode) {
+    if (this._feculentMode === mode) return;
     this._feculentMode = mode;
-    this._renderReplaceModal();
+    // Mettre à jour UNIQUEMENT la liste + l'état des boutons (pas toute la modale,
+    // sinon l'animation d'ouverture se rejoue et l'écran "saute")
+    const rowsEl = document.getElementById('planReplaceRows');
+    if (rowsEl) rowsEl.innerHTML = this._buildReplaceRows();
+    ['cru', 'cuit'].forEach(m => {
+      const btn = document.getElementById('planFecBtn_' + m);
+      if (!btn) return;
+      const active = this._feculentMode === m;
+      btn.style.background = active ? 'var(--gold)' : 'transparent';
+      btn.style.color      = active ? '#fff' : 'var(--gray-muted)';
+    });
   },
 
   applyReplace(repasId, nom, qty, kcal, p, g, l) {
