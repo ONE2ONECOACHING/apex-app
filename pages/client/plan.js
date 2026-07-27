@@ -10,20 +10,37 @@ const PlanPage = {
   _replaceTarget: null,
 
   // ── Données équivalences (pour 100g) ─────────────────────────────────
+  // Valeurs CRUES / sèches (poids pesé cru)
   _feculents: [
-    { nom: 'Riz blanc',         kcal: 350, p: 7,   g: 77, l: 0.6 },
-    { nom: 'Pâtes',             kcal: 370, p: 13,  g: 72, l: 1.5 },
-    { nom: 'Patate douce',      kcal: 86,  p: 1.6, g: 20, l: 0.1 },
-    { nom: 'Pomme de terre',    kcal: 77,  p: 2,   g: 17, l: 0.1 },
-    { nom: 'Quinoa sec',        kcal: 368, p: 14,  g: 64, l: 6   },
-    { nom: 'Flocons d\'avoine', kcal: 389, p: 17,  g: 66, l: 7   },
-    { nom: 'Semoule',           kcal: 360, p: 12,  g: 73, l: 1   },
-    { nom: 'Lentilles',         kcal: 353, p: 24,  g: 60, l: 1.1 },
-    { nom: 'Pain complet',      kcal: 247, p: 9,   g: 41, l: 3.5 },
-    { nom: 'Frites friteuse',   kcal: 312, p: 3.4, g: 41, l: 15  },
-    { nom: 'Frites au four',    kcal: 190, p: 3.2, g: 30, l: 6   },
-    { nom: 'Frites airfryer',   kcal: 160, p: 3,   g: 27, l: 4   },
+    { nom: 'Riz blanc cru',       kcal: 350, p: 7,   g: 77, l: 0.6 },
+    { nom: 'Pâtes crues',         kcal: 370, p: 13,  g: 72, l: 1.5 },
+    { nom: 'Patate douce crue',   kcal: 86,  p: 1.6, g: 20, l: 0.1 },
+    { nom: 'Pomme de terre crue', kcal: 77,  p: 2,   g: 17, l: 0.1 },
+    { nom: 'Quinoa sec',          kcal: 368, p: 14,  g: 64, l: 6   },
+    { nom: 'Flocons d\'avoine',   kcal: 389, p: 17,  g: 66, l: 7   },
+    { nom: 'Semoule crue',        kcal: 360, p: 12,  g: 73, l: 1   },
+    { nom: 'Lentilles crues',     kcal: 353, p: 24,  g: 60, l: 1.1 },
+    { nom: 'Pain complet',        kcal: 247, p: 9,   g: 41, l: 3.5 },
+    { nom: 'Frites friteuse',     kcal: 312, p: 3.4, g: 41, l: 15  },
+    { nom: 'Frites au four',      kcal: 190, p: 3.2, g: 30, l: 6   },
+    { nom: 'Frites airfryer',     kcal: 160, p: 3,   g: 27, l: 4   },
   ],
+  // Valeurs CUITES (poids pesé cuit) — mêmes aliments, macros après cuisson
+  _feculentsCuits: [
+    { nom: 'Riz blanc cuit',       kcal: 130, p: 2.7, g: 28,  l: 0.3 },
+    { nom: 'Pâtes cuites',         kcal: 131, p: 5,   g: 25,  l: 1.1 },
+    { nom: 'Patate douce cuite',   kcal: 90,  p: 2,   g: 21,  l: 0.1 },
+    { nom: 'Pomme de terre cuite', kcal: 87,  p: 2,   g: 20,  l: 0.1 },
+    { nom: 'Quinoa cuit',          kcal: 120, p: 4.4, g: 21,  l: 1.9 },
+    { nom: 'Flocons cuits (eau)',  kcal: 71,  p: 2.5, g: 12,  l: 1.4 },
+    { nom: 'Semoule cuite',        kcal: 112, p: 3.8, g: 23,  l: 0.2 },
+    { nom: 'Lentilles cuites',     kcal: 116, p: 9,   g: 20,  l: 0.4 },
+    { nom: 'Pain complet',         kcal: 247, p: 9,   g: 41,  l: 3.5 },
+    { nom: 'Frites friteuse',      kcal: 312, p: 3.4, g: 41,  l: 15  },
+    { nom: 'Frites au four',       kcal: 190, p: 3.2, g: 30,  l: 6   },
+    { nom: 'Frites airfryer',      kcal: 160, p: 3,   g: 27,  l: 4   },
+  ],
+  _feculentMode: 'cru',   // 'cru' | 'cuit' — mode d'affichage des équivalences féculents
   _proteines: [
     { nom: 'Blanc de poulet',      kcal: 110, p: 23, g: 0,   l: 1.5 },
     { nom: 'Bœuf haché (5%)',     kcal: 121, p: 21, g: 0,   l: 4   },
@@ -279,7 +296,10 @@ const PlanPage = {
   _renderReplaceModal() {
     const { repasId, calories, nom, cat } = this._replaceTarget;
     const meta  = this._catMeta(cat);
-    const items = meta.list;
+    // Féculents : proposer les équivalences crues OU cuites selon le mode choisi
+    const items = cat === 'feculents'
+      ? (this._feculentMode === 'cuit' ? this._feculentsCuits : this._feculents)
+      : meta.list;
     const origKcal = Math.round(calories);
 
     const rows = items.map(f => {
@@ -315,12 +335,28 @@ const PlanPage = {
             ${meta.icon} Remplacer "${nom}"
             <button class="modal-close" onclick="document.getElementById('planReplaceModal').innerHTML=''">×</button>
           </div>
-          <div style="font-size:12px;color:var(--gray-muted);margin-top:-0.5rem;margin-bottom:1rem;">
+          <div style="font-size:12px;color:var(--gray-muted);margin-top:-0.5rem;margin-bottom:${cat === 'feculents' ? '0.75rem' : '1rem'};">
             Équivalences ${meta.label.toLowerCase()}s pour ~${origKcal} kcal
           </div>
+          ${cat === 'feculents' ? `
+          <div style="display:flex;gap:6px;background:var(--card-bg);border-radius:12px;padding:4px;margin-bottom:1rem;">
+            ${['cru', 'cuit'].map(m => `
+              <button onclick="PlanPage._setFeculentMode('${m}')"
+                style="flex:1;height:34px;border:none;border-radius:9px;cursor:pointer;
+                       font-family:var(--font);font-size:13px;font-weight:700;
+                       background:${this._feculentMode === m ? 'var(--gold)' : 'transparent'};
+                       color:${this._feculentMode === m ? '#fff' : 'var(--gray-muted)'};">
+                ${m === 'cru' ? 'Pesé cru / sec' : 'Pesé cuit'}
+              </button>`).join('')}
+          </div>` : ''}
           <div style="display:flex;flex-direction:column;gap:8px;">${rows}</div>
         </div>
       </div>`;
+  },
+
+  _setFeculentMode(mode) {
+    this._feculentMode = mode;
+    this._renderReplaceModal();
   },
 
   applyReplace(repasId, nom, qty, kcal, p, g, l) {
