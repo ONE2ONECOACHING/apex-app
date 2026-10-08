@@ -29,6 +29,7 @@ const CoachClientsPage = {
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-prog-templates'">📋 Programmes</button>
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-exercices'">🏋️ Exercices</button>
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-formations'">📚 Formations</button>
+        ${Router.userProfile?.is_gerant ? `<button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-equipe'">👥 Équipe</button>` : ''}
         <div id="tagFilters" style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;"></div>
       </div>
       <div id="dashContent"><div class="spinner" style="margin-top:2rem;"></div></div>

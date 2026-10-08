@@ -184,6 +184,25 @@ const db = {
     return data || [];
   },
 
+  // Gérants — équipe (ajout / suppression de coachs, via edge function)
+  async manageTeam(body) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/manage-team`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json; // add : { coachId, password } · remove : { success }
+  },
+
   async deleteClient(profileId) {
     // Suppression complète via edge function (service role requis pour auth.users)
     const session = await getSupabase().auth.getSession();
