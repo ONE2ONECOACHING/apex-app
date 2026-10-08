@@ -198,8 +198,8 @@ const db = {
       },
       body: JSON.stringify(body),
     });
-    const json = await res.json();
-    if (json.error) throw new Error(json.error);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.error) throw new Error(json.error || json.message || `Erreur serveur (${res.status})`);
     return json; // add : { coachId, password } · remove : { success }
   },
 
