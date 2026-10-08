@@ -3,6 +3,7 @@
 const CoachClientEditPage = {
   client: null,
   activites: [],
+  coachs: [],
   selectedTag: null,
 
   render() {
@@ -22,6 +23,7 @@ const CoachClientEditPage = {
     // Reset état pour éviter les fuites entre clients
     this.client      = null;
     this.activites   = [];
+    this.coachs      = [];
     this.selectedTag = null;
 
     const params = Router.getParams();
@@ -30,6 +32,7 @@ const CoachClientEditPage = {
     try {
       this.client = await db.getProfile(params.clientId);
       this.activites = await db.getActivites(params.clientId);
+      this.coachs = await db.getCoachs().catch(() => []);
       this.selectedTag = this.client.coach_tag || null;
       document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
       this.renderForm();
@@ -56,6 +59,13 @@ const CoachClientEditPage = {
         <div class="card-title">Informations</div>
         <div class="field">
           <label class="field-label">Coach référent</label>
+          <select class="input" id="ceReferent">
+            <option value="">— Aucun —</option>
+            ${this.coachs.map(co => `<option value="${co.id}" ${c.coach_referent_id === co.id ? 'selected' : ''}>${escHtml(this._coachLabel(co))}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Étiquette</label>
           <div style="display:flex;gap:8px;">
             <button type="button" id="tagBtnBen" class="tag-pill-btn ${this.selectedTag === 'ben' ? 'active-ben' : ''}" onclick="CoachClientEditPage.setTag('ben')">Ben</button>
             <button type="button" id="tagBtnChris" class="tag-pill-btn ${this.selectedTag === 'chris' ? 'active-chris' : ''}" onclick="CoachClientEditPage.setTag('chris')">Chris</button>
@@ -137,6 +147,11 @@ const CoachClientEditPage = {
         </select>
         <button style="width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:18px;" onclick="CoachClientEditPage.activites.splice(${i},1);CoachClientEditPage.renderActivites()">×</button>
       </div>`).join('');
+  },
+
+  _coachLabel(co) {
+    const nom = `${co.prenom || ''} ${co.nom || ''}`.trim() || co.email;
+    return co.is_gerant ? `${nom} (gérant)` : nom;
   },
 
   setTag(tag) {
@@ -229,6 +244,10 @@ const CoachClientEditPage = {
       masse_grasse_pct: +document.getElementById('ceFat').value || null,
       coach_tag: this.selectedTag
     };
+    // Liste des coachs non chargée → ne pas toucher au référent
+    if (this.coachs.length) {
+      updates.coach_referent_id = document.getElementById('ceReferent').value || null;
+    }
 
     // Calcul TDEE si possible
     let tdeeResult = null;

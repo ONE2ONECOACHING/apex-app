@@ -169,6 +169,17 @@ const db = {
     return data;
   },
 
+  // Comptes coach (gérants compris), pour choisir un coach référent
+  async getCoachs() {
+    const { data, error } = await getSupabase()
+      .from('profiles')
+      .select('id, prenom, nom, email, is_gerant')
+      .eq('role', 'coach')
+      .order('prenom');
+    if (error) throw error;
+    return data || [];
+  },
+
   async deleteClient(profileId) {
     // Suppression complète via edge function (service role requis pour auth.users)
     const session = await getSupabase().auth.getSession();

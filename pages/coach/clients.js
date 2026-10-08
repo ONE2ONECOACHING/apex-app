@@ -88,6 +88,7 @@ const CoachClientsPage = {
     if (!el) return;
     const f = this.activeFilter;
     el.innerHTML = `
+      <button class="tag-filter-btn ${f === 'mine'  ? 'active' : ''}" onclick="CoachClientsPage.setFilter('mine')">Mes clients</button>
       <button class="tag-filter-btn ${f === 'all'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('all')">Tous</button>
       <button class="tag-filter-btn tag-filter-ben   ${f === 'ben'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('ben')">Ben</button>
       <button class="tag-filter-btn tag-filter-chris ${f === 'chris' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('chris')">Chris</button>
@@ -118,9 +119,12 @@ const CoachClientsPage = {
 
   renderDashboard() {
     const el = document.getElementById('dashContent');
+    const me = Router.userProfile.id;
     let filtered = this.activeFilter === 'all'
       ? this.clients
-      : this.clients.filter(c => c.coach_tag === this.activeFilter);
+      : this.activeFilter === 'mine'
+        ? this.clients.filter(c => c.coach_referent_id === me)
+        : this.clients.filter(c => c.coach_tag === this.activeFilter);
 
     if (this._searchQuery) {
       filtered = filtered.filter(c => {
@@ -457,7 +461,9 @@ const CoachClientsPage = {
     btn.textContent = 'Création en cours…';
 
     try {
-      await db.createClientAccount(email, prenom, nom);
+      const { profileId } = await db.createClientAccount(email, prenom, nom);
+      // Le coach qui crée le client en devient le référent (modifiable sur la fiche)
+      await db.updateProfile(profileId, { coach_referent_id: Router.userProfile.id }).catch(() => {});
       const appUrl  = APP_CONFIG.APP_URL;
       const message = `Bonjour ${prenom} 👊\n\nTon espace ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 Apex2026!\n\nConnecte-toi et choisis ton nouveau mot de passe.`;
       document.getElementById('createForm').style.display = 'none';
