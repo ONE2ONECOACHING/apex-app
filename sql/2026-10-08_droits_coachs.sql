@@ -28,6 +28,38 @@
 
 begin;
 
+-- ── Transition : référent par défaut des nouveaux comptes ───────────────────
+-- Tant que l'équipe travaille sur le compte partagé, tout nouveau client le
+-- reçoit comme référent (sinon le compte partagé perdrait l'accès à son plan
+-- et à ses bilans). À retirer quand chaque coach aura son compte.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, prenom, role, coach_referent_id)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'prenom', 'Client'),
+    'client',
+    (select id from public.profiles
+     where id = 'fe2c19c2-e00f-4c4e-9543-3634022e42ff' and role = 'coach')
+  );
+  return new;
+end;
+$$;
+
+-- Clients créés depuis le lot 1, restés sans référent
+update public.profiles
+set coach_referent_id = 'fe2c19c2-e00f-4c4e-9543-3634022e42ff'
+where role = 'client'
+  and coach_referent_id is null
+  and exists (select 1 from public.profiles
+              where id = 'fe2c19c2-e00f-4c4e-9543-3634022e42ff' and role = 'coach');
+
 -- ── Infos client ────────────────────────────────────────────────────────────
 -- Lecture (profiles_select) : inchangée (soi-même ou tout coach).
 drop policy if exists profiles_update on public.profiles;
