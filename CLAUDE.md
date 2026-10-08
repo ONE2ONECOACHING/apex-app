@@ -38,7 +38,8 @@ Application du studio ONE2ONE (Saint-Estève, près de Perpignan). Côté client
 Rien ne doit changer pour les clients pendant cette étape.
 
 1. Rôle gérant : fait (booléen `profiles.is_gerant`, le rôle reste `coach`).
-2. Comptes : pour l'instant un seul compte de test (gérant Benjamin). Christophe, Lola, Diego et Cyril plus tard. Bibliothèque commune (modèles, bilans, formations) : `sql/2026-10-08_bibliotheque_commune.sql`.
+2. Comptes : pour l'instant un seul compte de test (gérant Benjamin). Christophe, Lola, Diego et Cyril plus tard. Bibliothèque commune (modèles, bilans, formations) : `sql/2026-10-08_bibliotheque_commune.sql` exécuté le 8 octobre 2026, code sur la branche `etape-1-fondations` testé par Benjamin sur la preview Cloudflare (pas encore fusionné : on fusionne à la fin de l'étape 1). Benjamin donne les adresses des autres coachs le 9 octobre.
+   Lot 4 (référent dans l'app) : garder l'étiquette `coach_tag` affichée à côté du référent tant que l'équipe utilise le compte partagé (validé par Benjamin).
 3. Écran Équipe pour les gérants : ajouter ou supprimer un coach (Edge Function en service role, réservée aux gérants).
 4. Coach référent : `profiles.coach_referent_id` sur chaque client, repris de `coach_tag` quand c'est possible.
 5. Droits : réécrire les règles RLS selon la matrice du cahier des charges (référent, autres coachs, gérants).
