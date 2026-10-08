@@ -41,21 +41,20 @@ const CoachClientsPage = {
     this._mainTab     = 'dashboard';
     try {
       this._mondayStr = this._getMondayStr();
-      const coachId   = Router.userProfile.id;
 
       const [clients, plans, completedBilans, pendingBilans, bilanAssignations] = await Promise.all([
         db.getAllClients(),
         db.getAllActivePlans(),
         db.getRecentCompletedBilans(7),
         db.getAllPendingBilans(),
-        db.getAllBilanAssignations(coachId).catch(() => []),
+        db.getAllBilanAssignations().catch(() => []),
       ]);
       this.clients = clients;
       const clientIds = clients.map(c => c.id);
 
       const [weekEntries, coachNotes, lastPoids] = await Promise.all([
         clientIds.length > 0 ? db.getJournalEntriesForClients(clientIds, this._mondayStr, todayStr()) : Promise.resolve([]),
-        db.getCoachNotesForWeek(coachId, this._mondayStr).catch(() => []),
+        db.getCoachNotesForWeek(this._mondayStr).catch(() => []),
         db.getLastPoidsPerClient(clientIds).catch(() => ({})),
       ]);
 

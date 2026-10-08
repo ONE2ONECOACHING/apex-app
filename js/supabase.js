@@ -708,11 +708,11 @@ const db = {
   },
 
   // ── Coach notes hebdomadaires ─────────────────────────────────────────────
-  async getCoachNotesForWeek(coachId, semaine) {
+  // Les droits (référent, gérants) sont appliqués par la base
+  async getCoachNotesForWeek(semaine) {
     const { data } = await getSupabase()
       .from('coach_notes')
       .select('client_id, semaine, note')
-      .eq('coach_id', coachId)
       .eq('semaine', semaine);
     return data || [];
   },
@@ -732,11 +732,11 @@ const db = {
     return result;
   },
 
-  async getAllBilanAssignations(coachId) {
+  // Les droits (référent, gérants) sont appliqués par la base
+  async getAllBilanAssignations() {
     const { data } = await getSupabase()
       .from('bilan_assignations')
-      .select('client_id, actif, template_id')
-      .eq('coach_id', coachId);
+      .select('client_id, actif, template_id');
     return data || [];
   },
 
