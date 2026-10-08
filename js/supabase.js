@@ -30,7 +30,11 @@ const db = {
   },
 
   async updatePassword(newPassword) {
-    const { error } = await getSupabase().auth.updateUser({ password: newPassword });
+    // mdp_personnel : le client a choisi son propre mot de passe (lu par le routeur)
+    const { error } = await getSupabase().auth.updateUser({
+      password: newPassword,
+      data: { mdp_personnel: true }
+    });
     if (error) throw error;
   },
 

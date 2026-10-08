@@ -86,9 +86,12 @@ const Router = {
       return;
     }
 
-    // Client sans onboarding → forcer changement de mdp d'abord, puis onboarding
+    // Client sans onboarding → forcer changement de mdp d'abord, puis onboarding.
+    // L'onboarding n'est accessible qu'une fois le mot de passe personnel choisi.
+    const mdpPersonnel = !!user?.user_metadata?.mdp_personnel;
     if (user && this.userProfile && this.userProfile.role === 'client'
-        && !this.userProfile.onboarding_done && hash !== 'set-password' && hash !== 'onboarding') {
+        && !this.userProfile.onboarding_done && hash !== 'set-password'
+        && (hash !== 'onboarding' || !mdpPersonnel)) {
       window.location.hash = '#set-password';
       return;
     }
