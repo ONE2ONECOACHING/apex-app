@@ -224,7 +224,7 @@ const db = {
     });
     const json = await res.json();
     if (json.error) throw new Error(json.error);
-    return json; // { profileId }
+    return json; // { profileId, password }
   },
 
   // Coach — Plans

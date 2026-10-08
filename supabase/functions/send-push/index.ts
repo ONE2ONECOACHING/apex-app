@@ -34,18 +34,25 @@ Deno.serve(async (req) => {
   // 1. Appel interne depuis les crons (CRON_SECRET)
   const isCron = CRON_SECRET && token === CRON_SECRET;
 
-  // 2. Appel depuis l'app coach (JWT utilisateur Supabase)
+  // 2. Appel depuis l'app coach (JWT utilisateur Supabase, compte coach uniquement)
   if (!isCron) {
     if (!token) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
-    const { error: authErr } = await createClient(SUPABASE_URL, ANON_KEY)
+    const { data: { user }, error: authErr } = await createClient(SUPABASE_URL, ANON_KEY)
       .auth.getUser(token);
-    if (authErr) {
+    if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    const { data: caller } = await createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+      .from("profiles").select("role").eq("id", user.id).single();
+    if (!caller || caller.role !== "coach") {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
   }

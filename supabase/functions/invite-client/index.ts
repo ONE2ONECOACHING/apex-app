@@ -7,7 +7,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, content-type',
 };
 
-const DEFAULT_PASSWORD = 'Apex2026!';
+// Mot de passe provisoire aléatoire, propre à chaque client (sans 0/O, 1/l/I)
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+function randomPassword(length = 10): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(bytes, b => ALPHABET[b % ALPHABET.length]).join('');
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -42,29 +47,28 @@ serve(async (req) => {
     const { email, prenom, nom } = await req.json();
     if (!email || !prenom) throw new Error('Email et prénom requis');
 
-    // Sécurité : interdire de créer un client avec un email déjà coach
+    // Un compte existant (client ou coach) n'est jamais modifié ici
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
-      .select('role')
-      .eq('email', email)
-      .single();
-    if (existingProfile && existingProfile.role === 'coach') throw new Error('Cet email appartient déjà à un coach.');
+      .select('id')
+      .ilike('email', email)
+      .maybeSingle();
+    if (existingProfile) throw new Error('Un compte existe déjà avec cet email.');
 
-    // Créer le user avec le mot de passe par défaut
+    const password = randomPassword();
     const { data: userData, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email,
       email_confirm: true,
-      password: DEFAULT_PASSWORD,
+      password,
     });
-    if (createErr && createErr.message !== 'User already registered') throw createErr;
-
-    const userId = userData?.user?.id || (
-      await supabaseAdmin.auth.admin.listUsers()
-        .then(({ data }) => data.users.find(u => u.email === email)?.id)
-    );
+    if (createErr) {
+      if (/already/i.test(createErr.message)) throw new Error('Un compte existe déjà avec cet email.');
+      throw createErr;
+    }
+    const userId = userData?.user?.id;
     if (!userId) throw new Error('Impossible de créer l\'utilisateur');
 
-    // Créer / mettre à jour le profil client
+    // Compléter le profil client (créé par le trigger handle_new_user)
     const { error: profileErr } = await supabaseAdmin.from('profiles').upsert({
       id: userId,
       email,
@@ -76,7 +80,7 @@ serve(async (req) => {
     if (profileErr) throw profileErr;
 
     return new Response(
-      JSON.stringify({ profileId: userId }),
+      JSON.stringify({ profileId: userId, password }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

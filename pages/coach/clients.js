@@ -461,11 +461,15 @@ const CoachClientsPage = {
     btn.textContent = 'Création en cours…';
 
     try {
-      const { profileId } = await db.createClientAccount(email, prenom, nom);
+      const res = await db.createClientAccount(email, prenom, nom);
+      const profileId = res.profileId;
+      // Transition : l'ancienne version d'invite-client ne renvoie pas de mot de passe
+      // et utilise encore le mot de passe commun. À retirer une fois la fonction déployée.
+      const password = res.password || 'Apex2026!';
       // Le coach qui crée le client en devient le référent (modifiable sur la fiche)
       await db.updateProfile(profileId, { coach_referent_id: Router.userProfile.id }).catch(() => {});
       const appUrl  = APP_CONFIG.APP_URL;
-      const message = `Bonjour ${prenom} 👊\n\nTon espace ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 Apex2026!\n\nConnecte-toi et choisis ton nouveau mot de passe.`;
+      const message = `Bonjour ${prenom} 👊\n\nTon espace ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 ${password}\n\nConnecte-toi et choisis ton nouveau mot de passe.`;
       document.getElementById('createForm').style.display = 'none';
       document.getElementById('inviteResult').style.display = 'block';
       document.getElementById('inviteResult').innerHTML = `
@@ -477,7 +481,7 @@ const CoachClientsPage = {
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;font-size:13px;margin-bottom:1rem;line-height:1.8;">
           <div>🔗 <b>Lien :</b> ${appUrl}</div>
           <div>📧 <b>Email :</b> ${email}</div>
-          <div>🔑 <b>Mot de passe :</b> Apex2026!</div>
+          <div>🔑 <b>Mot de passe :</b> ${escHtml(password)}</div>
         </div>
         <button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachClientsPage.copyCredentials('${encodeURIComponent(message)}')">📋 Copier le message WhatsApp</button>
         <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('coachModal').innerHTML='';CoachClientsPage.init()">Fermer</button>

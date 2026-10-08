@@ -22,7 +22,7 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Vérifier que le caller est un coach
+    // Vérifier que le caller est un gérant
     const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -33,13 +33,23 @@ serve(async (req) => {
 
     const { data: callerProfile } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, is_gerant')
       .eq('id', caller.id)
       .single();
-    if (!callerProfile || callerProfile.role !== 'coach') throw new Error('Accès refusé');
+    if (!callerProfile || callerProfile.role !== 'coach' || !callerProfile.is_gerant) {
+      throw new Error('Seul un gérant peut supprimer un client.');
+    }
 
     const { profileId } = await req.json();
     if (!profileId) throw new Error('profileId requis');
+
+    // Uniquement des comptes clients (jamais un coach)
+    const { data: target } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', profileId)
+      .single();
+    if (!target || target.role !== 'client') throw new Error('Ce compte n\'est pas un client.');
 
     // Supprimer l'utilisateur auth (cascade supprime aussi le profil)
     const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(profileId);
