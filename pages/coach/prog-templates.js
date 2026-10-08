@@ -33,7 +33,7 @@ const CoachProgTemplatesPage = {
     const profile = Router.userProfile;
     if (!profile || profile.role !== 'coach') { window.location.hash = '#login'; return; }
     try {
-      this.templates = await db.getProgTemplates(profile.id);
+      this.templates = await db.getProgTemplates();
       this.renderList();
     } catch (e) {
       document.getElementById('tplList').innerHTML =

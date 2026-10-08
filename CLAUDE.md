@@ -27,7 +27,8 @@ Application du studio ONE2ONE (Saint-Estève, près de Perpignan). Côté client
 ## État de la base (8 octobre 2026)
 
 - 34 tables. Rôles dans `profiles.role` : `client` ou `coach` (contrainte `profiles_role_check`). Fonction `is_coach()`.
-- Un seul compte coach existe, partagé par toute l'équipe. Le rattachement client–coach est une étiquette `profiles.coach_tag` (`ben`, `chris`, `lola`).
+- Deux comptes coach : le compte partagé `one2onecoachingsport@gmail.com` (id `fe2c19c2-…`), toujours utilisé par toute l'équipe et à ne jamais supprimer (il est l'auteur des modèles, effacés en cascade avec lui), et le compte gérant de Benjamin (test). L'étiquette `profiles.coach_tag` (`ben`, `chris`, `lola`) reste affichée.
+- `sql/2026-10-08_gerant_referent.sql` exécuté le 8 octobre 2026 : `profiles.is_gerant`, `profiles.coach_referent_id` (le compte partagé est référent de tous les clients pendant la transition), fonctions `is_gerant()` et `est_referent(client)`, trigger `protect_profile_role` étendu à ces colonnes.
 - Le schéma de 11 tables centrales (dont `profiles`, `plans_nutritionnels`, `journal_entries`, `mesures`) n'est pas versionné dans `sql/` : il a été créé à la main dans Supabase.
 - `sql/securite_2026-10-06.sql` a été exécuté en production le 6 octobre 2026 (protection du rôle, fonction `handle_new_user`, tables `poids_journal` et `habitudes_*` fermées, formations réservées aux connectés). L'inscription publique est désactivée dans Supabase Auth.
 - Failles restantes : mot de passe par défaut identique pour tous les nouveaux clients (`invite-client` et `pages/coach/clients.js`) ; `delete-client` laisse tout coach supprimer n'importe quel compte ; `send-push` accepte tout utilisateur connecté.
@@ -36,8 +37,8 @@ Application du studio ONE2ONE (Saint-Estève, près de Perpignan). Côté client
 
 Rien ne doit changer pour les clients pendant cette étape.
 
-1. Rôle gérant. Piste recommandée : un booléen `profiles.is_gerant` (le rôle reste `coach`), pour ne pas casser les règles qui testent `role = 'coach'`. À confirmer avec Benjamin.
-2. Comptes : Benjamin et Christophe (gérants), Lola, Diego et Cyril (coachs). Demander à Benjamin à qui appartient le compte coach actuel.
+1. Rôle gérant : fait (booléen `profiles.is_gerant`, le rôle reste `coach`).
+2. Comptes : pour l'instant un seul compte de test (gérant Benjamin). Christophe, Lola, Diego et Cyril plus tard. Bibliothèque commune (modèles, bilans, formations) : `sql/2026-10-08_bibliotheque_commune.sql`.
 3. Écran Équipe pour les gérants : ajouter ou supprimer un coach (Edge Function en service role, réservée aux gérants).
 4. Coach référent : `profiles.coach_referent_id` sur chaque client, repris de `coach_tag` quand c'est possible.
 5. Droits : réécrire les règles RLS selon la matrice du cahier des charges (référent, autres coachs, gérants).

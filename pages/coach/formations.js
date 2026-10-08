@@ -32,9 +32,9 @@ const CoachFormationsPage = {
 
     try {
       [this.formations, this.clients, this.assignations] = await Promise.all([
-        db.getFormations(profile.id),
+        db.getFormations(),
         db.getAllClients(),
-        db.getFormationAssignations(profile.id).catch(() => []),
+        db.getFormationAssignations().catch(() => []),
       ]);
       this._renderList();
     } catch (e) {

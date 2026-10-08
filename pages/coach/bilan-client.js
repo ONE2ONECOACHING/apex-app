@@ -35,7 +35,7 @@ const CoachBilanClientPage = {
     try {
       [this.client, this.templates, this.assignation, this.instances] = await Promise.all([
         db.getProfile(this.clientId),
-        db.getBilanTemplates(Router.userProfile.id),
+        db.getBilanTemplates(),
         db.getBilanAssignation(this.clientId).catch(() => null),
         db.getBilanInstancesForCoach(this.clientId).catch(() => [])
       ]);

@@ -30,7 +30,7 @@ const CoachBilanTemplatesPage = {
     const p = Router.userProfile;
     if (!p || p.role !== 'coach') { window.location.hash = '#coach-clients'; return; }
     try {
-      this.templates = await db.getBilanTemplates(p.id);
+      this.templates = await db.getBilanTemplates();
       this.renderList();
     } catch (e) {
       document.getElementById('btContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';

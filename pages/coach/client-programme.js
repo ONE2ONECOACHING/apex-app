@@ -41,7 +41,7 @@ const CoachClientProgrammePage = {
       [this.client, this.programmes, this.templates] = await Promise.all([
         db.getProfile(params.clientId),
         db.getClientProgrammesActifs(params.clientId),
-        db.getProgTemplates(profile.id),
+        db.getProgTemplates(),
       ]);
 
       const prenom = this.client?.prenom || 'Client';

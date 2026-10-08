@@ -509,11 +509,11 @@ const db = {
 
   // ── Bilan hebdomadaire ────────────────────────────────────────
 
-  async getBilanTemplates(coachId) {
+  // Bibliothèque commune : tous les modèles, quel que soit le coach auteur
+  async getBilanTemplates() {
     const { data, error } = await getSupabase()
       .from('bilan_templates')
       .select('*')
-      .eq('coach_id', coachId)
       .eq('actif', true)
       .order('created_at');
     if (error) throw error;
@@ -897,11 +897,11 @@ const db = {
 
   // ── Entraînement — Templates de programme ────────────────────────────────
 
-  async getProgTemplates(coachId) {
+  // Bibliothèque commune : tous les modèles, quel que soit le coach auteur
+  async getProgTemplates() {
     const { data, error } = await getSupabase()
       .from('prog_templates')
       .select('*')
-      .eq('coach_id', coachId)
       .eq('actif', true)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -1379,11 +1379,11 @@ const db = {
 
   // ── Formations ────────────────────────────────────────────────────────────
 
-  async getFormations(coachId) {
+  // Bibliothèque commune : toutes les formations, quel que soit le coach auteur
+  async getFormations() {
     const { data, error } = await getSupabase()
       .from('formations')
       .select('*, formation_modules(*, formation_lecons(*))')
-      .eq('coach_id', coachId)
       .order('created_at');
     if (error) throw error;
     return (data || []).map(f => ({
@@ -1433,14 +1433,14 @@ const db = {
     if (error) throw error;
   },
 
-  async getFormationAssignations(coachId) {
+  // Toutes les attributions, quel que soit le coach qui a attribué
+  async getFormationAssignations() {
     let { data, error } = await getSupabase()
       .from('formation_assignations')
-      .select('client_id, formation_id, unlock_offset')
-      .eq('coach_id', coachId);
+      .select('client_id, formation_id, unlock_offset');
     if (error) { // compat sans la colonne
       ({ data } = await getSupabase().from('formation_assignations')
-        .select('client_id, formation_id').eq('coach_id', coachId));
+        .select('client_id, formation_id'));
     }
     return data || [];
   },
