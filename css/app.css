@@ -1143,6 +1143,13 @@ body.coach-wide .tabs .tab {
   background: color-mix(in srgb, var(--c) 14%, white); border-left: 3px solid var(--c); color: var(--black); }
 .ag-bloc:hover { background: color-mix(in srgb, var(--c) 24%, white); }
 .ag-bloc.indispo { background: repeating-linear-gradient(45deg, #F1F1F3, #F1F1F3 5px, #E7E7EA 5px, #E7E7EA 10px); color: var(--gray); }
+.ag-bloc { touch-action: none; user-select: none; cursor: grab; }
+.ag-poignee { position: absolute; left: 0; right: 0; height: 6px; cursor: ns-resize; z-index: 1; }
+.ag-poignee.haut { top: 0; }
+.ag-poignee.bas { bottom: 0; }
+.ag-drag-source { opacity: 0.35; }
+.ag-fantome { pointer-events: none; z-index: 5; box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+body.ag-dragging, body.ag-dragging * { cursor: grabbing !important; user-select: none; }
 .ag-bloc-titre { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ag-bloc-sub { font-size: 10px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

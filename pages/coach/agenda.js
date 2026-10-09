@@ -15,6 +15,9 @@ const CoachAgendaPage = {
   creneaux: [],
   visibles: new Set(),   // coachs dont l'agenda est affiché
   _edit: null,           // créneau en cours de création / modification
+  _drag: null,           // glisser-déposer en cours (déplacement ou durée)
+  _fantome: null,        // aperçu du créneau pendant le glisser-déposer
+  _ignorerClic: false,   // le clic qui suit un glisser-déposer n'ouvre rien
 
   render() {
     document.body.classList.add('coach-wide');
@@ -269,22 +272,23 @@ const CoachAgendaPage = {
         const titre = indispo ? 'Indisponible' : this._nomClient(c.client_id);
         const heure = `${this._hm(new Date(c.debut))}–${this._hm(new Date(c.fin))}`;
         return `<div class="ag-bloc ${indispo ? 'indispo' : ''}" style="top:${top}px;height:${h - 2}px;left:${p.couloir * largeur}%;width:calc(${largeur}% - 3px);--c:${this._couleur(c.coach_id)}"
-                  onclick="event.stopPropagation();CoachAgendaPage.ouvrir('${c.id}')" title="${escHtml(titre + ' · ' + heure)}">
+                  onclick="event.stopPropagation()" onpointerdown="CoachAgendaPage.debutDrag(event, '${c.id}')" title="${escHtml(titre + ' · ' + heure)}">
+          <div class="ag-poignee haut"></div><div class="ag-poignee bas"></div>
           <div class="ag-bloc-titre">${escHtml(titre)}${c.serie_id ? ' ↻' : ''}${c.en_plus ? ' · en plus' : ''}</div>
           <div class="ag-bloc-sub">${heure}${this.vue === 'semaine' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}</div>
         </div>`;
       }).join('');
 
       const bandeau = journee.map(c => `
-        <div class="ag-journee" style="--c:${this._couleur(c.coach_id)}" onclick="CoachAgendaPage.ouvrir('${c.id}')">
+        <div class="ag-journee" style="--c:${this._couleur(c.coach_id)}" onclick="event.stopPropagation();CoachAgendaPage.ouvrir('${c.id}')">
           Indisponible${this.vue === 'semaine' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}
         </div>`).join('');
 
       return `
         <div class="ag-col">
           <div class="ag-col-titre ${this.vue === 'semaine' && this._ymd(col.date) === today ? 'today' : ''}">${escHtml(col.titre)}</div>
-          <div class="ag-col-journee">${bandeau}</div>
-          <div class="ag-col-corps" style="height:${hauteur}px" onclick="CoachAgendaPage.clicGrille(event, ${i})">${blocs}</div>
+          <div class="ag-col-journee" style="cursor:pointer" title="Indisponibilité sur la journée" onclick="CoachAgendaPage.nouvelleJournee(${i})">${bandeau}</div>
+          <div class="ag-col-corps" data-col="${i}" style="height:${hauteur}px" onclick="CoachAgendaPage.clicGrille(event, ${i})">${blocs}</div>
         </div>`;
     }).join('');
 
@@ -301,12 +305,177 @@ const CoachAgendaPage = {
 
   // Clic sur une case vide : nouveau rendez-vous à cette heure
   clicGrille(event, iCol) {
+    if (this._ignorerClic) { this._ignorerClic = false; return; }
     const col = this._colonnes()[iCol];
     const rect = event.currentTarget.getBoundingClientRect();
     const y = event.clientY - rect.top;
     const pas = Math.floor(y / AGENDA_PX_PAS);
     const minutes = AGENDA_HEURE_DEBUT * 60 + pas * AGENDA_PAS_MIN;
     this.nouveau(this._ymd(col.date), minutes, col.coachId);
+  },
+
+  // Clic sur le bandeau du haut : indisponibilité sur la journée entière
+  nouvelleJournee(iCol) {
+    const col = this._colonnes()[iCol];
+    this.nouveau(this._ymd(col.date), null, col.coachId);
+    Object.assign(this._edit, { type: 'indispo', journee_entiere: true });
+    this._renderModal();
+  },
+
+  // ── Glisser-déposer : déplacer un créneau ou changer sa durée ────────────
+  // Corps du créneau → déplacement (autre heure, autre jour, autre coach en
+  // vue jour ; bord gauche ou droit de l'agenda → période précédente/suivante).
+  // Bordure haute ou basse → durée. Sans mouvement, c'est un simple clic.
+
+  _minutesY(y) { return AGENDA_HEURE_DEBUT * 60 + y * AGENDA_PAS_MIN / AGENDA_PX_PAS; },
+
+  _arrondi(m) { return Math.round(m / AGENDA_PAS_MIN) * AGENDA_PAS_MIN; },
+
+  _hmMin(m) { return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; },
+
+  debutDrag(event, id) {
+    if (event.button !== 0) return;
+    const c = this.creneaux.find(x => x.id === id);
+    if (!c) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const bloc  = event.currentTarget;
+    const corps = bloc.parentElement;
+    const mode  = event.target.classList.contains('haut') ? 'haut'
+                : event.target.classList.contains('bas')  ? 'bas' : 'deplacer';
+    const d = new Date(c.debut), f = new Date(c.fin);
+    const debutMin = d.getHours() * 60 + d.getMinutes();
+    const duree = Math.round((f - d) / 60000);
+    const pointeur = this._minutesY(event.clientY - corps.getBoundingClientRect().top);
+
+    this._drag = {
+      c, mode, bloc, x0: event.clientX, y0: event.clientY, actif: false,
+      debutMin, finMin: debutMin + duree, duree, decalage: pointeur - debutMin,
+      corps0: corps, cible: null, sensBord: 0, timer: null,
+    };
+    this._onDragMove = e => this._dragMove(e);
+    this._onDragFin  = e => this._dragFin(e);
+    document.addEventListener('pointermove', this._onDragMove);
+    document.addEventListener('pointerup', this._onDragFin);
+  },
+
+  _dragMove(e) {
+    const g = this._drag;
+    if (!g) return;
+    if (!g.actif) {
+      if (Math.hypot(e.clientX - g.x0, e.clientY - g.y0) < 4) return;
+      g.actif = true;
+      g.bloc.classList.add('ag-drag-source');
+      document.body.classList.add('ag-dragging');
+    }
+
+    let corps;
+    if (g.mode === 'deplacer') {
+      corps = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList?.contains('ag-col-corps'));
+      this._bordPeriode(e);
+      if (!corps && g.cible && document.body.contains(g.cible.corps)) corps = g.cible.corps;
+    } else {
+      corps = document.body.contains(g.corps0) ? g.corps0 : null;
+    }
+    if (!corps) return;
+
+    const m   = this._minutesY(e.clientY - corps.getBoundingClientRect().top);
+    const min = AGENDA_HEURE_DEBUT * 60, max = AGENDA_HEURE_FIN * 60;
+    let debut, fin;
+    if (g.mode === 'deplacer') {
+      debut = Math.min(Math.max(this._arrondi(m - g.decalage), min), max - g.duree);
+      fin = debut + g.duree;
+    } else if (g.mode === 'haut') {
+      debut = Math.max(Math.min(this._arrondi(m), g.finMin - AGENDA_PAS_MIN), min);
+      fin = g.finMin;
+    } else {
+      debut = g.debutMin;
+      fin = Math.min(Math.max(this._arrondi(m), g.debutMin + AGENDA_PAS_MIN), max);
+    }
+    g.cible = { corps, colIndex: +corps.dataset.col, debut, fin };
+    this._dessinerFantome(corps, debut, fin);
+  },
+
+  _dessinerFantome(corps, debut, fin) {
+    const g = this._drag;
+    if (!this._fantome) {
+      this._fantome = document.createElement('div');
+      this._fantome.className = 'ag-bloc ag-fantome' + (g.c.type === 'indispo' ? ' indispo' : '');
+    }
+    const f = this._fantome;
+    const pxMin = AGENDA_PX_PAS / AGENDA_PAS_MIN;
+    const col = this._colonnes()[+corps.dataset.col];
+    const coachId = col?.coachId || g.c.coach_id;
+    f.style.cssText = `top:${(debut - AGENDA_HEURE_DEBUT * 60) * pxMin}px;height:${(fin - debut) * pxMin - 2}px;left:0;width:calc(100% - 3px);--c:${this._couleur(coachId)}`;
+    const titre = g.c.type === 'indispo' ? 'Indisponible' : this._nomClient(g.c.client_id);
+    f.innerHTML = `<div class="ag-bloc-titre">${escHtml(titre)}</div><div class="ag-bloc-sub">${this._hmMin(debut)}–${this._hmMin(fin)}</div>`;
+    if (f.parentElement !== corps) corps.appendChild(f);
+  },
+
+  // Pointeur contre le bord gauche/droit de l'agenda : période précédente/suivante
+  _bordPeriode(e) {
+    const g = this._drag;
+    const zone = document.querySelector('.ag-cols')?.getBoundingClientRect();
+    if (!zone) return;
+    const sens = e.clientX < zone.left + 12 ? -1 : e.clientX > zone.right - 12 ? 1 : 0;
+    if (sens === g.sensBord) return;
+    g.sensBord = sens;
+    clearTimeout(g.timer);
+    if (sens) g.timer = setTimeout(() => this._changerPeriodeDrag(sens), 700);
+  },
+
+  async _changerPeriodeDrag(sens) {
+    const g = this._drag;
+    if (!g || g.sensBord !== sens) return;
+    this.date = this._ajouterJours(this.date, sens * (this.vue === 'jour' ? 1 : 7));
+    this._fantome = null;
+    g.cible = null;
+    this._renderToolbar();
+    await this._charger();
+    if (this._drag === g && g.sensBord === sens) {
+      g.timer = setTimeout(() => this._changerPeriodeDrag(sens), 900);
+    }
+  },
+
+  async _dragFin() {
+    const g = this._drag;
+    document.removeEventListener('pointermove', this._onDragMove);
+    document.removeEventListener('pointerup', this._onDragFin);
+    if (!g) return;
+    clearTimeout(g.timer);
+    this._drag = null;
+    document.body.classList.remove('ag-dragging');
+
+    if (!g.actif) { this.ouvrir(g.c.id); return; }
+
+    this._ignorerClic = true;
+    setTimeout(() => { this._ignorerClic = false; }, 0);
+    this._fantome?.remove();
+    this._fantome = null;
+
+    const cible = g.cible;
+    const col = cible ? this._colonnes()[cible.colIndex] : null;
+    if (!col) { this._renderGrille(); return; }
+
+    const ymd = this._ymd(col.date);
+    const patch = {
+      debut: this._dateLocale(ymd, cible.debut).toISOString(),
+      fin:   this._dateLocale(ymd, cible.fin).toISOString(),
+    };
+    if (col.coachId && col.coachId !== g.c.coach_id) patch.coach_id = col.coachId;
+    const inchange = new Date(patch.debut).getTime() === new Date(g.c.debut).getTime()
+                  && new Date(patch.fin).getTime() === new Date(g.c.fin).getTime() && !patch.coach_id;
+    if (inchange) { this._renderGrille(); return; }
+
+    try {
+      await db.updateCreneau(g.c.id, patch);
+      await this._charger();
+      toast(g.mode === 'deplacer' ? 'Rendez-vous déplacé' : 'Durée modifiée', 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+      this._renderGrille();
+    }
   },
 
   // ── Fenêtre rendez-vous ──────────────────────────────────────────────────
