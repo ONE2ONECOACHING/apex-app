@@ -13,6 +13,7 @@ const CoachClientsPage = {
   _coachNotes: [],
   _lastPoids: {},
   _bilanAssignations: [],
+  _coachingsDuJour: [],
 
   render() {
     return `
@@ -25,6 +26,7 @@ const CoachClientsPage = {
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
         <button class="btn btn-primary btn-small" onclick="CoachClientsPage.showCreateModal()">+ Nouveau client</button>
+        <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-agenda'">📅 Agenda</button>
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-bilan-templates'">📝 Bilans</button>
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-prog-templates'">📋 Programmes</button>
         <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-exercices'">🏋️ Exercices</button>
@@ -50,6 +52,7 @@ const CoachClientsPage = {
         db.getAllPendingBilans(),
         db.getAllBilanAssignations().catch(() => []),
       ]);
+      this._coachingsDuJour = await db.getCoachingsDuJour(Router.userProfile.id).catch(() => []);
       this.clients = clients;
       const clientIds = clients.map(c => c.id);
 
@@ -158,6 +161,20 @@ const CoachClientsPage = {
     }
 
     let html = tabsHtml;
+
+    // ── ZONE 0 : MES COACHINGS DU JOUR ───────────────────────────────────
+    const hm = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    html += `<div class="dash-section">
+      <div class="dash-section-title">📅 Mes coachings du jour <span class="dash-badge dash-badge-gray">${this._coachingsDuJour.length}</span></div>
+      ${this._coachingsDuJour.length === 0
+        ? `<div class="dash-rdv" onclick="window.location.hash='#coach-agenda'"><div class="dash-rdv-nom" style="color:var(--gray-light);font-weight:500;">Aucun coaching aujourd'hui · ouvrir l'agenda</div></div>`
+        : this._coachingsDuJour.map(r => `
+          <div class="dash-rdv" onclick="CoachClientsPage.openClient('${r.client_id}')">
+            <div class="dash-rdv-heure">${hm(r.debut)} – ${hm(r.fin)}</div>
+            <div class="dash-rdv-nom">${escHtml(`${r.client?.prenom || ''} ${r.client?.nom || ''}`.trim() || 'Client')}</div>
+            <div class="dash-action-arrow">›</div>
+          </div>`).join('')}
+    </div>`;
 
     // ── ZONE 1 : À FAIRE ─────────────────────────────────────────────────
     const actions = this._buildActions(filtered, planMap);

@@ -1,4 +1,6 @@
 // APEX APP — Edge Function : Création compte client
+//   { email, prenom, nom }                         → client suivi (accès app)
+//   { studio: true, prenom, nom, telephone, email? } → client du studio, sans accès app
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -44,8 +46,15 @@ serve(async (req) => {
       .single();
     if (!callerProfile || callerProfile.role !== 'coach') throw new Error('Accès refusé');
 
-    const { email, prenom, nom } = await req.json();
-    if (!email || !prenom) throw new Error('Email et prénom requis');
+    const body = await req.json();
+    const studio = !!body.studio;
+    const prenom = String(body.prenom || '').trim();
+    const nom    = String(body.nom || '').trim();
+    const telephone = String(body.telephone || '').trim();
+    // Client du studio sans email : adresse interne, jamais utilisée pour écrire
+    const email = String(body.email || '').trim().toLowerCase()
+      || (studio ? `studio-${crypto.randomUUID()}@clients.one2onecoaching.fr` : '');
+    if (!prenom || !email) throw new Error(studio ? 'Prénom requis' : 'Email et prénom requis');
 
     // Un compte existant (client ou coach) n'est jamais modifié ici
     const { data: existingProfile } = await supabaseAdmin
@@ -60,6 +69,8 @@ serve(async (req) => {
       email,
       email_confirm: true,
       password,
+      // Client du studio : compte bloqué (personne ne connaît le mot de passe)
+      ...(studio ? { ban_duration: '876000h' } : {}),
     });
     if (createErr) {
       if (/already/i.test(createErr.message)) throw new Error('Un compte existe déjà avec cet email.');
@@ -75,12 +86,20 @@ serve(async (req) => {
       prenom,
       nom: nom || null,
       role: 'client',
-      onboarding_done: false,
+      onboarding_done: studio,
+      ...(studio ? {
+        type_client: 'studio',
+        telephone: telephone || null,
+        coach_referent_id: caller.id,
+      } : {}),
     }, { onConflict: 'id' });
-    if (profileErr) throw profileErr;
+    if (profileErr) {
+      if (studio) await supabaseAdmin.auth.admin.deleteUser(userId);
+      throw profileErr;
+    }
 
     return new Response(
-      JSON.stringify({ profileId: userId, password }),
+      JSON.stringify(studio ? { profileId: userId } : { profileId: userId, password }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

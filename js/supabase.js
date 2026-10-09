@@ -162,13 +162,123 @@ const db = {
   },
 
   // Coach — Clients
+  // Clients suivis (les clients du studio sans suivi n'apparaissent pas ici)
   async getAllClients() {
     const { data, error } = await getSupabase()
       .from('profiles')
       .select('*')
       .eq('role', 'client')
+      .eq('type_client', 'suivi')
       .neq('actif', false)
       .order('prenom');
+    if (error) throw error;
+    return data;
+  },
+
+  // Tous les clients (suivis et studio), pour l'agenda
+  async getClientsAgenda() {
+    const { data, error } = await getSupabase()
+      .from('profiles')
+      .select('id, prenom, nom, type_client, facturation_mixte, telephone')
+      .eq('role', 'client')
+      .neq('actif', false)
+      .order('prenom');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Client du studio sans accès app (compte bloqué, via edge function)
+  async createStudioClient({ prenom, nom, telephone, email }) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/invite-client`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ studio: true, prenom, nom, telephone, email }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.error) throw new Error(json.error || json.message || `Erreur serveur (${res.status})`);
+    return json; // { profileId }
+  },
+
+  // ── Agenda ────────────────────────────────────────────────────────────────
+
+  // Créneaux qui chevauchent la période [debut, fin[ (dates ISO)
+  async getCreneaux(debut, fin) {
+    const { data, error } = await getSupabase()
+      .from('agenda_creneaux')
+      .select('*')
+      .lt('debut', fin)
+      .gt('fin', debut)
+      .order('debut');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async insertCreneaux(rows) {
+    const { data, error } = await getSupabase()
+      .from('agenda_creneaux')
+      .insert(rows)
+      .select();
+    if (error) throw error;
+    return data || [];
+  },
+
+  async updateCreneau(id, patch) {
+    const { error } = await getSupabase()
+      .from('agenda_creneaux')
+      .update(patch)
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteCreneau(id) {
+    const { error } = await getSupabase()
+      .from('agenda_creneaux')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  // Supprime le créneau et les suivants d'une même récurrence
+  async deleteSerieDepuis(serieId, debut) {
+    const { error } = await getSupabase()
+      .from('agenda_creneaux')
+      .delete()
+      .eq('serie_id', serieId)
+      .gte('debut', debut);
+    if (error) throw error;
+  },
+
+  // Coachings du jour d'un coach, avec le nom du client
+  async getCoachingsDuJour(coachId) {
+    const debut = new Date(); debut.setHours(0, 0, 0, 0);
+    const fin = new Date(debut); fin.setDate(fin.getDate() + 1);
+    const { data, error } = await getSupabase()
+      .from('agenda_creneaux')
+      .select('id, debut, fin, client_id, client:profiles!agenda_creneaux_client_id_fkey(prenom, nom)')
+      .eq('coach_id', coachId)
+      .eq('type', 'coaching')
+      .gte('debut', debut.toISOString())
+      .lt('debut', fin.toISOString())
+      .order('debut');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getDernierCreneauSerie(serieId) {
+    const { data, error } = await getSupabase()
+      .from('agenda_creneaux')
+      .select('*')
+      .eq('serie_id', serieId)
+      .order('debut', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     if (error) throw error;
     return data;
   },

@@ -73,6 +73,18 @@ const CoachClientEditPage = {
           </div>
         </div>
         <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field"><label class="field-label">Type de client</label>
+            <select class="input" id="ceTypeClient">
+              <option value="suivi" ${c.type_client !== 'studio' ? 'selected' : ''}>Suivi (app complète)</option>
+              <option value="studio" ${c.type_client === 'studio' ? 'selected' : ''}>Studio sans suivi</option>
+            </select>
+          </div>
+          <div class="field"><label class="field-label">Téléphone</label><input class="input" type="tel" id="ceTelephone" value="${escHtml(c.telephone || '')}"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px;">
+          <input type="checkbox" id="ceFactMixte" ${c.facturation_mixte ? 'checked' : ''}> Abonnement + séances à la consommation
+        </label>
+        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="field"><label class="field-label">Sexe</label>
             <select class="input" id="ceSexe"><option value="homme" ${c.sexe === 'homme' ? 'selected' : ''}>Homme</option><option value="femme" ${c.sexe === 'femme' ? 'selected' : ''}>Femme</option></select>
           </div>
@@ -242,7 +254,10 @@ const CoachClientEditPage = {
         return formatDate(debut);
       })(),
       masse_grasse_pct: +document.getElementById('ceFat').value || null,
-      coach_tag: this.selectedTag
+      coach_tag: this.selectedTag,
+      type_client: document.getElementById('ceTypeClient').value,
+      telephone: document.getElementById('ceTelephone').value.trim() || null,
+      facturation_mixte: document.getElementById('ceFactMixte').checked
     };
     // Liste des coachs non chargée → ne pas toucher au référent
     if (this.coachs.length) {

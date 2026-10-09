@@ -1101,3 +1101,62 @@ body.coach-wide .tabs .tab {
 /* ── UTILITAIRE — NOMBRE ANIMÉ ────────────────────────────────── */
 .count-up { display: inline-block; }
 
+
+/* ═══════════════════════════════════════════════════════════
+   AGENDA (coach)
+   ═══════════════════════════════════════════════════════════ */
+.ag-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.ag-nav { display: flex; align-items: center; gap: 8px; }
+.ag-label { font-size: 15px; font-weight: 600; margin-left: 6px; text-transform: capitalize; }
+.ag-switch { display: flex; border: 1px solid var(--border-solid); border-radius: 10px; overflow: hidden; background: var(--white); }
+.ag-switch button { border: none; background: none; padding: 7px 14px; font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--gray); cursor: pointer; }
+.ag-switch button.on { background: var(--black); color: var(--white); }
+
+.ag-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.ag-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-solid);
+  background: var(--white); font-family: var(--font); font-size: 12px; font-weight: 600; color: var(--gray-light); cursor: pointer; }
+.ag-chip-dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--c); background: transparent; }
+.ag-chip.on { color: var(--black); }
+.ag-chip.on .ag-chip-dot { background: var(--c); }
+
+.ag-grille { display: flex; background: var(--white); border: 1px solid var(--border-solid); border-radius: 14px; overflow: hidden; }
+.ag-heures { width: 44px; flex-shrink: 0; border-right: 1px solid var(--border-solid); }
+.ag-heure { position: absolute; right: 6px; transform: translateY(-50%); font-size: 10px; color: var(--gray-light); }
+.ag-heure:first-child { transform: none; }
+.ag-cols { display: flex; flex: 1; min-width: 0; }
+.ag-col { flex: 1; min-width: 0; border-right: 1px solid var(--border-solid); }
+.ag-col:last-child { border-right: none; }
+.ag-col-titre { height: 34px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  color: var(--gray); border-bottom: 1px solid var(--border-solid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+.ag-col-titre.today { color: var(--gold); }
+.ag-col-journee { min-height: 22px; border-bottom: 1px solid var(--border-solid); padding: 2px; }
+.ag-journee { font-size: 11px; font-weight: 600; padding: 2px 6px; margin-bottom: 2px; border-radius: 5px; cursor: pointer;
+  color: var(--gray); background: repeating-linear-gradient(45deg, #F1F1F3, #F1F1F3 5px, #E7E7EA 5px, #E7E7EA 10px);
+  border-left: 3px solid var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-col-corps { position: relative; cursor: pointer;
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--heure) - 1px), var(--border-solid) calc(var(--heure) - 1px), var(--border-solid) var(--heure)),
+    repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--heure) / 2 - 1px), rgba(0,0,0,0.03) calc(var(--heure) / 2 - 1px), rgba(0,0,0,0.03) calc(var(--heure) / 2)); }
+.ag-col-corps:hover { background-color: rgba(0, 74, 173, 0.02); }
+
+.ag-bloc { position: absolute; border-radius: 6px; padding: 3px 6px; overflow: hidden; cursor: pointer; margin-left: 1px;
+  background: color-mix(in srgb, var(--c) 14%, white); border-left: 3px solid var(--c); color: var(--black); }
+.ag-bloc:hover { background: color-mix(in srgb, var(--c) 24%, white); }
+.ag-bloc.indispo { background: repeating-linear-gradient(45deg, #F1F1F3, #F1F1F3 5px, #E7E7EA 5px, #E7E7EA 10px); color: var(--gray); }
+.ag-bloc-titre { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-bloc-sub { font-size: 10px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.ag-results { border: 1px solid var(--border-solid); border-radius: 10px; margin-top: 4px; overflow: hidden; background: var(--white); }
+.ag-results:empty { display: none; }
+.ag-result { padding: 8px 12px; font-size: 14px; cursor: pointer; border-bottom: 1px solid var(--border-light); }
+.ag-result:last-child { border-bottom: none; }
+.ag-result:hover { background: var(--gold-light); }
+.ag-studio { margin-top: 8px; padding: 10px; border: 1px dashed var(--border-solid); border-radius: 10px; }
+.ag-check { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 12px; cursor: pointer; }
+
+/* Tableau de bord : coachings du jour */
+.dash-rdv { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--white); border: 1px solid var(--border-solid);
+  border-radius: 12px; margin-bottom: 6px; cursor: pointer; }
+.dash-rdv:hover { border-color: var(--gold); }
+.dash-rdv-heure { font-size: 13px; font-weight: 700; color: var(--gold); min-width: 92px; }
+.dash-rdv-nom { font-size: 14px; font-weight: 600; flex: 1; }
