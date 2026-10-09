@@ -455,6 +455,12 @@ const CoachClientsPage = {
               <div class="field"><label class="field-label">Prénom</label><input class="input" id="newPrenom" placeholder="Marc"></div>
             </div>
             <div class="field"><label class="field-label">Email</label><input class="input" id="newEmail" type="email" placeholder="marc@email.com"></div>
+            <div class="field"><label class="field-label">Type de client</label>
+              <select class="input" id="newType">
+                <option value="suivi">Studio + suivi</option>
+                <option value="distance">Suivi à distance</option>
+              </select>
+            </div>
             <div id="createError"></div>
             <button class="btn btn-primary" style="width:100%" onclick="CoachClientsPage.createClient()" id="createBtn">Créer le compte</button>
           </div>
@@ -467,6 +473,7 @@ const CoachClientsPage = {
     const nom    = document.getElementById('newNom').value.trim();
     const prenom = document.getElementById('newPrenom').value.trim();
     const email  = document.getElementById('newEmail').value.trim();
+    const typeClient = document.getElementById('newType').value;
     const btn    = document.getElementById('createBtn');
 
     if (!prenom || !email) {
@@ -478,7 +485,7 @@ const CoachClientsPage = {
     btn.textContent = 'Création en cours…';
 
     try {
-      const { profileId, password } = await db.createClientAccount(email, prenom, nom);
+      const { profileId, password } = await db.createClientAccount(email, prenom, nom, typeClient);
       // Le coach qui crée le client en devient le référent (modifiable sur la fiche)
       await db.updateProfile(profileId, { coach_referent_id: Router.userProfile.id }).catch(() => {});
       const appUrl  = APP_CONFIG.APP_URL;

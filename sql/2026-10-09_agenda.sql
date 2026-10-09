@@ -4,7 +4,10 @@
 --
 -- Ce que ça fait :
 --   1. Fiche client : trois nouvelles informations
---        type_client        « suivi » (tous les clients actuels) ou « studio »
+--        type_client        « suivi »    studio + suivi : app complète et agenda
+--                                         (tous les clients actuels, à ajuster)
+--                           « distance » suivi à distance : app complète, pas d'agenda
+--                           « studio »   studio sans suivi : agenda, pas de suivi
 --        telephone
 --        facturation_mixte  client à la fois en abonnement et à la consommation
 --      Un client ne peut modifier aucune des trois lui-même.
@@ -35,7 +38,7 @@ alter table public.profiles
 
 alter table public.profiles drop constraint if exists profiles_type_client_check;
 alter table public.profiles add constraint profiles_type_client_check
-  check (type_client in ('suivi', 'studio'));
+  check (type_client in ('suivi', 'distance', 'studio'));
 
 -- Protection des colonnes sensibles (reprend le trigger du lot 1 et ajoute
 -- type_client et facturation_mixte, modifiables par les coachs seulement).

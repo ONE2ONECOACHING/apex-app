@@ -1,5 +1,6 @@
 // APEX APP — Edge Function : Création compte client
-//   { email, prenom, nom }                         → client suivi (accès app)
+//   { email, prenom, nom, type_client? }           → client suivi (accès app) :
+//                                                     'suivi' (studio + suivi) ou 'distance'
 //   { studio: true, prenom, nom, telephone, email? } → client du studio, sans accès app
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -51,6 +52,7 @@ serve(async (req) => {
     const prenom = String(body.prenom || '').trim();
     const nom    = String(body.nom || '').trim();
     const telephone = String(body.telephone || '').trim();
+    const typeSuivi = body.type_client === 'distance' ? 'distance' : 'suivi';
     // Client du studio sans email : adresse interne, jamais utilisée pour écrire
     const email = String(body.email || '').trim().toLowerCase()
       || (studio ? `studio-${crypto.randomUUID()}@clients.one2onecoaching.fr` : '');
@@ -87,8 +89,8 @@ serve(async (req) => {
       nom: nom || null,
       role: 'client',
       onboarding_done: studio,
+      type_client: studio ? 'studio' : typeSuivi,
       ...(studio ? {
-        type_client: 'studio',
         telephone: telephone || null,
         coach_referent_id: caller.id,
       } : {}),

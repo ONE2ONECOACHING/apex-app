@@ -473,7 +473,10 @@ const CoachAgendaPage = {
     const box = document.getElementById('agClientResults');
     const s = q.trim().toLowerCase();
     if (!s) { box.innerHTML = ''; return; }
-    const res = this.clients.filter(c => `${c.prenom || ''} ${c.nom || ''}`.toLowerCase().includes(s)).slice(0, 8);
+    const res = this.clients
+      .filter(c => c.type_client !== 'distance')
+      .filter(c => `${c.prenom || ''} ${c.nom || ''}`.toLowerCase().includes(s))
+      .slice(0, 8);
     box.innerHTML = res.length
       ? res.map(c => `<div class="ag-result" onclick="CoachAgendaPage.choisirClient('${c.id}')">${escHtml(this._nomClient(c.id))}${c.type_client === 'studio' ? ' <span style="font-size:11px;color:var(--gray-light);">studio</span>' : ''}</div>`).join('')
       : '<div class="ag-result" style="color:var(--gray-light);cursor:default;">Aucun client trouvé</div>';

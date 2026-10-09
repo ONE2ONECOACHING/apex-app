@@ -23,6 +23,7 @@ Réunir au même endroit tout ce qui sert à suivre un client, pour que les coac
 - Au studio, tout coach peut coacher tout client.
 - **Client suivi** (à distance ou nutrition) : application actuelle complète + ses séances en présentiel et ses charges.
 - **Client du studio sans suivi** : accès limité (séances en présentiel, charges, messagerie générale). Pas de journal de suivi, de bilans ni de messagerie avec le référent.
+- Trois types de client sur la fiche (décision de Benjamin, 9 octobre 2026) : **studio + suivi** (suivi complet et agenda), **suivi à distance** (suivi complet, pas d'agenda), **studio sans suivi** (agenda, pas de suivi).
 
 ## Droits sur la fiche d'un client
 

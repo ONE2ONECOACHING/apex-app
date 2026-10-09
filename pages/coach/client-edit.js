@@ -75,7 +75,8 @@ const CoachClientEditPage = {
         <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="field"><label class="field-label">Type de client</label>
             <select class="input" id="ceTypeClient">
-              <option value="suivi" ${c.type_client !== 'studio' ? 'selected' : ''}>Suivi (app complète)</option>
+              <option value="suivi" ${c.type_client === 'suivi' ? 'selected' : ''}>Studio + suivi</option>
+              <option value="distance" ${c.type_client === 'distance' ? 'selected' : ''}>Suivi à distance</option>
               <option value="studio" ${c.type_client === 'studio' ? 'selected' : ''}>Studio sans suivi</option>
             </select>
           </div>

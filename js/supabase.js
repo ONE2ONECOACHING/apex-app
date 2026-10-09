@@ -162,20 +162,20 @@ const db = {
   },
 
   // Coach — Clients
-  // Clients suivis (les clients du studio sans suivi n'apparaissent pas ici)
+  // Clients suivis, au studio ou à distance (pas les clients du studio sans suivi)
   async getAllClients() {
     const { data, error } = await getSupabase()
       .from('profiles')
       .select('*')
       .eq('role', 'client')
-      .eq('type_client', 'suivi')
+      .in('type_client', ['suivi', 'distance'])
       .neq('actif', false)
       .order('prenom');
     if (error) throw error;
     return data;
   },
 
-  // Tous les clients (suivis et studio), pour l'agenda
+  // Tous les clients, pour l'agenda (les clients à distance n'y sont pas proposés)
   async getClientsAgenda() {
     const { data, error } = await getSupabase()
       .from('profiles')
@@ -342,7 +342,7 @@ const db = {
     return data;
   },
 
-  async createClientAccount(email, prenom, nom = '') {
+  async createClientAccount(email, prenom, nom = '', typeClient = 'suivi') {
     const session = await getSupabase().auth.getSession();
     const token = session.data.session?.access_token;
     if (!token) throw new Error('Non connecté');
@@ -353,7 +353,7 @@ const db = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ email, prenom, nom }),
+      body: JSON.stringify({ email, prenom, nom, type_client: typeClient }),
     });
     const json = await res.json();
     if (json.error) throw new Error(json.error);
