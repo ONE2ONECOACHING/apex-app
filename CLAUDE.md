@@ -31,7 +31,7 @@ Application du studio ONE2ONE (Saint-Estève, près de Perpignan). Côté client
 - `sql/2026-10-08_gerant_referent.sql` exécuté le 8 octobre 2026 : `profiles.is_gerant`, `profiles.coach_referent_id` (le compte partagé est référent de tous les clients pendant la transition), fonctions `is_gerant()` et `est_referent(client)`, trigger `protect_profile_role` étendu à ces colonnes.
 - Le schéma de 11 tables centrales (dont `profiles`, `plans_nutritionnels`, `journal_entries`, `mesures`) n'est pas versionné dans `sql/` : il a été créé à la main dans Supabase.
 - `sql/securite_2026-10-06.sql` a été exécuté en production le 6 octobre 2026 (protection du rôle, fonction `handle_new_user`, tables `poids_journal` et `habitudes_*` fermées, formations réservées aux connectés). L'inscription publique est désactivée dans Supabase Auth.
-- Failles restantes : corrigées sur la branche `etape-1-fondations` (lot 7), pas encore déployées. Ordre de mise en ligne : fusion sur `main`, puis déploiement de `invite-client`, `delete-client`, `send-push`, puis suppression de `delete-user` dans Supabase.
+- Failles du 6 octobre corrigées et en production depuis le 9 octobre 2026 : mot de passe aléatoire (`invite-client`), `delete-client` réservé aux gérants et aux comptes clients, `send-push` réservé aux crons et aux coachs, `delete-user` supprimée. Étape 1 fusionnée sur `main` le 9 octobre 2026.
 - Risque accepté par Benjamin (8 octobre 2026) : les clients déjà inscrits qui n'ont jamais changé le mot de passe commun `Apex2026!` le gardent ; on ne force pas de changement pour eux (option B). Les nouveaux clients doivent choisir leur mot de passe avant l'onboarding (`user_metadata.mdp_personnel`).
 
 ## Étape en cours : 1 — Fondations
@@ -46,7 +46,7 @@ Rien ne doit changer pour les clients pendant cette étape.
 3. Écran Équipe : fait (lot 6).
 4. Coach référent : fait (lot 4). Répartition réelle des clients à faire quand chaque coach utilisera son propre compte (sinon le compte partagé perd l'écriture sur ces clients).
 5. Droits : faits (lot 5).
-6. Sécurité : écrite (lot 7), à mettre en ligne avec la fusion.
+6. Sécurité : en production (lot 7).
 
 ## Dépôt
 

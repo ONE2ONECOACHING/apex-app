@@ -461,11 +461,7 @@ const CoachClientsPage = {
     btn.textContent = 'Création en cours…';
 
     try {
-      const res = await db.createClientAccount(email, prenom, nom);
-      const profileId = res.profileId;
-      // Transition : l'ancienne version d'invite-client ne renvoie pas de mot de passe
-      // et utilise encore le mot de passe commun. À retirer une fois la fonction déployée.
-      const password = res.password || 'Apex2026!';
+      const { profileId, password } = await db.createClientAccount(email, prenom, nom);
       // Le coach qui crée le client en devient le référent (modifiable sur la fiche)
       await db.updateProfile(profileId, { coach_referent_id: Router.userProfile.id }).catch(() => {});
       const appUrl  = APP_CONFIG.APP_URL;
