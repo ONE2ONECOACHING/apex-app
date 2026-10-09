@@ -18,6 +18,7 @@ const CoachAgendaPage = {
   _drag: null,           // glisser-déposer en cours (déplacement ou durée)
   _fantome: null,        // aperçu du créneau pendant le glisser-déposer
   _ignorerClic: false,   // le clic qui suit un glisser-déposer n'ouvre rien
+  _anim: 0,              // sens du prochain changement de période (-1, 0, 1) pour l'animation
 
   render() {
     document.body.classList.add('coach-wide');
@@ -125,9 +126,16 @@ const CoachAgendaPage = {
 
   setVue(vue) { this.vue = vue; this._renderToolbar(); this._charger(); },
 
-  aujourdhui() { this.date = this._debutJour(new Date()); this._renderToolbar(); this._charger(); },
+  aujourdhui() {
+    const cible = this._debutJour(new Date());
+    this._anim = Math.sign(cible - this.date);
+    this.date = cible;
+    this._renderToolbar();
+    this._charger();
+  },
 
   decaler(sens) {
+    this._anim = sens;
     this.date = this._ajouterJours(this.date, sens * (this.vue === 'jour' ? 1 : 7));
     this._renderToolbar();
     this._charger();
@@ -153,7 +161,7 @@ const CoachAgendaPage = {
           <button class="date-nav-btn" onclick="CoachAgendaPage.decaler(-1)">‹</button>
           <button class="btn btn-secondary btn-small" onclick="CoachAgendaPage.aujourdhui()">Aujourd'hui</button>
           <button class="date-nav-btn" onclick="CoachAgendaPage.decaler(1)">›</button>
-          <div class="ag-label">${escHtml(label)}</div>
+          <div class="ag-label ${this._anim ? 'ag-flash' : ''}">${escHtml(label)}</div>
         </div>
         <div class="ag-nav">
           <div class="ag-switch">
@@ -299,8 +307,21 @@ const CoachAgendaPage = {
           <div class="ag-col-journee"></div>
           <div style="position:relative;height:${hauteur}px">${heures}</div>
         </div>
-        <div class="ag-cols" style="--pas:${AGENDA_PX_PAS}px;--heure:${60 * pxMin}px">${colonnesHtml}</div>
+        <div class="ag-cols ${this._anim > 0 ? 'ag-slide-suiv' : this._anim < 0 ? 'ag-slide-prec' : ''}" style="--pas:${AGENDA_PX_PAS}px;--heure:${60 * pxMin}px">${colonnesHtml}</div>
       </div>`;
+    this._anim = 0;
+    if (this._drag?.sensBord) this._marquerBord(this._drag.sensBord);
+  },
+
+  // Bande « période suivante / précédente » pendant un glisser-déposer
+  _marquerBord(sens) {
+    const grille = document.querySelector('.ag-grille');
+    if (!grille) return;
+    grille.classList.remove('ag-bord-prec', 'ag-bord-suiv');
+    if (!sens) return;
+    const unite = this.vue === 'jour' ? ['Jour précédent', 'Jour suivant'] : ['Semaine précédente', 'Semaine suivante'];
+    grille.dataset.bord = sens > 0 ? `${unite[1]} ›` : `‹ ${unite[0]}`;
+    grille.classList.add(sens > 0 ? 'ag-bord-suiv' : 'ag-bord-prec');
   },
 
   // Clic sur une case vide : nouveau rendez-vous à cette heure
@@ -419,8 +440,12 @@ const CoachAgendaPage = {
     const zone = document.querySelector('.ag-cols')?.getBoundingClientRect();
     if (!zone) return;
     const sens = e.clientX < zone.left + 12 ? -1 : e.clientX > zone.right - 12 ? 1 : 0;
+    // Le texte de la bande suit la hauteur du pointeur
+    const grille = document.querySelector('.ag-grille');
+    if (grille) grille.style.setProperty('--ybord', `${e.clientY - grille.getBoundingClientRect().top}px`);
     if (sens === g.sensBord) return;
     g.sensBord = sens;
+    this._marquerBord(sens);
     clearTimeout(g.timer);
     if (sens) g.timer = setTimeout(() => this._changerPeriodeDrag(sens), 700);
   },
@@ -428,6 +453,7 @@ const CoachAgendaPage = {
   async _changerPeriodeDrag(sens) {
     const g = this._drag;
     if (!g || g.sensBord !== sens) return;
+    this._anim = sens;
     this.date = this._ajouterJours(this.date, sens * (this.vue === 'jour' ? 1 : 7));
     this._fantome = null;
     g.cible = null;
@@ -446,6 +472,7 @@ const CoachAgendaPage = {
     clearTimeout(g.timer);
     this._drag = null;
     document.body.classList.remove('ag-dragging');
+    this._marquerBord(0);
 
     if (!g.actif) { this.ouvrir(g.c.id); return; }
 
