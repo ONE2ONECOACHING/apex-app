@@ -43,12 +43,11 @@ Rien ne doit changer pour les clients pendant cette étape.
    Lot 5 (droits) : `sql/2026-10-08_droits_coachs.sql` exécuté le 8 octobre 2026 et vérifié avec `sql/2026-10-08_droits_test.sql` (conforme à la matrice). `handle_new_user` donne le compte partagé comme référent aux nouveaux clients (transition). Photos : `sql/2026-10-08_droits_photos.sql`.
    Lot 6 (écran Équipe) : `sql/2026-10-08_equipe.sql` exécuté, Edge Function `manage-team` déployée le 8 octobre 2026 (attention : dans le tableau de bord Supabase, saisir le nom avant de déployer, sinon l'adresse prend un nom aléatoire), création et suppression d'un coach test validées par Benjamin sur la preview.
    Lot 4 (référent dans l'app) : garder l'étiquette `coach_tag` affichée à côté du référent tant que l'équipe utilise le compte partagé (validé par Benjamin).
-3. Écran Équipe pour les gérants : ajouter ou supprimer un coach (Edge Function en service role, réservée aux gérants).
-4. Coach référent : `profiles.coach_referent_id` sur chaque client, repris de `coach_tag` quand c'est possible.
-5. Droits : réécrire les règles RLS selon la matrice du cahier des charges (référent, autres coachs, gérants).
-6. Sécurité : mot de passe aléatoire à la création d'un client, restreindre `delete-client` (gérants, comptes clients uniquement) et `send-push`.
+3. Écran Équipe : fait (lot 6).
+4. Coach référent : fait (lot 4). Répartition réelle des clients à faire quand chaque coach utilisera son propre compte (sinon le compte partagé perd l'écriture sur ces clients).
+5. Droits : faits (lot 5).
+6. Sécurité : écrite (lot 7), à mettre en ligne avec la fusion.
 
 ## Dépôt
 
-- `.git/stale-index-lock-claude` est un fichier vide laissé par une session précédente : il peut être supprimé.
-- `sql/securite_2026-10-06.sql`, `CLAUDE.md` et `docs/` ne sont pas encore commités.
+- Branche de travail de l'étape 1 : `etape-1-fondations` (preview Cloudflare sur l'adresse de la branche). Benjamin pousse avec GitHub Desktop : le terminal de Claude n'a pas accès à ses identifiants GitHub.
