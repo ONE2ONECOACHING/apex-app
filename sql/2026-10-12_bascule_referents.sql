@@ -1,7 +1,7 @@
 -- ============================================================================
 -- APEX APP — Jour de bascule : chaque client reçoit son vrai coach référent
 -- À lancer LE JOUR OÙ toute l'équipe travaille avec ses propres comptes.
--- (Renommer le fichier avec la date du jour au moment de l'exécution.)
+-- Prévu le lundi 12 octobre 2026.
 -- À coller dans Supabase → SQL Editor → Run.
 --
 -- Ce que ça fait :

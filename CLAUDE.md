@@ -27,7 +27,7 @@ Application du studio ONE2ONE (Saint-Estève, près de Perpignan). Côté client
 ## État de la base (8 octobre 2026)
 
 - 34 tables. Rôles dans `profiles.role` : `client` ou `coach` (contrainte `profiles_role_check`). Fonction `is_coach()`.
-- Deux comptes coach : le compte partagé `one2onecoachingsport@gmail.com` (id `fe2c19c2-…`), toujours utilisé par toute l'équipe et à ne jamais supprimer (il est l'auteur des modèles, effacés en cascade avec lui), et le compte gérant de Benjamin (test). L'étiquette `profiles.coach_tag` (`ben`, `chris`, `lola`) reste affichée.
+- Six comptes coach (9 octobre 2026) : Benjamin Cara et Christophe (gérants), Lola, Diego, Cyril, et le « Compte partagé » `one2onecoachingsport@gmail.com` (id `fe2c19c2-…`), toujours utilisé par l'équipe jusqu'à la bascule et à ne jamais supprimer sans transférer ses modèles (effacés en cascade avec lui). 59 clients, tous étiquetés `ben`, `chris` ou `lola`.
 - `sql/2026-10-08_gerant_referent.sql` exécuté le 8 octobre 2026 : `profiles.is_gerant`, `profiles.coach_referent_id` (le compte partagé est référent de tous les clients pendant la transition), fonctions `is_gerant()` et `est_referent(client)`, trigger `protect_profile_role` étendu à ces colonnes.
 - Le schéma de 11 tables centrales (dont `profiles`, `plans_nutritionnels`, `journal_entries`, `mesures`) n'est pas versionné dans `sql/` : il a été créé à la main dans Supabase.
 - `sql/securite_2026-10-06.sql` a été exécuté en production le 6 octobre 2026 (protection du rôle, fonction `handle_new_user`, tables `poids_journal` et `habitudes_*` fermées, formations réservées aux connectés). L'inscription publique est désactivée dans Supabase Auth.
@@ -44,7 +44,7 @@ Rien ne doit changer pour les clients pendant cette étape.
    Lot 6 (écran Équipe) : `sql/2026-10-08_equipe.sql` exécuté, Edge Function `manage-team` déployée le 8 octobre 2026 (attention : dans le tableau de bord Supabase, saisir le nom avant de déployer, sinon l'adresse prend un nom aléatoire), création et suppression d'un coach test validées par Benjamin sur la preview.
    Lot 4 (référent dans l'app) : garder l'étiquette `coach_tag` affichée à côté du référent tant que l'équipe utilise le compte partagé (validé par Benjamin).
 3. Écran Équipe : fait (lot 6).
-4. Coach référent : fait (lot 4). Répartition réelle des clients à faire quand chaque coach utilisera son propre compte (sinon le compte partagé perd l'écriture sur ces clients).
+4. Coach référent : fait (lot 4). Bascule prévue le lundi 12 octobre 2026 : toute l'équipe passe sur ses propres comptes, puis `sql/2026-10-12_bascule_referents.sql` répartit les clients d'après `coach_tag` (ben → Benjamin, chris → Christophe, lola → Lola). Avant la bascule, ne pas changer de référent (le compte partagé perdrait l'écriture sur ces clients).
 5. Droits : faits (lot 5).
 6. Sécurité : en production (lot 7).
 
