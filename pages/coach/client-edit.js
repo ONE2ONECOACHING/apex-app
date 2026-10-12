@@ -6,6 +6,7 @@ const CoachClientEditPage = {
   coachs: [],
   fiche: null,           // profil coaching (table fiche_coach, réservée aux coachs)
   semainesStudio: [],    // semaines cochées des séances au studio
+  programmes: [],        // programmes en cours (durée et séances du tableau studio)
   _topoTimer: null,
 
   render() {
@@ -28,6 +29,7 @@ const CoachClientEditPage = {
     this.coachs      = [];
     this.fiche       = null;
     this.semainesStudio = [];
+    this.programmes  = [];
 
     const params = Router.getParams();
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
@@ -36,9 +38,10 @@ const CoachClientEditPage = {
       this.client = await db.getProfile(params.clientId);
       this.activites = await db.getActivites(params.clientId);
       this.coachs = await db.getCoachs().catch(() => []);
-      [this.fiche, this.semainesStudio] = await Promise.all([
+      [this.fiche, this.semainesStudio, this.programmes] = await Promise.all([
         db.getFicheCoach(params.clientId).catch(() => null),
         db.getSemainesStudioClient(params.clientId).catch(() => []),
+        db.getClientProgrammesActifs(params.clientId).catch(() => []),
       ]);
       document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
       this.renderForm();
@@ -247,61 +250,58 @@ const CoachClientEditPage = {
   },
 
   // ── Séances au studio d'un coup d'œil (se remplit avec les cases « faite ») ──
-
+  // Colonnes = semaines du programme en cours (le plus long s'il y en a plusieurs),
+  // lignes = séances attribuées au client dans ses programmes en cours.
   _studioHtml() {
     const c = this.client;
-    const lignes = this.semainesStudio;
-    if (c.type_client === 'distance' && !lignes.length) return '';
+    const progs = (this.programmes || []).filter(p => (p.seances || []).some(s => !s.cardio));
+    if (c.type_client === 'distance' && !progs.some(p => p.seances.some(s => s.lieu === 'studio'))) return '';
 
-    const lundi = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); const j = x.getDay(); x.setDate(x.getDate() + (j === 0 ? -6 : 1 - j)); return x; };
-    const dates = lignes.map(l => new Date(l.faite_le + 'T00:00:00'));
-    const base = lundi(c.date_debut ? new Date(c.date_debut + 'T00:00:00') : (dates.length ? new Date(Math.min(...dates)) : new Date()));
-    const semaineDe = d => Math.max(1, Math.floor((lundi(d) - base) / (7 * 864e5)) + 1);
-
-    const parSeance = new Map();   // n° de séance → Map(semaine → date)
-    for (const l of lignes) {
-      const n = (l.client_prog_seances?.ordre ?? 0) + 1;
-      if (!parSeance.has(n)) parSeance.set(n, new Map());
-      const d = new Date(l.faite_le + 'T00:00:00');
-      parSeance.get(n).set(semaineDe(d), d);
+    const carte = contenu => `
+      <div class="card">
+        <div class="card-title">Séances au studio</div>
+        ${contenu}
+      </div>`;
+    if (!progs.length) {
+      return carte('<div style="font-size:13px;color:var(--gray-light);">Aucun programme en cours.</div>');
     }
-    const numeros = [...new Set([1, 2, 3, ...parSeance.keys()])].sort((a, b) => a - b);
-    const maxSem = Math.max(50, ...[...parSeance.values()].flatMap(m => [...m.keys()]));
-    const colonnes = Array.from({ length: maxSem }, (_, i) => i + 1);
-    const total = lignes.length;
+
+    const ref = progs.reduce((a, b) => ((b.nb_semaines || 4) > (a.nb_semaines || 4) ? b : a));
+    const nbSem = ref.nb_semaines || 4;
+    const idsSeances = new Map();   // id de séance → n° de séance
+    for (const p of progs) for (const s of p.seances) if (!s.cardio) idsSeances.set(s.id, (s.ordre ?? 0) + 1);
+    const numeros = [...new Set(idsSeances.values())].sort((a, b) => a - b);
+
+    const cochees = new Map();      // n° de séance → Map(semaine → date)
+    for (const l of this.semainesStudio) {
+      const n = idsSeances.get(l.seance_id);
+      if (!n) continue;
+      if (!cochees.has(n)) cochees.set(n, new Map());
+      cochees.get(n).set(l.semaine, new Date(l.faite_le + 'T00:00:00'));
+    }
+    const total = [...cochees.values()].reduce((t, m) => t + m.size, 0);
+    const colonnes = Array.from({ length: nbSem }, (_, i) => i + 1);
+    const debut = ref.date_debut
+      ? ` · depuis le ${new Date(ref.date_debut + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}` : '';
 
     return `
       <div class="card">
-        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
           <span>Séances au studio</span>
-          <span style="font-size:11px;font-weight:500;color:var(--gray-light);">${total} faite${total > 1 ? 's' : ''} · semaine 1 = ${base.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <span style="font-size:11px;font-weight:500;color:var(--gray-light);">${total} faite${total > 1 ? 's' : ''} · ${escHtml(ref.nom)} · ${nbSem} semaines${debut}</span>
         </div>
         <div style="overflow-x:auto;">
           <table class="st-table">
             <tr><th></th>${colonnes.map(k => `<th>${k}</th>`).join('')}</tr>
             ${numeros.map(n => `
               <tr><th class="st-seance">Séance ${n}</th>${colonnes.map(k => {
-                const d = parSeance.get(n)?.get(k);
-                return `<td><span class="st-case ${d ? 'on' : ''}" ${d ? `title="${d.toLocaleDateString('fr-FR')}"` : ''}></span></td>`;
+                const d = cochees.get(n)?.get(k);
+                return `<td><span class="st-case ${d ? 'on' : ''}" ${d ? `title="faite le ${d.toLocaleDateString('fr-FR')}"` : ''}></span></td>`;
               }).join('')}</tr>`).join('')}
           </table>
         </div>
         <div style="font-size:11px;color:var(--gray-light);margin-top:6px;">Se coche tout seul quand un coach coche « faite » dans la grille d'une séance au studio.</div>
       </div>`;
-  },
-
-  async changerActif(actif) {
-    const prenom = this.client.prenom || 'ce client';
-    if (!actif && !confirm(`Passer ${prenom} en client inactif ?\n\nIl disparaît des listes, du tableau de bord et de l'agenda, ses bilans automatiques sont arrêtés et il ne reçoit plus de rappels. Toutes ses données sont conservées, et tu pourras le réactiver.`)) return;
-    try {
-      await db.setClientActif(this.client.id, actif);
-      this.client.actif = actif;
-      _ficheClients.delete(this.client.id);
-      this.renderForm();
-      toast(actif ? `${prenom} est de nouveau actif. Pense à relancer ses bilans si besoin.` : `${prenom} est inactif`, 'success');
-    } catch (e) {
-      toast('Erreur : ' + e.message, 'error');
-    }
   },
 
   _coachLabel(co) {
