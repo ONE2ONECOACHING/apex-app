@@ -136,7 +136,75 @@ const EntrainementPage = {
     return consignesHtml + this._renderSeancesGrouped(this._allSeances());
   },
 
-  _renderSeancesGrouped(seances) {
+  _renderSeancesGrouped(toutes) {
+    // Séances au studio : remplies par le coach, consultables ici
+    const studio  = toutes.filter(s => s.lieu === 'studio' && !s.cardio);
+    const seances = toutes.filter(s => !(s.lieu === 'studio' && !s.cardio));
+    const studioHtml = studio.length ? `
+      <div style="display:flex;align-items:center;gap:8px;margin:14px 0 10px;">
+        <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#059669;">🏋️ Au studio</div>
+        <div style="flex:1;height:1px;background:#059669;opacity:.25;"></div>
+      </div>
+      ${studio.map(s => `
+        <div class="card card-tap" onclick="EntrainementPage._ouvrirStudio('${s.id}')" style="cursor:pointer;margin-bottom:0.75rem;border-left:3px solid #059669;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:15px;">${escHtml(s.nom)}</div>
+              <div style="font-size:12px;color:var(--gray-light);margin-top:2px;">${(s.exercices || []).length} exercices · avec ton coach · voir mes charges</div>
+            </div>
+            <div style="color:var(--gray-muted);font-size:18px;">›</div>
+          </div>
+        </div>`).join('')}` : '';
+    if (seances.length === 0 && studio.length) return studioHtml;
+    return this._renderSeancesDistance(seances) + studioHtml;
+  },
+
+  // Fiche en lecture seule d'une séance au studio : charges semaine par semaine
+  async _ouvrirStudio(seanceId) {
+    const modal = document.createElement('div');
+    modal.id = 'studioModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);display:flex;align-items:flex-end;';
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    modal.innerHTML = `
+      <div style="background:var(--white);border-radius:20px 20px 0 0;width:100%;max-height:85vh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);">
+          <div style="font-weight:700;font-size:16px;" id="studioTitre">Séance au studio</div>
+          <button onclick="document.getElementById('studioModal').remove()" style="border:none;background:none;font-size:24px;cursor:pointer;color:var(--gray);">×</button>
+        </div>
+        <div id="studioCorps" style="overflow-y:auto;padding:14px 18px 24px;"><div class="spinner" style="margin:2rem auto;"></div></div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    try {
+      const d = await db.getGrilleStudio(seanceId);
+      document.getElementById('studioTitre').textContent = d.seance.nom;
+      const faites = new Map(d.semaines.map(s => [s.semaine, s]));
+      const corps = d.exercices.map(e => {
+        const lignes = d.saisies
+          .filter(x => x.exercice_id === e.id && (x.charge || x.reps || x.remarque))
+          .sort((a, b) => a.semaine - b.semaine)
+          .map(x => `
+            <div style="display:flex;gap:10px;font-size:13px;padding:5px 0;border-top:1px solid var(--border-light);">
+              <div style="min-width:74px;font-weight:600;color:var(--gray);">Semaine ${x.semaine}</div>
+              <div style="flex:1;white-space:pre-line;">${[x.charge, x.reps].filter(Boolean).map(escHtml).join(' · ')}${x.remarque ? `<div style="color:var(--gray-light);font-size:12px;">${escHtml(x.remarque)}</div>` : ''}</div>
+            </div>`).join('');
+        return `
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:700;font-size:14px;">${escHtml(e.exercices_bdd?.nom || 'Exercice')}</div>
+            <div style="font-size:12px;color:var(--gray-light);margin-bottom:4px;">${escHtml(CoachSeanceStudioPage._methode(e))}</div>
+            ${lignes || '<div style="font-size:12px;color:var(--gray-muted);">Pas encore de charges notées.</div>'}
+          </div>`;
+      }).join('');
+      const nbFaites = faites.size;
+      document.getElementById('studioCorps').innerHTML = `
+        <div style="font-size:12px;color:var(--gray-light);margin-bottom:12px;">${nbFaites} séance${nbFaites > 1 ? 's' : ''} faite${nbFaites > 1 ? 's' : ''} sur ${d.seance.client_programmes?.nb_semaines || '?'} semaines</div>
+        ${corps || '<div class="empty-text">Aucun exercice.</div>'}`;
+    } catch (err) {
+      document.getElementById('studioCorps').innerHTML = '<div class="alert alert-error">Impossible de charger la séance.</div>';
+    }
+  },
+
+  _renderSeancesDistance(seances) {
     if (seances.length === 0) {
       return `<div class="empty-state"><div class="empty-icon">📭</div>
         <div class="empty-text">Aucune séance dans ce programme.</div></div>`;
@@ -171,7 +239,7 @@ const EntrainementPage = {
     if (p && p.date_debut) {
       const start = new Date(p.date_debut + 'T00:00:00');
       const diff  = Math.floor((Date.now() - start) / (7 * 24 * 3600 * 1000));
-      const nbSem = p.nb_semaines || 99;
+      const nbSem = 99; // pas de plafond (comportement historique, conservé)
       return Math.min(Math.max(1, diff + 1), nbSem);
     }
     return 1;

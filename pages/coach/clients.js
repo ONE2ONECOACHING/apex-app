@@ -169,7 +169,7 @@ const CoachClientsPage = {
       ${this._coachingsDuJour.length === 0
         ? `<div class="dash-rdv" onclick="window.location.hash='#coach-agenda'"><div class="dash-rdv-nom" style="color:var(--gray-light);font-weight:500;">Aucun coaching aujourd'hui · ouvrir l'agenda</div></div>`
         : this._coachingsDuJour.map(r => `
-          <div class="dash-rdv" onclick="CoachClientsPage.openClient('${r.client_id}')">
+          <div class="dash-rdv" onclick="CoachSeanceStudioPage.ouvrirPourClient('${r.client_id}')">
             <div class="dash-rdv-heure">${hm(r.debut)} – ${hm(r.fin)}</div>
             <div class="dash-rdv-nom">${escHtml(`${r.client?.prenom || ''} ${r.client?.nom || ''}`.trim() || 'Client')}</div>
             <div class="dash-action-arrow">›</div>

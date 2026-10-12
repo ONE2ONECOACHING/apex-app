@@ -612,6 +612,7 @@ const CoachAgendaPage = {
                 <div class="input" style="flex:1;display:flex;align-items:center;">${escHtml(this._nomClient(client.id))}${client.type_client === 'studio' ? ' <span style="font-size:11px;color:var(--gray-light);margin-left:6px;">studio</span>' : ''}</div>
                 <button class="btn btn-secondary btn-small" onclick="CoachAgendaPage.changerClient()">Changer</button>
                 <button class="btn btn-secondary btn-small" onclick="CoachAgendaPage.ouvrirFiche('${client.id}')">Fiche</button>
+                ${e.id ? `<button class="btn btn-primary btn-small" onclick="CoachAgendaPage.ouvrirSeance('${client.id}')">📋 Séance</button>` : ''}
               </div>` : `
               <input class="input" id="agClientSearch" placeholder="Chercher un client…" oninput="CoachAgendaPage.chercherClient(this.value)" autocomplete="off">
               <div id="agClientResults" class="ag-results"></div>
@@ -683,6 +684,8 @@ const CoachAgendaPage = {
   changerClient() { this._lireForm(); this._edit.client_id = null; this._renderModal(); },
 
   ouvrirFiche(id) { this.fermer(); Router.navigate('coach-client-edit', { clientId: id }); },
+
+  ouvrirSeance(id) { this.fermer(); CoachSeanceStudioPage.ouvrirPourClient(id); },
 
   formStudio() {
     document.getElementById('agStudioForm').innerHTML = `
