@@ -1,8 +1,7 @@
-﻿// APEX APP — Coach : Fiche Client (infos + TDEE)
+﻿// APEX APP — Coach : Fiche Client, onglet Infos (le calcul TDEE est dans calcul-nutrition.js)
 
 const CoachClientEditPage = {
   client: null,
-  activites: [],
   coachs: [],
   fiche: null,           // profil coaching (table fiche_coach, réservée aux coachs)
   semainesStudio: [],    // semaines cochées des séances au studio
@@ -25,7 +24,6 @@ const CoachClientEditPage = {
   async init() {
     // Reset état pour éviter les fuites entre clients
     this.client      = null;
-    this.activites   = [];
     this.coachs      = [];
     this.fiche       = null;
     this.semainesStudio = [];
@@ -36,7 +34,6 @@ const CoachClientEditPage = {
 
     try {
       this.client = await db.getProfile(params.clientId);
-      this.activites = await db.getActivites(params.clientId);
       this.coachs = await db.getCoachs().catch(() => []);
       [this.fiche, this.semainesStudio, this.programmes] = await Promise.all([
         db.getFicheCoach(params.clientId).catch(() => null),
@@ -52,14 +49,6 @@ const CoachClientEditPage = {
 
   renderForm() {
     const c = this.client;
-    const metiers = [
-      { v: 'sedentaire', l: 'Sédentaire' }, { v: 'leger', l: 'Légèrement actif' },
-      { v: 'actif', l: 'Actif' }, { v: 'tres_actif', l: 'Très physique' }
-    ];
-    const objectifs = [
-      { v: 'perte', l: 'Perte de poids' }, { v: 'maintien', l: 'Maintien' }, { v: 'masse', l: 'Prise de masse' }
-    ];
-    const sports = Object.keys(TDEE.METS);
 
     let html = `
       ${coachClientNav(c.id, 'coach-client-edit')}
@@ -86,62 +75,13 @@ const CoachClientEditPage = {
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px;">
           <input type="checkbox" id="ceFactMixte" ${c.facturation_mixte ? 'checked' : ''}> Abonnement + séances à la consommation
         </label>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Sexe</label>
-            <select class="input" id="ceSexe"><option value="homme" ${c.sexe === 'homme' ? 'selected' : ''}>Homme</option><option value="femme" ${c.sexe === 'femme' ? 'selected' : ''}>Femme</option></select>
-          </div>
-          <div class="field"><label class="field-label">Âge</label><input class="input" type="number" id="ceAge" value="${c.age || ''}"></div>
-        </div>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Poids actuel (kg)</label><input class="input" type="number" id="cePoids" value="${c.poids || ''}" step="0.1"></div>
-          <div class="field"><label class="field-label">Taille (cm)</label><input class="input" type="number" id="ceTaille" value="${c.taille || ''}"></div>
-        </div>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field"><label class="field-label">Poids de départ (kg)</label><input class="input" type="number" id="cePoidsDepart" value="${c.poids_depart || ''}" step="0.1"></div>
-          <div class="field"><label class="field-label">Poids objectif (kg)</label><input class="input" type="number" id="cePoidsObjectif" value="${c.poids_objectif || ''}" step="0.1"></div>
-        </div>
+        <button class="btn btn-primary btn-small" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
+        <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>
       </div>
 
       <div class="card" id="ceProfil">${this._profilCoachHtml()}</div>
       ${this._studioHtml()}
 
-      <div class="card">
-        <div class="card-title">Activité</div>
-        <div class="field"><label class="field-label">Type de métier</label>
-          <select class="input" id="ceMetier">${metiers.map(m => `<option value="${m.v}" ${c.type_metier === m.v ? 'selected' : ''}>${m.l}</option>`).join('')}</select>
-        </div>
-        <div class="field"><label class="field-label">Pas par jour</label><input class="input" type="number" id="cePas" value="${c.pas_par_jour || 5000}"></div>
-        <div class="field"><label class="field-label">Séances sportives</label>
-          <div id="ceActivites"></div>
-          <button class="add-meal-btn" style="margin-top:6px;" onclick="CoachClientEditPage.addActivite()">+ Ajouter une activité</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Objectif</div>
-        <div class="field"><label class="field-label">Objectif</label>
-          <select class="input" id="ceObjectif">${objectifs.map(o => `<option value="${o.v}" ${c.objectif === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
-        </div>
-        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="field">
-            <label class="field-label">Semaine courante</label>
-            <input class="input" type="number" id="ceSemaine" value="${clientCurrentWeek(c)}" min="1">
-            <div style="font-size:11px;color:var(--gray-muted);margin-top:4px;">↻ S'incrémente automatiquement chaque lundi</div>
-          </div>
-          <div class="field"><label class="field-label">Masse grasse %</label><input class="input" type="number" id="ceFat" value="${c.masse_grasse_pct || ''}" step="0.1"></div>
-        </div>
-      </div>
-
-      <div class="card card-accent" id="ceTDEEResult">
-        <div class="card-title">TDEE calculé</div>
-        <div style="font-size:13px;color:var(--gray);">Remplis les infos ci-dessus et clique "Calculer" pour voir le TDEE.</div>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="CoachClientEditPage.calcTDEE()">🔢 Calculer TDEE</button>
-        <button class="btn btn-primary" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
-      </div>
-      <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>
 
       <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
         ${c.actif === false ? `
@@ -152,22 +92,6 @@ const CoachClientEditPage = {
       </div>`;
 
     document.getElementById('ceContent').innerHTML = html;
-    this.renderActivites();
-  },
-
-  renderActivites() {
-    const container = document.getElementById('ceActivites');
-    const sports = Object.keys(TDEE.METS);
-    container.innerHTML = this.activites.map((a, i) => `
-      <div style="display:grid;grid-template-columns:1fr 90px 36px;gap:8px;margin-bottom:6px;align-items:center;">
-        <select class="input" onchange="CoachClientEditPage.activites[${i}].sport=this.value;CoachClientEditPage.activites[${i}].met=TDEE.METS[this.value]||5">
-          ${sports.map(s => `<option value="${s}" ${a.sport === s ? 'selected' : ''}>${s}</option>`).join('')}
-        </select>
-        <select class="input" onchange="CoachClientEditPage.activites[${i}].duree_minutes=parseInt(this.value)">
-          ${[15, 20, 30, 45, 60, 75, 90, 120].map(d => `<option value="${d}" ${a.duree_minutes === d ? 'selected' : ''}>${d} min</option>`).join('')}
-        </select>
-        <button style="width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:18px;" onclick="CoachClientEditPage.activites.splice(${i},1);CoachClientEditPage.renderActivites()">×</button>
-      </div>`).join('');
   },
 
   // ── Profil coaching ────────────────────────────────────────────────────────
@@ -320,76 +244,9 @@ const CoachClientEditPage = {
     }
   },
 
-  addActivite() {
-    this.activites.push({ sport: 'Musculation', duree_minutes: 45, met: 3.5 });
-    this.renderActivites();
-  },
-
-  calcTDEE() {
-    const profile = {
-      sexe: document.getElementById('ceSexe').value,
-      age: +document.getElementById('ceAge').value,
-      poids: +document.getElementById('cePoids').value,
-      taille: +document.getElementById('ceTaille').value,
-      type_metier: document.getElementById('ceMetier').value,
-      pas_par_jour: +document.getElementById('cePas').value,
-      objectif: document.getElementById('ceObjectif').value
-    };
-
-    if (!profile.age || !profile.poids || !profile.taille) {
-      toast('Remplis au minimum l\'âge, le poids et la taille.', 'error'); return;
-    }
-
-    const result = TDEE.calculate(profile, this.activites);
-
-    document.getElementById('ceTDEEResult').innerHTML = `
-      <div class="card-title">TDEE calculé</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
-        <div style="text-align:center;"><div style="font-size:16px;font-weight:700;">${result.bmr}</div><div style="font-size:11px;color:var(--gray-light);">BMR</div></div>
-        <div style="text-align:center;"><div style="font-size:16px;font-weight:700;">${result.neat}</div><div style="font-size:11px;color:var(--gray-light);">NEAT</div></div>
-        <div style="text-align:center;"><div style="font-size:16px;font-weight:700;">${result.eat}</div><div style="font-size:11px;color:var(--gray-light);">EAT</div></div>
-      </div>
-      <div style="text-align:center;padding:10px;background:var(--white);border-radius:8px;margin-bottom:10px;">
-        <div style="font-size:12px;color:var(--gray-light);">TDEE</div>
-        <div style="font-size:24px;font-weight:700;">${result.tdee} kcal</div>
-      </div>
-      <div style="text-align:center;padding:10px;background:var(--gold-light);border-radius:8px;">
-        <div style="font-size:12px;color:var(--gold);">Objectif (${profile.objectif})</div>
-        <div style="font-size:24px;font-weight:700;color:var(--gold);">${result.targetKcal} kcal</div>
-        <div style="font-size:12px;color:var(--gray);margin-top:4px;">P: ${result.proteines}g · G: ${result.glucides}g · L: ${result.lipides}g</div>
-      </div>`;
-  },
-
   async save() {
     const id = this.client.id;
-    // Champ "Semaine courante" vide → conserver la valeur existante (ne pas
-    // réinitialiser à 1 ni recalculer date_debut). #44
-    const semRaw = document.getElementById('ceSemaine').value.trim();
-    const semaine = semRaw !== '' ? (parseInt(semRaw) || this.client.semaine_courante || 1)
-                                  : (this.client.semaine_courante || 1);
     const updates = {
-      sexe: document.getElementById('ceSexe').value,
-      age: +document.getElementById('ceAge').value || null,
-      poids: +document.getElementById('cePoids').value || null,
-      taille: +document.getElementById('ceTaille').value || null,
-      poids_depart: +document.getElementById('cePoidsDepart').value || null,
-      poids_objectif: +document.getElementById('cePoidsObjectif').value || null,
-      type_metier: document.getElementById('ceMetier').value,
-      pas_par_jour: +document.getElementById('cePas').value || 5000,
-      objectif: document.getElementById('ceObjectif').value,
-      semaine_courante: semaine,
-      date_debut: (() => {
-        // Rétro-calculer date_debut depuis le lundi de la semaine courante
-        const today = new Date();
-        const dow = today.getDay();
-        const mondayOffset = dow === 0 ? -6 : 1 - dow;
-        const monday = new Date(today);
-        monday.setDate(today.getDate() + mondayOffset);
-        monday.setHours(0, 0, 0, 0);
-        const debut = new Date(monday.getTime() - (semaine - 1) * 7 * 24 * 3600 * 1000);
-        return formatDate(debut);
-      })(),
-      masse_grasse_pct: +document.getElementById('ceFat').value || null,
       type_client: document.getElementById('ceTypeClient').value,
       telephone: document.getElementById('ceTelephone').value.trim() || null,
       facturation_mixte: document.getElementById('ceFactMixte').checked
@@ -398,40 +255,14 @@ const CoachClientEditPage = {
     if (this.coachs.length) {
       updates.coach_referent_id = document.getElementById('ceReferent').value || null;
     }
-
-    // Calcul TDEE si possible
-    let tdeeResult = null;
-    if (updates.age && updates.poids && updates.taille) {
-      tdeeResult = TDEE.calculate(updates, this.activites);
-      updates.bmr  = tdeeResult.bmr;
-      updates.neat = tdeeResult.neat;
-      updates.eat  = tdeeResult.eat;
-      updates.tdee = tdeeResult.tdee;
-    }
-
     try {
       await db.updateProfile(id, updates);
+      Object.assign(this.client, updates);
       _ficheClients.delete(id);   // les onglets relisent le référent et le type
-      await db.setActivites(id, this.activites);
-
-      // Mettre à jour les macros du plan actif si TDEE calculé
-      let planMsg = '';
-      if (tdeeResult) {
-        try {
-          await db.updateActivePlanMacros(id, {
-            calories_cible:  tdeeResult.targetKcal,
-            proteines_cible: tdeeResult.proteines,
-            glucides_cible:  tdeeResult.glucides,
-            lipides_cible:   tdeeResult.lipides
-          });
-          planMsg = ' · Objectifs du plan mis à jour';
-        } catch (_) {}
-      }
-
-      document.getElementById('ceSaveMsg').innerHTML = `<div class="alert alert-success">✅ Client mis à jour${planMsg}</div>`;
+      document.getElementById('ceSaveMsg').innerHTML = '<div class="alert alert-success">✅ Infos enregistrées</div>';
       setTimeout(() => { document.getElementById('ceSaveMsg').innerHTML = ''; }, 4000);
     } catch (e) {
-      document.getElementById('ceSaveMsg').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('ceSaveMsg').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   }
 };
