@@ -144,7 +144,7 @@ const CoachAccueilPage = {
             <span class="ac-nom">${this._nom(p.client)}</span>
             <span class="ac-meta">${escHtml(p.nom)}</span>
             <span class="ac-sem ${a.termine ? 'fin' : a.restantes <= 0 ? 'derniere' : ''}">${a.termine ? 'terminé' : `sem. ${a.semaine}/${a.nb}`}</span>
-            <span class="ac-fleche">›</span>
+            ${a.termine ? `<button class="ac-cloche" title="Ne plus afficher cette phase terminée" onclick="event.stopPropagation();CoachAccueilPage.cycleVu('${p.id}')">✓ Vu</button>` : '<span class="ac-fleche">›</span>'}
           </div>`).join('')
       : vide('Aucun programme en cours.');
 
@@ -155,6 +155,16 @@ const CoachAccueilPage = {
         ${this._bloc('⏳ Bilans en attente', parClient.size, '#D97706', enAttente)}
         ${this._bloc('💪 Cycles d\'entraînement', cycles.length, 'var(--gray)', cyclesHtml)}
       </div>`;
+  },
+
+  async cycleVu(programmeId) {
+    try {
+      await db.marquerCycleVu(programmeId);
+      this.cycles = this.cycles.filter(p => p.id !== programmeId);
+      this._render();
+    } catch (e) {
+      toast('Erreur : ' + e.message, 'error');
+    }
   },
 
   async relancer(clientId) {

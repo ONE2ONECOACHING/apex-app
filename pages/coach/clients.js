@@ -33,6 +33,7 @@ const CoachClientsPage = {
 
   async init() {
     this.activeFilter = 'all';
+    this._inactifs    = null;
     this._searchQuery = '';
     this._mainTab     = 'dashboard';
     try {
@@ -88,11 +89,15 @@ const CoachClientsPage = {
       <button class="tag-filter-btn tag-filter-ben   ${f === 'ben'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('ben')">Ben</button>
       <button class="tag-filter-btn tag-filter-chris ${f === 'chris' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('chris')">Chris</button>
       <button class="tag-filter-btn tag-filter-lola  ${f === 'lola'  ? 'active' : ''}" onclick="CoachClientsPage.setFilter('lola')">Lola</button>
+      <button class="tag-filter-btn ${f === 'inactifs' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('inactifs')">Inactifs</button>
     `;
   },
 
-  setFilter(tag) {
+  async setFilter(tag) {
     this.activeFilter = tag;
+    if (tag === 'inactifs' && !this._inactifs) {
+      this._inactifs = await db.getClientsInactifs().catch(() => []);
+    }
     this.renderFilters();
     this.renderDashboard();
   },
@@ -115,7 +120,9 @@ const CoachClientsPage = {
   renderDashboard() {
     const el = document.getElementById('dashContent');
     const me = Router.userProfile.id;
-    let filtered = this.activeFilter === 'all'
+    let filtered = this.activeFilter === 'inactifs'
+      ? (this._inactifs || [])
+      : this.activeFilter === 'all'
       ? this.clients
       : this.activeFilter === 'mine'
         ? this.clients.filter(c => c.coach_referent_id === me)

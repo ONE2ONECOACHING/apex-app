@@ -261,12 +261,12 @@ const db = {
   async getBilansATraiter(coachId) {
     const { data, error } = await getSupabase()
       .from('bilan_instances')
-      .select('id, client_id, semaine, completed_at, client:profiles!bilan_instances_client_id_fkey(prenom, nom, coach_referent_id)')
+      .select('id, client_id, semaine, completed_at, client:profiles!bilan_instances_client_id_fkey(prenom, nom, coach_referent_id, actif)')
       .eq('statut', 'complete')
       .eq('coach_lu', false)
       .order('completed_at', { ascending: true });
     if (error) throw error;
-    return (data || []).filter(b => b.client?.coach_referent_id === coachId);
+    return (data || []).filter(b => b.client?.coach_referent_id === coachId && b.client?.actif !== false);
   },
 
   // Bilans envoyés, pas encore remplis par les clients. Remise à zéro décidée
@@ -274,22 +274,48 @@ const db = {
   async getBilansEnAttente(coachId) {
     const { data, error } = await getSupabase()
       .from('bilan_instances')
-      .select('id, client_id, semaine, created_at, client:profiles!bilan_instances_client_id_fkey(prenom, nom, coach_referent_id)')
+      .select('id, client_id, semaine, created_at, client:profiles!bilan_instances_client_id_fkey(prenom, nom, coach_referent_id, actif)')
       .eq('statut', 'en_attente')
       .gte('semaine', '2026-10-12')
       .order('semaine', { ascending: true });
     if (error) throw error;
-    return (data || []).filter(b => b.client?.coach_referent_id === coachId);
+    return (data || []).filter(b => b.client?.coach_referent_id === coachId && b.client?.actif !== false);
   },
 
   // Programmes actifs des clients du coach, avec les semaines cochées au studio
   async getCyclesClients(coachId) {
     const { data, error } = await getSupabase()
       .from('client_programmes')
-      .select('id, nom, nb_semaines, date_debut, client_id, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, lieu, cardio, seances_studio_semaines(semaine))')
+      .select('*, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, lieu, cardio, seances_studio_semaines(semaine))')
       .eq('actif', true);
     if (error) throw error;
-    return (data || []).filter(p => p.client?.coach_referent_id === coachId && p.client?.actif !== false);
+    return (data || []).filter(p => p.client?.coach_referent_id === coachId && p.client?.actif !== false && !p.fin_vue);
+  },
+
+  // Phase terminée « vue » : elle n'apparaît plus sur le tableau de bord
+  async marquerCycleVu(programmeId) {
+    const { error } = await getSupabase()
+      .from('client_programmes').update({ fin_vue: true }).eq('id', programmeId);
+    if (error) throw error;
+  },
+
+  // Client parti (inactif) ou de retour ; un client inactif ne reçoit plus ses bilans
+  async setClientActif(clientId, actif) {
+    const sb = getSupabase();
+    const { error } = await sb.from('profiles').update({ actif }).eq('id', clientId);
+    if (error) throw error;
+    if (!actif) await sb.from('bilan_assignations').update({ actif: false }).eq('client_id', clientId);
+  },
+
+  async getClientsInactifs() {
+    const { data, error } = await getSupabase()
+      .from('profiles')
+      .select('*')
+      .eq('role', 'client')
+      .eq('actif', false)
+      .order('prenom');
+    if (error) throw error;
+    return data || [];
   },
 
   // Coachings du jour d'un coach, avec le nom du client

@@ -152,6 +152,10 @@ const CoachClientEditPage = {
       <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>
 
       <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+        ${c.actif === false ? `
+          <div class="alert" style="background:var(--bg);margin-bottom:10px;font-size:13px;">Client inactif : il n'apparaît plus dans les listes ni sur le tableau de bord, et ne reçoit plus de rappels. Ses données sont conservées.</div>
+          <button class="btn btn-secondary" style="width:100%;margin-bottom:10px;" onclick="CoachClientEditPage.changerActif(true)">↩︎ Réactiver ce client</button>` : `
+          <button class="btn btn-secondary" style="width:100%;margin-bottom:10px;" onclick="CoachClientEditPage.changerActif(false)">💤 Client inactif (ne continue pas)</button>`}
         <button class="btn" style="background:var(--error-bg);color:var(--error);border:1.5px solid #FFCDD2;width:100%;" onclick="CoachClientEditPage.confirmDelete()">🗑️ Supprimer ce client</button>
       </div>`;
 
@@ -295,6 +299,20 @@ const CoachClientEditPage = {
         </div>
         <div style="font-size:11px;color:var(--gray-light);margin-top:6px;">Se coche tout seul quand un coach coche « faite » dans la grille d'une séance au studio.</div>
       </div>`;
+  },
+
+  async changerActif(actif) {
+    const prenom = this.client.prenom || 'ce client';
+    if (!actif && !confirm(`Passer ${prenom} en client inactif ?\n\nIl disparaît des listes, du tableau de bord et de l'agenda, ses bilans automatiques sont arrêtés et il ne reçoit plus de rappels. Toutes ses données sont conservées, et tu pourras le réactiver.`)) return;
+    try {
+      await db.setClientActif(this.client.id, actif);
+      this.client.actif = actif;
+      _ficheClients.delete(this.client.id);
+      this.renderForm();
+      toast(actif ? `${prenom} est de nouveau actif. Pense à relancer ses bilans si besoin.` : `${prenom} est inactif`, 'success');
+    } catch (e) {
+      toast('Erreur : ' + e.message, 'error');
+    }
   },
 
   _coachLabel(co) {
