@@ -103,7 +103,7 @@ const PlanPage = {
         <button class="header-btn" onclick="Router.confirmLogout()">⏻</button>
       </div>
       <div class="tabs" style="margin-bottom:1rem;">
-        <button class="tab" onclick="window.location.hash='#logbook'">📖 Logbook</button>
+        <button class="tab" onclick="window.location.hash='#logbook'">📖 Journal</button>
         <button class="tab active" onclick="window.location.hash='#plan'">📋 Plan</button>
         <button class="tab" onclick="window.location.hash='#recettes'">🍽️ Recettes</button>
       </div>

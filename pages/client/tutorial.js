@@ -79,7 +79,7 @@ const TutorialPage = {
   },
 
   _slides() {
-    const nutrition_subtabs = [{ key: 'plan', label: 'Plan' }, { key: 'logbook', label: 'Logbook' }];
+    const nutrition_subtabs = [{ key: 'plan', label: 'Plan' }, { key: 'logbook', label: 'Journal' }];
     return [
       // 0 – Intro
       () => this._card('🎉', "L'app est prête pour toi !",

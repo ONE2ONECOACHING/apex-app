@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
 
       if (await alreadySent(sb, client.id, "logbook", todayStr)) continue;
 
-      await sendPush(client.id, "📖 Logbook", "N'oublie pas de remplir ton journal alimentaire !", "#logbook");
+      await sendPush(client.id, "📖 Journal", "N'oublie pas de remplir ton journal alimentaire !", "#logbook");
       await logSent(sb, client.id, "logbook", todayStr);
       results.logbook++;
     }

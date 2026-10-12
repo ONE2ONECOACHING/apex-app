@@ -354,7 +354,7 @@ const FICHE_ONGLETS = [
   { cle: 'infos',        label: '👤 Infos',           pages: [['coach-client-edit', 'Infos']] },
   { cle: 'entrainement', label: '💪 Entraînement',     pages: [['coach-client-programme', 'Programmes'], ['coach-training-client', 'Séances faites']] },
   { cle: 'plan',         label: '📋 Plan alimentaire', pages: [['coach-plan-edit', 'Plan'], ['coach-calcul-nutrition', 'Calcul (TDEE)'], ['coach-habits-edit', 'Habitudes']] },
-  { cle: 'suivi',        label: '📈 Suivi',            pages: [['coach-journal-suivi', 'Journal de suivi'], ['coach-journal', 'Logbook'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
+  { cle: 'suivi',        label: '📈 Suivi',            pages: [['coach-journal-suivi', 'Journal de suivi'], ['coach-journal', 'Journal'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
 ];
 const _ficheClients = new Map();   // profils déjà chargés, pour les droits
 let _ficheCoachs = null;           // comptes coach, pour afficher le référent

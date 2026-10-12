@@ -11,13 +11,13 @@ const LogbookPage = {
       <div class="app-header">
         <div>
           <div class="app-logo">ONE2ONE</div>
-          <div class="app-title">Logbook</div>
+          <div class="app-title">Journal</div>
         </div>
         <button class="header-btn" onclick="Router.confirmLogout()" title="Déconnexion">⏻</button>
       </div>
 
       <div class="tabs" style="margin-bottom:1rem;">
-        <button class="tab active" onclick="window.location.hash='#logbook'">📖 Logbook</button>
+        <button class="tab active" onclick="window.location.hash='#logbook'">📖 Journal</button>
         <button class="tab" onclick="window.location.hash='#plan'">📋 Plan</button>
         <button class="tab" onclick="window.location.hash='#recettes'">🍽️ Recettes</button>
       </div>
