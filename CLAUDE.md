@@ -56,6 +56,15 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Écran `pages/coach/agenda.js` (route `coach-agenda`), bloc « Mes coachings du jour » sur le tableau de bord. Glisser-déposer (heure, jour, coach en vue jour, semaine voisine en tenant le créneau contre le bord, avec animation), durée par les bordures haute et basse. Testé par Benjamin sur la preview le 9 octobre 2026.
 - Les tests sur la preview ont laissé des lignes dans `agenda_suppressions` (client « Test Studio ») : à ignorer ou retirer avant la facturation (étape 6).
 
+## Étape 3 — Fiche client et programmes (branche `etape-3-fiche-client`, partie de `etape-2-agenda`)
+
+- Décisions de Benjamin (12 octobre 2026) : phases enchaînées à la main comme avant ; à l'attribution d'une phase, le coach coche les séances du client puis choisit studio ou distance pour chacune ; le client voit sa grille du studio en lecture seule ; semaine en cours = première case « faite » non cochée.
+- `sql/2026-10-12_fiche_entrainement.sql` : `client_programmes.nb_semaines`, `client_prog_seances.lieu` (`distance` par défaut), tables `seances_studio_semaines`, `seances_studio_saisies` (tous les coachs, lecture client) et `fiche_coach` (profil coaching, coachs uniquement, écriture référent et gérants).
+- Écran `pages/coach/seance-studio.js` (route `coach-seance-studio`) : grille, et modification des exercices sur place. `saveClientProgrammeSeances` met à jour les exercices sur place : ne jamais revenir à « supprimer puis recréer », les saisies du studio y sont rattachées.
+- Onglets de la fiche regroupés dans `coachClientNav` (`js/router.js`), masqués selon les droits ; onglet Infos : profil coaching et tableau des séances au studio (semaines 1 à 50).
+- Côté client : rubrique « Au studio » ; `seances_log` reçoit maintenant `programme_id` et `seance_id`.
+- Testé par Benjamin sur la preview le 12 octobre 2026.
+
 ## Dépôt
 
 - Branche de travail de l'étape 1 : `etape-1-fondations` (preview Cloudflare sur l'adresse de la branche). Benjamin pousse avec GitHub Desktop : le terminal de Claude n'a pas accès à ses identifiants GitHub.
