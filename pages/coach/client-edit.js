@@ -5,6 +5,9 @@ const CoachClientEditPage = {
   activites: [],
   coachs: [],
   selectedTag: null,
+  fiche: null,           // profil coaching (table fiche_coach, réservée aux coachs)
+  semainesStudio: [],    // semaines cochées des séances au studio
+  _topoTimer: null,
 
   render() {
     document.body.classList.add('coach-wide');
@@ -25,6 +28,8 @@ const CoachClientEditPage = {
     this.activites   = [];
     this.coachs      = [];
     this.selectedTag = null;
+    this.fiche       = null;
+    this.semainesStudio = [];
 
     const params = Router.getParams();
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
@@ -33,6 +38,10 @@ const CoachClientEditPage = {
       this.client = await db.getProfile(params.clientId);
       this.activites = await db.getActivites(params.clientId);
       this.coachs = await db.getCoachs().catch(() => []);
+      [this.fiche, this.semainesStudio] = await Promise.all([
+        db.getFicheCoach(params.clientId).catch(() => null),
+        db.getSemainesStudioClient(params.clientId).catch(() => []),
+      ]);
       this.selectedTag = this.client.coach_tag || null;
       document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
       this.renderForm();
@@ -101,6 +110,9 @@ const CoachClientEditPage = {
         </div>
       </div>
 
+      <div class="card" id="ceProfil">${this._profilCoachHtml()}</div>
+      ${this._studioHtml()}
+
       <div class="card">
         <div class="card-title">Activité</div>
         <div class="field"><label class="field-label">Type de métier</label>
@@ -160,6 +172,129 @@ const CoachClientEditPage = {
         </select>
         <button style="width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:18px;" onclick="CoachClientEditPage.activites.splice(${i},1);CoachClientEditPage.renderActivites()">×</button>
       </div>`).join('');
+  },
+
+  // ── Profil coaching ────────────────────────────────────────────────────────
+
+  _peutModifierProfil() {
+    const me = Router.userProfile;
+    return !!(me?.is_gerant || this.client?.coach_referent_id === me?.id);
+  },
+
+  _profilCoachHtml() {
+    const f = this.fiche || {};
+    const modif = this._peutModifierProfil();
+    const criteres = [
+      ['aime_discuter', 'Aime discuter'],
+      ['technique', 'Technique'],
+      ['style_pro', 'Bon copain (1) → Pro (3)'],
+      ['energie', 'Douceur (1) → Énergique (3)'],
+    ];
+    return `
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Profil coaching</span>
+        <span id="ceProfilEtat" style="font-size:11px;font-weight:500;color:var(--gray-light);">visible des coachs uniquement</span>
+      </div>
+      ${criteres.map(([cle, label]) => `
+        <div class="pc-ligne">
+          <div class="pc-label">${label}</div>
+          <div class="pc-pastilles">${[1, 2, 3].map(n => `
+            <button class="pastille ${(f[cle] || 0) >= n ? 'on' : ''}" ${modif ? `onclick="CoachClientEditPage.noter('${cle}', ${n})"` : 'disabled'}
+              title="${n}/3"></button>`).join('')}
+            <span class="pc-note">${f[cle] || 0}/3</span>
+          </div>
+        </div>`).join('')}
+      <div class="pc-ligne">
+        <div class="pc-label">Tutoiement / vouvoiement</div>
+        <div class="cp-lieu">
+          <button class="${!f.vouvoiement ? 'on' : ''}" ${modif ? `onclick="CoachClientEditPage.majProfil({ vouvoiement: false })"` : 'disabled'}>Tutoiement</button>
+          <button class="${f.vouvoiement ? 'on' : ''}" ${modif ? `onclick="CoachClientEditPage.majProfil({ vouvoiement: true })"` : 'disabled'}>Vouvoiement</button>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px;margin-bottom:0;">
+        <label class="field-label">Topo client</label>
+        <textarea class="input" id="ceTopo" rows="4" style="height:auto;" placeholder="Ce qu'il faut savoir sur ce client…"
+          ${modif ? 'oninput="CoachClientEditPage.saisirTopo()"' : 'disabled'}>${escHtml(f.topo || '')}</textarea>
+      </div>
+      ${modif ? '' : '<div style="font-size:11px;color:var(--gray-light);margin-top:6px;">Seuls le coach référent et les gérants peuvent modifier ce profil.</div>'}`;
+  },
+
+  noter(cle, n) {
+    const actuel = this.fiche?.[cle] || 0;
+    this.majProfil({ [cle]: actuel === n ? 0 : n });
+  },
+
+  saisirTopo() {
+    clearTimeout(this._topoTimer);
+    const etat = document.getElementById('ceProfilEtat');
+    if (etat) etat.textContent = 'Enregistrement…';
+    this._topoTimer = setTimeout(() => this.majProfil({ topo: document.getElementById('ceTopo').value.trim() || null }, false), 700);
+  },
+
+  async majProfil(champs, redessiner = true) {
+    const avant = { ...(this.fiche || {}) };
+    this.fiche = { ...avant, ...champs };
+    if (redessiner) document.getElementById('ceProfil').innerHTML = this._profilCoachHtml();
+    try {
+      await db.saveFicheCoach(this.client.id, {
+        aime_discuter: this.fiche.aime_discuter || 0,
+        technique:     this.fiche.technique || 0,
+        style_pro:     this.fiche.style_pro || 0,
+        energie:       this.fiche.energie || 0,
+        vouvoiement:   !!this.fiche.vouvoiement,
+        topo:          this.fiche.topo ?? null,
+      });
+      const etat = document.getElementById('ceProfilEtat');
+      if (etat) etat.textContent = '✓ Enregistré';
+    } catch (e) {
+      this.fiche = avant;
+      if (redessiner) document.getElementById('ceProfil').innerHTML = this._profilCoachHtml();
+      toast('Erreur : ' + e.message, 'error');
+    }
+  },
+
+  // ── Séances au studio d'un coup d'œil (se remplit avec les cases « faite ») ──
+
+  _studioHtml() {
+    const c = this.client;
+    const lignes = this.semainesStudio;
+    if (c.type_client === 'distance' && !lignes.length) return '';
+
+    const lundi = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); const j = x.getDay(); x.setDate(x.getDate() + (j === 0 ? -6 : 1 - j)); return x; };
+    const dates = lignes.map(l => new Date(l.faite_le + 'T00:00:00'));
+    const base = lundi(c.date_debut ? new Date(c.date_debut + 'T00:00:00') : (dates.length ? new Date(Math.min(...dates)) : new Date()));
+    const semaineDe = d => Math.max(1, Math.floor((lundi(d) - base) / (7 * 864e5)) + 1);
+
+    const parSeance = new Map();   // n° de séance → Map(semaine → date)
+    for (const l of lignes) {
+      const n = (l.client_prog_seances?.ordre ?? 0) + 1;
+      if (!parSeance.has(n)) parSeance.set(n, new Map());
+      const d = new Date(l.faite_le + 'T00:00:00');
+      parSeance.get(n).set(semaineDe(d), d);
+    }
+    const numeros = [...new Set([1, 2, 3, ...parSeance.keys()])].sort((a, b) => a - b);
+    const maxSem = Math.max(50, ...[...parSeance.values()].flatMap(m => [...m.keys()]));
+    const colonnes = Array.from({ length: maxSem }, (_, i) => i + 1);
+    const total = lignes.length;
+
+    return `
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Séances au studio</span>
+          <span style="font-size:11px;font-weight:500;color:var(--gray-light);">${total} faite${total > 1 ? 's' : ''} · semaine 1 = ${base.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="st-table">
+            <tr><th></th>${colonnes.map(k => `<th>${k}</th>`).join('')}</tr>
+            ${numeros.map(n => `
+              <tr><th class="st-seance">Séance ${n}</th>${colonnes.map(k => {
+                const d = parSeance.get(n)?.get(k);
+                return `<td><span class="st-case ${d ? 'on' : ''}" ${d ? `title="${d.toLocaleDateString('fr-FR')}"` : ''}></span></td>`;
+              }).join('')}</tr>`).join('')}
+          </table>
+        </div>
+        <div style="font-size:11px;color:var(--gray-light);margin-top:6px;">Se coche tout seul quand un coach coche « faite » dans la grille d'une séance au studio.</div>
+      </div>`;
   },
 
   _coachLabel(co) {
@@ -277,6 +412,7 @@ const CoachClientEditPage = {
 
     try {
       await db.updateProfile(id, updates);
+      _ficheClients.delete(id);   // les onglets relisent le référent et le type
       await db.setActivites(id, this.activites);
 
       // Mettre à jour les macros du plan actif si TDEE calculé

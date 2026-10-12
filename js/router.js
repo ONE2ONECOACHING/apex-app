@@ -287,22 +287,46 @@ function clientNav(activeTab) {
 }
 
 // ── Navigation partagée — pages client coach ─────────────────
+// Onglets de la fiche client, regroupés comme dans le cahier des charges.
+// Chaque onglet n'apparaît que si le coach y a droit (Suivi : référent ou
+// gérant) et selon le type de client (studio sans suivi : ni plan ni suivi).
+const FICHE_ONGLETS = [
+  { cle: 'infos',        label: '👤 Infos',           pages: [['coach-client-edit', 'Infos']] },
+  { cle: 'entrainement', label: '💪 Entraînement',     pages: [['coach-client-programme', 'Programmes'], ['coach-training-client', 'Séances faites']] },
+  { cle: 'plan',         label: '📋 Plan alimentaire', pages: [['coach-plan-edit', 'Plan'], ['coach-habits-edit', 'Habitudes']] },
+  { cle: 'suivi',        label: '📈 Suivi',            pages: [['coach-journal', 'Journal'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
+];
+const _ficheClients = new Map();   // profils déjà chargés, pour les droits
+
 function coachClientNav(clientId, activeTab) {
-  const tabs = [
-    { key: 'coach-client-edit',      label: '👤 Infos' },
-    { key: 'coach-plan-edit',        label: '📋 Plan' },
-    { key: 'coach-habits-edit',      label: '✅ Habitudes' },
-    { key: 'coach-journal',          label: '📖 Journal' },
-    { key: 'coach-bilan-client',     label: '📝 Bilans' },
-    { key: 'coach-mesure-client',    label: '📏 Mesures' },
-    { key: 'coach-client-programme', label: '💪 Programmes' },
-    { key: 'coach-training-client',  label: '🏋️ Séances' },
-  ];
+  const page = { 'coach-seance-studio': 'coach-client-programme', 'coach-journal-view': 'coach-journal',
+                 'coach-client-suivi': 'coach-journal' }[activeTab] || activeTab;
+  const groupe = FICHE_ONGLETS.find(g => g.pages.some(([k]) => k === page)) || FICHE_ONGLETS[0];
+  const navId = 'ficheNav' + Math.random().toString(36).slice(2, 8);
+  setTimeout(() => ajusterFicheNav(navId, clientId), 0);
+  const btn = (k, label, actif, attrs = '') => `<button class="tab${actif ? ' active' : ''}" ${attrs}
+      onclick="Router.navigate('${k}',{clientId:'${clientId}'})">${label}</button>`;
   return `
-    <div class="tabs" style="margin-bottom:1.25rem;">${
-      tabs.map(t => `<button class="tab${activeTab === t.key ? ' active' : ''}"
-        onclick="Router.navigate('${t.key}',{clientId:'${clientId}'})">${t.label}</button>`).join('')
-    }</div>`;
+    <div id="${navId}" style="margin-bottom:1.25rem;">
+      <div class="tabs">${FICHE_ONGLETS.map(g => btn(g.pages[0][0], g.label, g === groupe, `data-groupe="${g.cle}"`)).join('')}</div>
+      ${groupe.pages.length > 1 ? `<div class="fiche-sous-onglets">${
+        groupe.pages.map(([k, label]) => `<button class="${k === page ? 'on' : ''}"
+          onclick="Router.navigate('${k}',{clientId:'${clientId}'})">${label}</button>`).join('')}</div>` : ''}
+    </div>`;
+}
+
+async function ajusterFicheNav(navId, clientId) {
+  try {
+    let client = _ficheClients.get(clientId);
+    if (!client) { client = await db.getProfile(clientId); _ficheClients.set(clientId, client); }
+    const me = Router.userProfile;
+    const studio = client.type_client === 'studio';
+    const suivi = !studio && (me?.is_gerant || client.coach_referent_id === me?.id);
+    const nav = document.getElementById(navId);
+    if (!nav) return;
+    nav.querySelector('[data-groupe="plan"]')?.classList.toggle('hidden', studio);
+    nav.querySelector('[data-groupe="suivi"]')?.classList.toggle('hidden', !suivi);
+  } catch (_) { /* en cas d'erreur, tous les onglets restent affichés ; la base applique les droits */ }
 }
 
 function clientCurrentWeek(client) {

@@ -152,10 +152,13 @@ const CoachSeanceStudioPage = {
         </table>
       </div>` : '<div class="empty-state"><div class="empty-text">Aucun exercice dans cette séance.</div></div>'}`;
 
-    // Amener la semaine en cours à l'écran
-    const cible = document.querySelector('.ss-sem.en-cours');
+    // Amener à l'écran la semaine en cours, précédée de la semaine d'avant
+    const enTetesSem = [...document.querySelectorAll('.ss-sem')];
+    const iCours = enTetesSem.findIndex(th => th.classList.contains('en-cours'));
+    const cible = enTetesSem[Math.max(0, iCours - 1)];
     const scroll = document.getElementById('ssScroll');
-    if (cible && scroll) scroll.scrollLeft = Math.max(0, cible.offsetLeft - 270);
+    const fixe = document.querySelector('.ss-coin')?.offsetWidth || 0;
+    if (iCours > 0 && cible && scroll) scroll.scrollLeft = Math.max(0, cible.offsetLeft - fixe);
   },
 
   _etat(texte, erreur = false) {
@@ -175,6 +178,7 @@ const CoachSeanceStudioPage = {
 
   async _enregistrer(exerciceId, semaine) {
     const cle = `${exerciceId}_${semaine}`;
+    delete this._timers[cle];
     const champs = {};
     document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => {
       champs[el.dataset.champ] = el.value.trim() || null;

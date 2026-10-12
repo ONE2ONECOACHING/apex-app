@@ -1211,3 +1211,27 @@ body.ag-dragging, body.ag-dragging * { cursor: grabbing !important; user-select:
   font-family: var(--font); font-size: 13px; background: var(--white); resize: vertical; }
 .ss-duo textarea:focus, .ss-remarque:focus { outline: none; border-color: var(--gold); }
 .ss-remarque { margin-top: 4px; font-size: 12px; background: #F4FAF4; }
+
+/* Fiche client : sous-onglets */
+.tabs .tab.hidden { display: none; }
+.fiche-sous-onglets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.fiche-sous-onglets button { border: 1px solid var(--border-solid); background: var(--white); border-radius: 999px; padding: 5px 12px;
+  font-family: var(--font); font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
+.fiche-sous-onglets button.on { background: var(--black); color: var(--white); border-color: var(--black); }
+
+/* Fiche client : profil coaching */
+.pc-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border-light); }
+.pc-label { font-size: 14px; }
+.pc-pastilles { display: flex; align-items: center; gap: 6px; }
+.pastille { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--gold); background: var(--white); cursor: pointer; padding: 0; }
+.pastille.on { background: var(--gold); }
+.pastille:disabled { cursor: default; opacity: 0.7; }
+.pc-note { font-size: 12px; color: var(--gray-light); min-width: 26px; text-align: right; }
+
+/* Fiche client : séances au studio d'un coup d'œil */
+.st-table { border-collapse: collapse; font-size: 10px; }
+.st-table th { font-weight: 600; color: var(--gray-light); padding: 0 1px 3px; text-align: center; }
+.st-table th.st-seance { text-align: left; font-size: 12px; color: var(--gray); padding-right: 8px; white-space: nowrap; position: sticky; left: 0; background: var(--white); }
+.st-table td { padding: 1px; }
+.st-case { display: block; width: 14px; height: 14px; border: 1.5px solid var(--border-solid); border-radius: 3px; }
+.st-case.on { background: #059669; border-color: #059669; }
