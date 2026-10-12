@@ -34,7 +34,8 @@ const CoachClientEditPage = {
 
     try {
       this.client = await db.getProfile(params.clientId);
-      this.coachs = await db.getCoachs().catch(() => []);
+      // Le compte partagé n'est plus utilisé : il n'est pas proposé comme référent
+      this.coachs = (await db.getCoachs().catch(() => [])).filter(co => co.id !== COMPTE_PARTAGE_ID);
       [this.fiche, this.semainesStudio, this.programmes] = await Promise.all([
         db.getFicheCoach(params.clientId).catch(() => null),
         db.getSemainesStudioClient(params.clientId).catch(() => []),
