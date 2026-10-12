@@ -8,6 +8,7 @@ const CoachAccueilPage = {
   aTraiter: [],
   enAttente: [],
   cycles: [],
+  retards: [],
   _relances: new Set(),   // bilans relancés pendant cette visite
 
   render() {
@@ -35,12 +36,17 @@ const CoachAccueilPage = {
     this._relances = new Set();
     this._clients = null;
     try {
-      [this.coachings, this.aTraiter, this.enAttente, this.cycles] = await Promise.all([
+      let suivis;
+      [this.coachings, this.aTraiter, this.enAttente, this.cycles, suivis] = await Promise.all([
         db.getCoachingsDuJour(me.id).catch(() => []),
         db.getBilansATraiter(me.id).catch(() => []),
         db.getBilansEnAttente(me.id).catch(() => []),
         db.getCyclesClients(me.id).catch(() => []),
+        db.getSuivisPourRetards().catch(() => []),
       ]);
+      // Retards de suivi : mes clients dont les deux dernières semaines du journal ne sont pas faites
+      this.retards = suivis.filter(c => c.coach_referent_id === me.id && JournalSuivi.enRetard(
+        c.date_debut, [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26, c.journal_suivi));
       this._render();
     } catch (e) {
       document.getElementById('acContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
@@ -153,6 +159,13 @@ const CoachAccueilPage = {
         ${this._bloc('📅 Mes coachings du jour', this.coachings.length, 'var(--gold)', coachings)}
         ${this._bloc('📋 Bilans à traiter', this.aTraiter.length, 'var(--error)', aTraiter)}
         ${this._bloc('⏳ Bilans en attente', parClient.size, '#D97706', enAttente)}
+        ${this._bloc('⚠️ Retards de suivi', this.retards.length, 'var(--error)', this.retards.length
+          ? this.retards.map(c => `
+            <div class="ac-ligne" onclick="Router.navigate('coach-journal-suivi',{clientId:'${c.id}'})">
+              <span class="ac-nom">${this._nom(c)}</span>
+              <span class="ac-retard">2 semaines sans suivi</span><span class="ac-fleche">›</span>
+            </div>`).join('')
+          : vide('Aucun retard de suivi.'))}
         ${this._bloc('💪 Cycles d\'entraînement', cycles.length, 'var(--gray)', cyclesHtml)}
       </div>`;
   },

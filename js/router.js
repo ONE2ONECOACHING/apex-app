@@ -103,7 +103,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
         window.location.hash = '#coach-accueil';
@@ -162,6 +162,7 @@ const Router = {
         case 'coach-seance-studio':   app.innerHTML = CoachSeanceStudioPage.render();  CoachSeanceStudioPage.init();  break;
         case 'coach-accueil':         app.innerHTML = CoachAccueilPage.render();       CoachAccueilPage.init();       break;
         case 'coach-calcul-nutrition': app.innerHTML = CoachCalculNutritionPage.render(); CoachCalculNutritionPage.init(); break;
+        case 'coach-journal-suivi':   app.innerHTML = CoachJournalSuiviPage.render();  CoachJournalSuiviPage.init();  break;
         case 'formation':             app.innerHTML = FormationPage.render();           FormationPage.init();           break;
         default: window.location.hash = '#login';
       }
@@ -299,7 +300,7 @@ const MENU_COACH = [
   { route: 'coach-agenda',          icone: '📅', label: 'Agenda',          ecrans: ['coach-agenda'] },
   { route: 'coach-clients',         icone: '👥', label: 'Clients',         ecrans: ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal',
       'coach-journal-view', 'coach-habits-edit', 'coach-bilan-client', 'coach-mesure-client', 'coach-client-programme',
-      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition'] },
+      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi'] },
   { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
       'coach-exercices', 'coach-bilan-templates', 'coach-formations'] },
   { route: 'coach-equipe',          icone: '🧑‍🤝‍🧑', label: 'Équipe',     ecrans: ['coach-equipe'], gerant: true },
@@ -353,7 +354,7 @@ const FICHE_ONGLETS = [
   { cle: 'infos',        label: '👤 Infos',           pages: [['coach-client-edit', 'Infos']] },
   { cle: 'entrainement', label: '💪 Entraînement',     pages: [['coach-client-programme', 'Programmes'], ['coach-training-client', 'Séances faites']] },
   { cle: 'plan',         label: '📋 Plan alimentaire', pages: [['coach-plan-edit', 'Plan'], ['coach-calcul-nutrition', 'Calcul (TDEE)'], ['coach-habits-edit', 'Habitudes']] },
-  { cle: 'suivi',        label: '📈 Suivi',            pages: [['coach-journal', 'Journal'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
+  { cle: 'suivi',        label: '📈 Suivi',            pages: [['coach-journal-suivi', 'Journal de suivi'], ['coach-journal', 'Logbook'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
 ];
 const _ficheClients = new Map();   // profils déjà chargés, pour les droits
 let _ficheCoachs = null;           // comptes coach, pour afficher le référent

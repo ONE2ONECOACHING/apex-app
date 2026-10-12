@@ -35,6 +35,7 @@ const CoachClientsPage = {
     this.activeFilter = 'all';
     this._inactifs    = null;
     this._coachs      = await db.getCoachs().catch(() => []);
+    this._retards     = new Set();
     this._searchQuery = '';
     this._mainTab     = 'dashboard';
     try {
@@ -63,6 +64,11 @@ const CoachClientsPage = {
       this._coachNotes         = coachNotes;
       this._lastPoids          = lastPoids;
       this._bilanAssignations  = bilanAssignations;
+
+      // Retards de suivi (journal) : badge rouge à côté du nom
+      const suivis = await db.getSuivisPourRetards().catch(() => []);
+      this._retards = new Set(suivis.filter(c => JournalSuivi.enRetard(
+        c.date_debut, [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26, c.journal_suivi)).map(c => c.id));
 
       this.renderFilters();
       this.renderDashboard();
@@ -105,7 +111,8 @@ const CoachClientsPage = {
   // Prénom du coach référent, à côté du nom du client
   _badgeReferent(client) {
     const co = (this._coachs || []).find(x => x.id === client.coach_referent_id);
-    return co ? `<span class="ref-badge">${escHtml(co.prenom || '')}</span>` : '';
+    const retard = this._retards?.has(client.id) ? '<span class="badge-retard" title="Deux semaines sans suivi">retard de suivi</span>' : '';
+    return (co ? `<span class="ref-badge">${escHtml(co.prenom || '')}</span>` : '') + retard;
   },
 
   setSearch(q) {

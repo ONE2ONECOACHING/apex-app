@@ -255,6 +255,60 @@ const db = {
     if (error) throw error;
   },
 
+  // ── Journal de suivi (référent : lecture et écriture ; gérants : lecture) ─
+
+  async getJournalSuivi(clientId) {
+    const sb = getSupabase();
+    const [{ data: lignes, error: e1 }, { data: entete, error: e2 }] = await Promise.all([
+      sb.from('journal_suivi').select('*').eq('client_id', clientId).order('semaine'),
+      sb.from('journal_suivi_entete').select('*').eq('client_id', clientId).maybeSingle(),
+    ]);
+    if (e1) throw e1;
+    if (e2) throw e2;
+    return { lignes: lignes || [], entete };
+  },
+
+  async saveJournalLigne(clientId, semaine, champs) {
+    const { data, error } = await getSupabase().from('journal_suivi')
+      .upsert({ client_id: clientId, semaine, ...champs,
+                maj_par: Router.userProfile?.id || null, maj_le: new Date().toISOString() },
+              { onConflict: 'client_id,semaine' })
+      .select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async saveJournalEntete(clientId, champs) {
+    const { error } = await getSupabase().from('journal_suivi_entete')
+      .upsert({ client_id: clientId, ...champs,
+                maj_par: Router.userProfile?.id || null, maj_le: new Date().toISOString() },
+              { onConflict: 'client_id' });
+    if (error) throw error;
+  },
+
+  // Bilans d'un client (pour les afficher sur les lignes du journal)
+  async getBilansDuClient(clientId) {
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .select('id, semaine, statut, reponses, completed_at')
+      .eq('client_id', clientId);
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Clients suivis avec leur journal, pour repérer les retards de suivi
+  // (chaque coach ne lit que le journal de ses clients ; les gérants lisent tout)
+  async getSuivisPourRetards() {
+    const { data, error } = await getSupabase()
+      .from('profiles')
+      .select('id, prenom, nom, date_debut, coach_referent_id, journal_suivi!journal_suivi_client_id_fkey(semaine, fait), journal_suivi_entete!journal_suivi_entete_client_id_fkey(nb_semaines)')
+      .eq('role', 'client')
+      .neq('actif', false)
+      .in('type_client', ['suivi', 'distance']);
+    if (error) throw error;
+    return data || [];
+  },
+
   // ── Tableau de bord du coach (clients dont il est le référent) ───────────
 
   // Bilans remplis par les clients, pas encore lus par le coach

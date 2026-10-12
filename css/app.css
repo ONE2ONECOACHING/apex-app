@@ -1342,3 +1342,46 @@ body.coach-layout .nav-bottom { display: none; }
 .ag-m-jour .ag-bloc { padding: 3px 6px; }
 .ag-journee { line-height: 16px; height: 20px; box-sizing: border-box; }
 .ag-m .ag-journee { line-height: 12px; height: 16px; }
+
+/* ═══════════════════════════════════════════════════════════
+   JOURNAL DE SUIVI
+   ═══════════════════════════════════════════════════════════ */
+.js-entete { display: flex; flex-direction: column; gap: 10px; }
+.js-avancement { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.js-titre-av { font-size: 18px; font-weight: 700; }
+.js-barre { width: 240px; max-width: 50vw; height: 8px; background: var(--border-solid); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.js-barre span { display: block; height: 100%; background: var(--gold); }
+.js-duree { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--gray); white-space: nowrap; }
+.js-duree button { width: 30px; height: 30px; border: 1px solid var(--border-solid); border-radius: 8px; background: var(--white); cursor: pointer; font-size: 16px; }
+.js-alerte { background: var(--error-bg); color: var(--error); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 600; }
+.js-entete-grille { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
+@media (max-width: 700px) { .js-entete-grille { grid-template-columns: 1fr; } }
+.js-prochaine { font-size: 13px; line-height: 1.5; padding: 8px 10px; background: var(--bg); border-radius: 10px; min-height: 40px; }
+.js-scroll { overflow-x: auto; background: var(--white); border: 1px solid var(--border-solid); border-radius: 14px; }
+.js-table { width: 100%; min-width: 900px; border-collapse: collapse; }
+.js-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-light); text-align: left;
+  padding: 10px 8px; border-bottom: 1px solid var(--border-solid); background: #FAFAF8; }
+.js-table td { padding: 8px; border-bottom: 1px solid var(--border-light); vertical-align: top; }
+.js-table td textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-solid); border-radius: 6px; padding: 5px 7px;
+  font-family: var(--font); font-size: 13px; resize: vertical; margin-bottom: 4px; background: var(--white); }
+.js-table td textarea:focus { outline: none; border-color: var(--gold); }
+.js-table td textarea:disabled { background: var(--bg); color: var(--gray); }
+.js-sem { white-space: nowrap; font-size: 13px; width: 70px; }
+.js-sem span { font-size: 12px; color: var(--gray-light); }
+.js-fait { text-align: center; width: 50px; }
+.js-fait input { width: 20px; height: 20px; accent-color: #059669; }
+.js-ligne.en_cours { background: var(--gold-light); }
+.js-ligne.avant { opacity: 0.6; }
+.js-statut { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--bg); color: var(--gray); }
+.js-statut.fait { background: #E7F7EF; color: #059669; }
+.js-statut.en_cours { background: var(--white); color: var(--gold); }
+.js-statut.en_retard { background: var(--error-bg); color: var(--error); }
+.js-statut.planifie { background: #FFF6E5; color: #B45309; }
+.js-bilan { border: 1px solid var(--border-solid); background: var(--white); border-radius: 8px; padding: 3px 8px; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 4px; color: var(--gray); }
+.js-bilan.ok { color: var(--gold); border-color: var(--gold-border); }
+.js-reponses { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.js-reponses div { background: var(--bg); border-radius: 8px; padding: 6px 9px; font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+.js-reponses span { color: var(--gray-light); }
+.js-reponses b { white-space: pre-wrap; }
+.ac-retard { color: var(--error); font-weight: 700; font-size: 12px; }
+.badge-retard { font-size: 10px; font-weight: 700; color: var(--error); background: var(--error-bg); border-radius: 999px; padding: 1px 8px; }
