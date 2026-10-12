@@ -54,6 +54,7 @@ Rien ne doit changer pour les clients pendant cette étape.
 - `sql/2026-10-09_agenda.sql` exécuté le 9 octobre 2026 : `profiles.type_client` (`suivi` = studio + suivi, `distance` = suivi sans agenda, `studio` = studio sans suivi ; les 59 clients existants en `suivi`), `profiles.telephone`, `profiles.facturation_mixte`, tables `agenda_creneaux` (tous les coachs) et `agenda_suppressions` (copie automatique par trigger, lecture gérants).
 - Clients du studio : vrai compte Supabase mais bloqué (`ban_duration`), email interne `studio-…@clients.one2onecoaching.fr` si pas d'email, créés par `invite-client` (`studio: true`), déployée le 9 octobre 2026.
 - Écran `pages/coach/agenda.js` (route `coach-agenda`), bloc « Mes coachings du jour » sur le tableau de bord. Glisser-déposer (heure, jour, coach en vue jour, semaine voisine en tenant le créneau contre le bord, avec animation), durée par les bordures haute et basse. Testé par Benjamin sur la preview le 9 octobre 2026.
+- Rendez-vous prospect (`sql/2026-10-12_agenda_prospects.sql`, en production le 12 octobre 2026) : `type = 'prospect'`, `prospect_nom` obligatoire, `prospect_tel`, jamais facturé. Récurrence toutes les 1 à 4 semaines, aussi sur un créneau existant ; le rythme d'une série se déduit de l'écart entre ses deux dernières séances.
 - Les tests sur la preview ont laissé des lignes dans `agenda_suppressions` (client « Test Studio ») : à ignorer ou retirer avant la facturation (étape 6).
 
 ## Étape 3 — Fiche client et programmes (en production depuis le 12 octobre 2026)
