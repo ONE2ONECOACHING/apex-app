@@ -113,16 +113,24 @@ const CoachAccueilPage = {
           </div>`).join('')
       : vide('Aucun bilan à traiter.');
 
-    const enAttente = this.enAttente.length
-      ? this.enAttente.map(b => {
-          const relance = this._relances.has(b.id);
-          const semaine = new Date(b.semaine + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    // Une ligne par client, avec le nombre de bilans en attente
+    const parClient = new Map();
+    for (const b of this.enAttente) {
+      if (!parClient.has(b.client_id)) parClient.set(b.client_id, { client: b.client, nb: 0, semaine: b.semaine });
+      const c = parClient.get(b.client_id);
+      c.nb++;
+      if (b.semaine > c.semaine) c.semaine = b.semaine;
+    }
+    const enAttente = parClient.size
+      ? [...parClient.entries()].map(([clientId, c]) => {
+          const relance = this._relances.has(clientId);
+          const semaine = new Date(c.semaine + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
           return `
           <div class="ac-ligne">
-            <span class="ac-nom" style="cursor:pointer;" onclick="Router.navigate('coach-bilan-client',{clientId:'${b.client_id}'})">${this._nom(b.client)}</span>
-            <span class="ac-meta">semaine du ${semaine}</span>
+            <span class="ac-nom" style="cursor:pointer;" onclick="Router.navigate('coach-bilan-client',{clientId:'${clientId}'})">${this._nom(c.client)}</span>
+            <span class="ac-meta">${c.nb > 1 ? `${c.nb} bilans en attente` : `semaine du ${semaine}`}</span>
             <button class="ac-cloche ${relance ? 'faite' : ''}" title="${relance ? 'Relance envoyée' : 'Relancer par notification'}"
-              ${relance ? 'disabled' : `onclick="CoachAccueilPage.relancer('${b.id}','${b.client_id}')"`}>${relance ? '✓' : '🔔'}</button>
+              ${relance ? 'disabled' : `onclick="CoachAccueilPage.relancer('${clientId}')"`}>${relance ? '✓' : '🔔'}</button>
           </div>`;
         }).join('')
       : vide('Aucun bilan en attente.');
@@ -144,15 +152,15 @@ const CoachAccueilPage = {
       <div class="ac-grille">
         ${this._bloc('📅 Mes coachings du jour', this.coachings.length, 'var(--gold)', coachings)}
         ${this._bloc('📋 Bilans à traiter', this.aTraiter.length, 'var(--error)', aTraiter)}
-        ${this._bloc('⏳ Bilans en attente', this.enAttente.length, '#D97706', enAttente)}
+        ${this._bloc('⏳ Bilans en attente', parClient.size, '#D97706', enAttente)}
         ${this._bloc('💪 Cycles d\'entraînement', cycles.length, 'var(--gray)', cyclesHtml)}
       </div>`;
   },
 
-  async relancer(bilanId, clientId) {
+  async relancer(clientId) {
     try {
       await db.sendPush(clientId, '📝 Ton bilan t\'attend', 'Prends 2 minutes pour remplir ton bilan de la semaine 💪', '#client-bilan');
-      this._relances.add(bilanId);
+      this._relances.add(clientId);
       this._render();
       toast('Relance envoyée', 'success');
     } catch (e) {

@@ -269,12 +269,14 @@ const db = {
     return (data || []).filter(b => b.client?.coach_referent_id === coachId);
   },
 
-  // Bilans envoyés, pas encore remplis par les clients
+  // Bilans envoyés, pas encore remplis par les clients. Remise à zéro décidée
+  // par Benjamin : on ne compte qu'à partir de la semaine du 12 octobre 2026.
   async getBilansEnAttente(coachId) {
     const { data, error } = await getSupabase()
       .from('bilan_instances')
       .select('id, client_id, semaine, created_at, client:profiles!bilan_instances_client_id_fkey(prenom, nom, coach_referent_id)')
       .eq('statut', 'en_attente')
+      .gte('semaine', '2026-10-12')
       .order('semaine', { ascending: true });
     if (error) throw error;
     return (data || []).filter(b => b.client?.coach_referent_id === coachId);
