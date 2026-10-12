@@ -105,9 +105,9 @@ const CoachAccueilPage = {
 
     const coachings = this.coachings.length
       ? this.coachings.map(r => `
-          <div class="ac-ligne" onclick="CoachSeanceStudioPage.ouvrirPourClient('${r.client_id}')">
+          <div class="ac-ligne" onclick="${r.type === 'prospect' ? "window.location.hash='#coach-agenda'" : `CoachSeanceStudioPage.ouvrirPourClient('${r.client_id}')`}">
             <span class="ac-heure">${this._hm(r.debut)} – ${this._hm(r.fin)}</span>
-            <span class="ac-nom">${this._nom(r.client)}</span><span class="ac-fleche">›</span>
+            <span class="ac-nom">${r.type === 'prospect' ? '🎯 ' + escHtml(r.prospect_nom || 'Prospect') : this._nom(r.client)}</span><span class="ac-fleche">›</span>
           </div>`).join('')
       : vide(`Aucun coaching aujourd'hui · <a href="#coach-agenda">ouvrir l'agenda</a>`);
 

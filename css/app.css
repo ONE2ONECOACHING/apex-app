@@ -1388,3 +1388,7 @@ body.coach-layout .nav-bottom { display: none; }
 /* Agenda au doigt (iPhone) : pas de sélection de texte ni de menu « Copier » à l'appui long */
 .ag-grille, .ag-grille * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .ag-bloc, .ag-journee { -webkit-tap-highlight-color: transparent; }
+
+/* Rendez-vous prospect */
+.ag-bloc.prospect { background: #FFF6E5; border-left-color: #D97706; outline: 1.5px dashed #D97706; outline-offset: -2px; }
+.ag-m .ag-bloc.prospect { background: #D97706; color: var(--white); outline-color: rgba(255, 255, 255, 0.7); }

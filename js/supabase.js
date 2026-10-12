@@ -378,12 +378,24 @@ const db = {
     const fin = new Date(debut); fin.setDate(fin.getDate() + 1);
     const { data, error } = await getSupabase()
       .from('agenda_creneaux')
-      .select('id, debut, fin, client_id, client:profiles!agenda_creneaux_client_id_fkey(prenom, nom)')
+      .select('id, type, debut, fin, client_id, prospect_nom, client:profiles!agenda_creneaux_client_id_fkey(prenom, nom)')
       .eq('coach_id', coachId)
-      .eq('type', 'coaching')
+      .in('type', ['coaching', 'prospect'])
       .gte('debut', debut.toISOString())
       .lt('debut', fin.toISOString())
       .order('debut');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Les n dernières séances d'une série (la plus récente en premier)
+  async getDerniersCreneauxSerie(serieId, n = 2) {
+    const { data, error } = await getSupabase()
+      .from('agenda_creneaux')
+      .select('*')
+      .eq('serie_id', serieId)
+      .order('debut', { ascending: false })
+      .limit(n);
     if (error) throw error;
     return data || [];
   },

@@ -144,6 +144,12 @@ const CoachAgendaPage = {
     return co ? (`${co.prenom || ''} ${co.nom || ''}`.trim() || co.email) : '?';
   },
 
+  _titreCreneau(c) {
+    if (c.type === 'indispo') return 'Indisponible';
+    if (c.type === 'prospect') return '🎯 ' + (c.prospect_nom || 'Prospect');
+    return this._nomClient(c.client_id);
+  },
+
   _nomClient(id) {
     const cl = this.clients.find(c => c.id === id);
     return cl ? `${cl.prenom || ''} ${cl.nom || ''}`.trim() : 'Client';
@@ -332,9 +338,9 @@ const CoachAgendaPage = {
         const p   = places.get(c.id);
         const largeur = 100 / p.total;
         const indispo = c.type === 'indispo';
-        const titre = indispo ? 'Indisponible' : this._nomClient(c.client_id);
+        const titre = this._titreCreneau(c);
         const heure = `${this._hm(new Date(c.debut))}–${this._hm(new Date(c.fin))}`;
-        return `<div class="ag-bloc ${indispo ? 'indispo' : ''}" style="top:${top}px;height:${h - 2}px;left:${p.couloir * largeur}%;width:calc(${largeur}% - 3px);--c:${this._couleur(c.coach_id)}"
+        return `<div class="ag-bloc ${indispo ? 'indispo' : ''} ${c.type === 'prospect' ? 'prospect' : ''}" style="top:${top}px;height:${h - 2}px;left:${p.couloir * largeur}%;width:calc(${largeur}% - 3px);--c:${this._couleur(c.coach_id)}"
                   onclick="event.stopPropagation()" oncontextmenu="event.preventDefault()" onpointerdown="CoachAgendaPage.debutDrag(event, '${c.id}')" title="${escHtml(titre + ' · ' + heure)}">
           <div class="ag-poignee haut"></div><div class="ag-poignee bas"></div>
           <div class="ag-bloc-titre">${escHtml(titre)}${c.serie_id ? ' ↻' : ''}${c.en_plus ? ' · en plus' : ''}</div>
@@ -543,7 +549,7 @@ const CoachAgendaPage = {
     const col = this._colonnes()[+corps.dataset.col];
     const coachId = col?.coachId || g.c.coach_id;
     f.style.cssText = `top:${(debut - AGENDA_HEURE_DEBUT * 60) * pxMin}px;height:${(fin - debut) * pxMin - 2}px;left:0;width:calc(100% - 3px);--c:${this._couleur(coachId)}`;
-    const titre = g.c.type === 'indispo' ? 'Indisponible' : this._nomClient(g.c.client_id);
+    const titre = this._titreCreneau(g.c);
     f.innerHTML = `<div class="ag-bloc-titre">${escHtml(titre)}</div><div class="ag-bloc-sub">${this._hmMin(debut)}–${this._hmMin(fin)}</div>`;
     if (f.parentElement !== corps) corps.appendChild(f);
   },
@@ -652,7 +658,8 @@ const CoachAgendaPage = {
       id: null, type: 'coaching', client_id: null,
       coach_id: coachId || (this.coachs.some(c => c.id === me) ? me : this.coachs[0]?.id),
       jour, minutes: m, duree: 60, journee_entiere: false, en_plus: false, notes: '',
-      serie_id: null, recurrence: false, fin_serie: this._ymd(finSerie),
+      prospect_nom: '', prospect_tel: '',
+      serie_id: null, recurrence: false, intervalle: 1, fin_serie: this._ymd(finSerie),
     };
     this._renderModal();
   },
@@ -666,7 +673,9 @@ const CoachAgendaPage = {
       jour: this._ymd(d), minutes: d.getHours() * 60 + d.getMinutes(),
       duree: Math.round((f - d) / 60000), journee_entiere: c.journee_entiere,
       en_plus: c.en_plus, notes: c.notes || '', serie_id: c.serie_id,
-      recurrence: false, fin_serie: null,
+      prospect_nom: c.prospect_nom || '', prospect_tel: c.prospect_tel || '',
+      recurrence: false, intervalle: 1,
+      fin_serie: (() => { const x = new Date(d); x.setMonth(x.getMonth() + 3); return this._ymd(x); })(),
     };
     this._renderModal();
   },
@@ -705,9 +714,14 @@ const CoachAgendaPage = {
     e.journee_entiere = e.type === 'indispo' && !!v('agJournee')?.checked;
     e.notes = v('agNotes').value;
     if (v('agEnPlus')) e.en_plus = v('agEnPlus').value === 'plus';
+    if (v('agProspectNom')) {
+      e.prospect_nom = v('agProspectNom').value;
+      e.prospect_tel = v('agProspectTel').value;
+    }
     if (v('agRecurrence')) {
       e.recurrence = v('agRecurrence').checked;
       e.fin_serie = v('agFinSerie').value;
+      e.intervalle = parseInt(v('agIntervalle').value) || 1;
     }
   },
 
@@ -718,6 +732,7 @@ const CoachAgendaPage = {
     if (!e) return;
     const client = this.clients.find(c => c.id === e.client_id);
     const indispo = e.type === 'indispo';
+    const prospect = e.type === 'prospect';
 
     document.getElementById('agModal').innerHTML = `
       <div class="modal-overlay" onclick="if(event.target===this)CoachAgendaPage.fermer()">
@@ -729,12 +744,21 @@ const CoachAgendaPage = {
           <div class="field">
             <label class="field-label">Type</label>
             <select class="input" id="agType" onchange="CoachAgendaPage.changerChamp()">
-              <option value="coaching" ${!indispo ? 'selected' : ''}>Coaching</option>
+              <option value="coaching" ${e.type === 'coaching' ? 'selected' : ''}>Coaching</option>
+              <option value="prospect" ${prospect ? 'selected' : ''}>Rendez-vous prospect</option>
               <option value="indispo" ${indispo ? 'selected' : ''}>Indisponibilité</option>
             </select>
           </div>
 
-          ${indispo ? '' : `
+          ${prospect ? `
+          <div class="field-row" style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px;">
+            <div class="field"><label class="field-label">Nom du prospect</label>
+              <input class="input" id="agProspectNom" value="${escHtml(e.prospect_nom)}" placeholder="Prénom Nom"></div>
+            <div class="field"><label class="field-label">Téléphone</label>
+              <input class="input" type="tel" id="agProspectTel" value="${escHtml(e.prospect_tel)}" placeholder="06…"></div>
+          </div>` : ''}
+
+          ${indispo || prospect ? '' : `
           <div class="field">
             <label class="field-label">Client</label>
             ${client ? `
@@ -766,7 +790,7 @@ const CoachAgendaPage = {
           ${indispo ? `
           <label class="ag-check"><input type="checkbox" id="agJournee" ${e.journee_entiere ? 'checked' : ''} onchange="CoachAgendaPage.changerChamp()"> Journée entière</label>` : ''}
 
-          ${!indispo && client?.facturation_mixte ? `
+          ${e.type === 'coaching' && client?.facturation_mixte ? `
           <div class="field">
             <label class="field-label">Facturation</label>
             <select class="input" id="agEnPlus">
@@ -775,11 +799,15 @@ const CoachAgendaPage = {
             </select>
           </div>` : ''}
 
-          ${!e.id ? `
-          <label class="ag-check"><input type="checkbox" id="agRecurrence" ${e.recurrence ? 'checked' : ''} onchange="CoachAgendaPage.changerChamp()"> Chaque semaine</label>
-          <div class="field" style="${e.recurrence ? '' : 'display:none;'}">
-            <label class="field-label">Jusqu'au</label>
-            <input class="input" type="date" id="agFinSerie" value="${e.fin_serie || ''}">
+          ${!e.serie_id ? `
+          <label class="ag-check"><input type="checkbox" id="agRecurrence" ${e.recurrence ? 'checked' : ''} onchange="CoachAgendaPage.changerChamp()"> Répéter</label>
+          <div class="field-row" style="display:${e.recurrence ? 'grid' : 'none'};grid-template-columns:1.2fr 1fr;gap:10px;">
+            <div class="field"><label class="field-label">Toutes les</label>
+              <select class="input" id="agIntervalle">
+                ${[1, 2, 3, 4].map(n => `<option value="${n}" ${e.intervalle === n ? 'selected' : ''}>${n === 1 ? 'semaines' : n === 2 ? '2 semaines (une sur deux)' : `${n} semaines`}</option>`).join('')}
+              </select></div>
+            <div class="field"><label class="field-label">Jusqu'au</label>
+              <input class="input" type="date" id="agFinSerie" value="${e.fin_serie || ''}"></div>
           </div>` : ''}
 
           <div class="field">
@@ -872,6 +900,8 @@ const CoachAgendaPage = {
       type: e.type,
       coach_id: e.coach_id,
       client_id: e.type === 'coaching' ? e.client_id : null,
+      prospect_nom: e.type === 'prospect' ? (e.prospect_nom || '').trim() : null,
+      prospect_tel: e.type === 'prospect' ? ((e.prospect_tel || '').trim() || null) : null,
       debut: debut.toISOString(),
       fin: fin.toISOString(),
       journee_entiere: e.journee_entiere,
@@ -881,14 +911,15 @@ const CoachAgendaPage = {
     };
   },
 
-  // Jours d'une récurrence hebdomadaire, du jour donné jusqu'à la date de fin incluse
-  _joursSerie(ymdDebut, ymdFin) {
+  // Jours d'une récurrence (toutes les « intervalle » semaines), du jour donné
+  // jusqu'à la date de fin incluse
+  _joursSerie(ymdDebut, ymdFin, intervalle = 1) {
     const jours = [];
     let d = this._dateLocale(ymdDebut, 0);
     const fin = this._dateLocale(ymdFin, 0);
     while (d <= fin && jours.length < 200) {
       jours.push(this._ymd(d));
-      d = this._ajouterJours(d, 7);
+      d = this._ajouterJours(d, 7 * intervalle);
     }
     return jours;
   },
@@ -899,6 +930,7 @@ const CoachAgendaPage = {
     const errEl = document.getElementById('agError');
     errEl.innerHTML = '';
     if (e.type === 'coaching' && !e.client_id) { errEl.innerHTML = '<div class="alert alert-error">Choisis un client.</div>'; return; }
+    if (e.type === 'prospect' && !(e.prospect_nom || '').trim()) { errEl.innerHTML = '<div class="alert alert-error">Indique le nom du prospect.</div>'; return; }
     if (!e.jour) { errEl.innerHTML = '<div class="alert alert-error">Choisis une date.</div>'; return; }
     if (e.recurrence && (!e.fin_serie || e.fin_serie < e.jour)) {
       errEl.innerHTML = '<div class="alert alert-error">La date de fin de la récurrence doit être après la date du rendez-vous.</div>';
@@ -909,12 +941,18 @@ const CoachAgendaPage = {
     btn.disabled = true;
     btn.textContent = 'Enregistrement…';
     try {
-      if (e.id) {
+      if (e.id && e.recurrence && !e.serie_id) {
+        // Rendez-vous existant qui devient la première séance d'une série
+        const serieId = crypto.randomUUID();
+        await db.updateCreneau(e.id, this._ligne(e, e.jour, serieId));
+        const suivants = this._joursSerie(e.jour, e.fin_serie, e.intervalle).slice(1);
+        if (suivants.length) await db.insertCreneaux(suivants.map(j => this._ligne(e, j, serieId)));
+      } else if (e.id) {
         const { serie_id, ...patch } = this._ligne(e, e.jour, e.serie_id);
         await db.updateCreneau(e.id, patch);
       } else if (e.recurrence) {
         const serieId = crypto.randomUUID();
-        await db.insertCreneaux(this._joursSerie(e.jour, e.fin_serie).map(j => this._ligne(e, j, serieId)));
+        await db.insertCreneaux(this._joursSerie(e.jour, e.fin_serie, e.intervalle).map(j => this._ligne(e, j, serieId)));
       } else {
         await db.insertCreneaux([this._ligne(e, e.jour, null)]);
       }
@@ -930,21 +968,27 @@ const CoachAgendaPage = {
 
   async prolonger() {
     const e = this._edit;
-    const dernier = await db.getDernierCreneauSerie(e.serie_id).catch(() => null);
+    const derniers = await db.getDerniersCreneauxSerie(e.serie_id, 2).catch(() => []);
+    const dernier = derniers[0];
     if (!dernier) return;
+    // Rythme de la série (1 semaine, une sur deux…) d'après l'écart entre les deux dernières séances
+    const intervalle = derniers[1]
+      ? Math.max(1, Math.round((new Date(dernier.debut) - new Date(derniers[1].debut)) / (7 * 864e5)))
+      : 1;
     const dDernier = new Date(dernier.debut);
     const proposition = new Date(dDernier);
     proposition.setMonth(proposition.getMonth() + 3);
     const fin = prompt(`Dernière séance de la série : ${dDernier.toLocaleDateString('fr-FR')}.\nProlonger jusqu'au (AAAA-MM-JJ) :`, this._ymd(proposition));
     if (!fin || !/^\d{4}-\d{2}-\d{2}$/.test(fin)) return;
 
-    const jours = this._joursSerie(this._ymd(this._ajouterJours(dDernier, 7)), fin);
+    const jours = this._joursSerie(this._ymd(this._ajouterJours(dDernier, 7 * intervalle)), fin, intervalle);
     if (!jours.length) { toast('Aucune nouvelle séance à ajouter', 'info'); return; }
     const d = new Date(dernier.debut), f = new Date(dernier.fin);
     const modele = {
       type: dernier.type, coach_id: dernier.coach_id, client_id: dernier.client_id,
       minutes: d.getHours() * 60 + d.getMinutes(), duree: Math.round((f - d) / 60000),
       journee_entiere: dernier.journee_entiere, en_plus: dernier.en_plus, notes: dernier.notes || '',
+      prospect_nom: dernier.prospect_nom || '', prospect_tel: dernier.prospect_tel || '',
     };
     try {
       await db.insertCreneaux(jours.map(j => this._ligne(modele, j, dernier.serie_id)));
@@ -962,7 +1006,7 @@ const CoachAgendaPage = {
     const e = this._edit;
     const c = this.creneaux.find(x => x.id === e.id);
     if (!c) return;
-    const label = c.type === 'indispo' ? 'cette indisponibilité' : `le rendez-vous de ${escHtml(this._nomClient(c.client_id))}`;
+    const label = c.type === 'indispo' ? 'cette indisponibilité' : `le rendez-vous de ${escHtml(c.type === 'prospect' ? c.prospect_nom : this._nomClient(c.client_id))}`;
     document.getElementById('agModal').innerHTML = `
       <div class="modal-overlay" onclick="if(event.target===this)CoachAgendaPage.fermer()">
         <div class="modal">
