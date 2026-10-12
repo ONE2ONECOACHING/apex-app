@@ -310,6 +310,11 @@ const CoachAgendaPage = {
       heures += `<div class="ag-heure" style="top:${(h - AGENDA_HEURE_DEBUT) * 60 * pxMin}px">${h}h</div>`;
     }
 
+    // Ligne « journée entière » : même hauteur dans toutes les colonnes,
+    // pour que les heures restent alignées d'un jour à l'autre
+    const maxJournee = Math.max(0, ...cols.map(col => this._creneauxColonne(col).filter(c => c.journee_entiere).length));
+    const hJournee = maxJournee ? maxJournee * (this._mobile ? 18 : 22) + 4 : (this._mobile ? 6 : 22);
+
     const colonnesHtml = cols.map((col, i) => {
       const items = this._creneauxColonne(col);
       const journee = items.filter(c => c.journee_entiere);
@@ -347,7 +352,7 @@ const CoachAgendaPage = {
           <div class="ag-col-titre ${(this.vue === 'semaine' || this._mobile) && this._ymd(col.date) === today ? 'today' : ''}">${this._mobile && col.lettre
             ? `<span class="ag-jl">${col.lettre}</span><span class="ag-jn">${col.date.getDate()}</span>`
             : escHtml(col.titre)}</div>
-          <div class="ag-col-journee" style="cursor:pointer" title="Indisponibilité sur la journée" onclick="CoachAgendaPage.nouvelleJournee(${i})">${bandeau}</div>
+          <div class="ag-col-journee" style="cursor:pointer;height:${hJournee}px;" title="Indisponibilité sur la journée" onclick="CoachAgendaPage.nouvelleJournee(${i})">${bandeau}</div>
           <div class="ag-col-corps" data-col="${i}" style="height:${hauteur}px" onclick="CoachAgendaPage.clicGrille(event, ${i})">${blocs}</div>
         </div>`;
     }).join('');
@@ -356,7 +361,7 @@ const CoachAgendaPage = {
       <div class="ag-grille ${this._mobile ? 'ag-m' : ''} ${this._mobile && this.vue === 'jour' ? 'ag-m-jour' : ''}">
         <div class="ag-heures">
           <div class="ag-col-titre">&nbsp;</div>
-          <div class="ag-col-journee"></div>
+          <div class="ag-col-journee" style="height:${hJournee}px;"></div>
           <div style="position:relative;height:${hauteur}px">${heures}</div>
         </div>
         <div class="ag-cols ${this._anim > 0 ? 'ag-slide-suiv' : this._anim < 0 ? 'ag-slide-prec' : ''}" style="--pas:${this._px()}px;--heure:${60 * pxMin}px">${colonnesHtml}</div>
