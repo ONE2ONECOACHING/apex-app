@@ -1242,3 +1242,54 @@ body.ag-dragging, body.ag-dragging * { cursor: grabbing !important; user-select:
 .ss-exo-outils button:disabled { opacity: 0.3; cursor: default; }
 .ss-cliquable { cursor: pointer; }
 .ss-cliquable:hover { color: var(--gold); text-decoration: underline dotted; }
+
+/* ═══════════════════════════════════════════════════════════
+   ESPACE COACH : menu de gauche, tableau de bord, en-tête de fiche
+   ═══════════════════════════════════════════════════════════ */
+.coach-menu { position: fixed; top: 0; left: 0; bottom: 0; width: 200px; z-index: 50; display: flex; flex-direction: column; gap: 2px;
+  padding: 18px 10px; background: var(--white); border-right: 1px solid var(--border-solid); overflow-y: auto; }
+.coach-menu-logo { font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: var(--gold); margin: 0 10px 16px; }
+.coach-menu-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-family: var(--font); font-size: 14px;
+  font-weight: 600; color: var(--gray); text-decoration: none; border: none; background: none; cursor: pointer; text-align: left; width: 100%; }
+.coach-menu-item:hover { background: var(--bg); color: var(--black); }
+.coach-menu-item.on { background: var(--gold-light); color: var(--gold); }
+.coach-menu-icone { width: 20px; text-align: center; font-size: 15px; }
+.coach-menu-section { margin: 14px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray-light); }
+.coach-menu-pied { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-solid); }
+.coach-menu-moi { font-size: 13px; font-weight: 700; padding: 4px 10px 6px; }
+.coach-menu-moi span { display: block; font-size: 11px; font-weight: 500; color: var(--gray-light); }
+body.coach-layout #app { margin-left: 200px !important; max-width: 1200px !important; padding-left: 2rem !important; padding-right: 2rem !important; }
+body.coach-layout .nav-bottom { display: none; }
+@media (max-width: 900px) {
+  .coach-menu { position: sticky; bottom: auto; width: auto; flex-direction: row; align-items: center; overflow-x: auto; padding: 8px; border-right: none; border-bottom: 1px solid var(--border-solid); }
+  .coach-menu-logo, .coach-menu-section, .coach-menu-moi { display: none; }
+  .coach-menu-item { width: auto; white-space: nowrap; font-size: 13px; padding: 7px 10px; }
+  .coach-menu-pied { margin: 0 0 0 auto; padding: 0; border: none; }
+  body.coach-layout #app { margin-left: auto !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+
+.ac-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .ac-grille { grid-template-columns: minmax(0, 1fr); } }
+.ac-bloc { background: var(--white); border: 1px solid var(--border-solid); border-radius: 14px; padding: 14px 16px; }
+.ac-bloc-titre { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.ac-compte { font-size: 13px; margin-left: 4px; }
+.ac-ligne { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px solid var(--border-light); cursor: pointer; font-size: 14px; }
+.ac-ligne:hover { background: var(--bg); }
+.ac-heure { font-weight: 700; color: var(--gold); min-width: 108px; font-size: 13px; }
+.ac-nom { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-meta { font-size: 12px; color: var(--gray-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+.ac-fleche { color: var(--gray-muted); }
+.ac-sem { font-size: 12px; font-weight: 700; color: var(--gray); white-space: nowrap; }
+.ac-sem.derniere { color: #D97706; }
+.ac-sem.fin { color: var(--error); }
+.ac-cloche { border: 1px solid var(--border-solid); background: var(--white); border-radius: 8px; padding: 3px 8px; cursor: pointer; font-size: 13px; }
+.ac-cloche:hover:not(:disabled) { border-color: var(--gold); }
+.ac-cloche.faite { color: #059669; cursor: default; }
+.ac-vide { font-size: 13px; color: var(--gray-light); padding: 6px 4px; }
+.ac-vide a { color: var(--gold); }
+
+.fiche-entete:empty { display: none; }
+.fiche-entete { margin-bottom: 12px; }
+.fiche-nom { font-size: 20px; font-weight: 700; }
+.fiche-infos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; font-size: 13px; color: var(--gray); }
+.fiche-pastille { background: var(--gold-light); color: var(--gold); font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 999px; }

@@ -1,0 +1,162 @@
+// APEX APP — Coach : tableau de bord
+// 1. Mes coachings du jour (tous mes rendez-vous)
+// 2. Bilans à traiter, 3. Bilans en attente (relance), 4. Cycles d'entraînement :
+//    uniquement les clients dont je suis le coach référent.
+
+const CoachAccueilPage = {
+  coachings: [],
+  aTraiter: [],
+  enAttente: [],
+  cycles: [],
+  _relances: new Set(),   // bilans relancés pendant cette visite
+
+  render() {
+    document.body.classList.add('coach-wide');
+    const prenom = Router.userProfile?.prenom || '';
+    return `
+      <div class="app-header">
+        <div>
+          <div class="app-logo">ONE2ONE · COACH</div>
+          <div class="app-title">Bonjour ${escHtml(prenom)}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input class="input" id="acRecherche" type="search" placeholder="Chercher un client…" autocomplete="off"
+            style="height:36px;width:220px;font-size:13px;" oninput="CoachAccueilPage.chercher(this.value)">
+          <button class="btn btn-primary btn-small" onclick="window.location.hash='#coach-agenda'">+ Rendez-vous</button>
+        </div>
+      </div>
+      <div id="acResultats" class="ag-results" style="margin:-0.5rem 0 1rem;"></div>
+      <div id="acContent"><div class="spinner" style="margin-top:2rem;"></div></div>`;
+  },
+
+  async init() {
+    const me = Router.userProfile;
+    if (!me || me.role !== 'coach') { window.location.hash = '#login'; return; }
+    this._relances = new Set();
+    this._clients = null;
+    try {
+      [this.coachings, this.aTraiter, this.enAttente, this.cycles] = await Promise.all([
+        db.getCoachingsDuJour(me.id).catch(() => []),
+        db.getBilansATraiter(me.id).catch(() => []),
+        db.getBilansEnAttente(me.id).catch(() => []),
+        db.getCyclesClients(me.id).catch(() => []),
+      ]);
+      this._render();
+    } catch (e) {
+      document.getElementById('acContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
+    }
+  },
+
+  // ── Recherche rapide d'un client ──────────────────────────────────────────
+  async chercher(q) {
+    const box = document.getElementById('acResultats');
+    const s = q.trim().toLowerCase();
+    if (!s) { box.innerHTML = ''; return; }
+    if (!this._clients) this._clients = await db.getClientsAgenda().catch(() => []);
+    const res = this._clients.filter(c => `${c.prenom || ''} ${c.nom || ''}`.toLowerCase().includes(s)).slice(0, 8);
+    box.innerHTML = res.length
+      ? res.map(c => `<div class="ag-result" onclick="Router.navigate('coach-client-edit',{clientId:'${c.id}'})">${escHtml(`${c.prenom || ''} ${c.nom || ''}`.trim())}</div>`).join('')
+      : '<div class="ag-result" style="color:var(--gray-light);cursor:default;">Aucun client trouvé</div>';
+  },
+
+  // ── Rendu ─────────────────────────────────────────────────────────────────
+  _nom(c) { return escHtml(`${c?.prenom || ''} ${c?.nom || ''}`.trim() || 'Client'); },
+
+  _hm(iso) { return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); },
+
+  _ilYa(iso) {
+    const j = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
+    return j <= 0 ? "aujourd'hui" : j === 1 ? 'hier' : `il y a ${j} j`;
+  },
+
+  // Où en est un programme : semaine en cours et nombre de semaines
+  _avancement(p) {
+    const nb = p.nb_semaines || 4;
+    const studio = (p.client_prog_seances || []).filter(s => s.lieu === 'studio' && !s.cardio);
+    let semaine;
+    if (studio.length) {
+      const faites = Math.max(...studio.map(s => (s.seances_studio_semaines || []).length));
+      semaine = faites + 1;
+    } else if (p.date_debut) {
+      semaine = Math.floor((Date.now() - new Date(p.date_debut + 'T00:00:00')) / (7 * 864e5)) + 1;
+    } else {
+      semaine = 1;
+    }
+    semaine = Math.max(1, semaine);
+    return { semaine, nb, restantes: nb - semaine, termine: semaine > nb };
+  },
+
+  _bloc(titre, nb, couleur, contenu) {
+    return `
+      <div class="ac-bloc">
+        <div class="ac-bloc-titre">${titre} <span class="ac-compte" style="color:${couleur};">${nb}</span></div>
+        ${contenu}
+      </div>`;
+  },
+
+  _render() {
+    const vide = texte => `<div class="ac-vide">${texte}</div>`;
+
+    const coachings = this.coachings.length
+      ? this.coachings.map(r => `
+          <div class="ac-ligne" onclick="CoachSeanceStudioPage.ouvrirPourClient('${r.client_id}')">
+            <span class="ac-heure">${this._hm(r.debut)} – ${this._hm(r.fin)}</span>
+            <span class="ac-nom">${this._nom(r.client)}</span><span class="ac-fleche">›</span>
+          </div>`).join('')
+      : vide(`Aucun coaching aujourd'hui · <a href="#coach-agenda">ouvrir l'agenda</a>`);
+
+    const aTraiter = this.aTraiter.length
+      ? this.aTraiter.map(b => `
+          <div class="ac-ligne" onclick="Router.navigate('coach-bilan-client',{clientId:'${b.client_id}'})">
+            <span class="ac-nom">${this._nom(b.client)}</span>
+            <span class="ac-meta">${this._ilYa(b.completed_at)}</span><span class="ac-fleche">›</span>
+          </div>`).join('')
+      : vide('Aucun bilan à traiter.');
+
+    const enAttente = this.enAttente.length
+      ? this.enAttente.map(b => {
+          const relance = this._relances.has(b.id);
+          const semaine = new Date(b.semaine + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+          return `
+          <div class="ac-ligne">
+            <span class="ac-nom" style="cursor:pointer;" onclick="Router.navigate('coach-bilan-client',{clientId:'${b.client_id}'})">${this._nom(b.client)}</span>
+            <span class="ac-meta">semaine du ${semaine}</span>
+            <button class="ac-cloche ${relance ? 'faite' : ''}" title="${relance ? 'Relance envoyée' : 'Relancer par notification'}"
+              ${relance ? 'disabled' : `onclick="CoachAccueilPage.relancer('${b.id}','${b.client_id}')"`}>${relance ? '✓' : '🔔'}</button>
+          </div>`;
+        }).join('')
+      : vide('Aucun bilan en attente.');
+
+    const cycles = this.cycles
+      .map(p => ({ p, a: this._avancement(p) }))
+      .sort((x, y) => x.a.restantes - y.a.restantes);
+    const cyclesHtml = cycles.length
+      ? cycles.map(({ p, a }) => `
+          <div class="ac-ligne" onclick="Router.navigate('coach-client-programme',{clientId:'${p.client_id}'})">
+            <span class="ac-nom">${this._nom(p.client)}</span>
+            <span class="ac-meta">${escHtml(p.nom)}</span>
+            <span class="ac-sem ${a.termine ? 'fin' : a.restantes <= 0 ? 'derniere' : ''}">${a.termine ? 'terminé' : `sem. ${a.semaine}/${a.nb}`}</span>
+            <span class="ac-fleche">›</span>
+          </div>`).join('')
+      : vide('Aucun programme en cours.');
+
+    document.getElementById('acContent').innerHTML = `
+      <div class="ac-grille">
+        ${this._bloc('📅 Mes coachings du jour', this.coachings.length, 'var(--gold)', coachings)}
+        ${this._bloc('📋 Bilans à traiter', this.aTraiter.length, 'var(--error)', aTraiter)}
+        ${this._bloc('⏳ Bilans en attente', this.enAttente.length, '#D97706', enAttente)}
+        ${this._bloc('💪 Cycles d\'entraînement', cycles.length, 'var(--gray)', cyclesHtml)}
+      </div>`;
+  },
+
+  async relancer(bilanId, clientId) {
+    try {
+      await db.sendPush(clientId, '📝 Ton bilan t\'attend', 'Prends 2 minutes pour remplir ton bilan de la semaine 💪', '#client-bilan');
+      this._relances.add(bilanId);
+      this._render();
+      toast('Relance envoyée', 'success');
+    } catch (e) {
+      toast('Erreur : ' + e.message, 'error');
+    }
+  }
+};

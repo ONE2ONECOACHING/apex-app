@@ -255,6 +255,41 @@ const db = {
     if (error) throw error;
   },
 
+  // ── Tableau de bord du coach (clients dont il est le référent) ───────────
+
+  // Bilans remplis par les clients, pas encore lus par le coach
+  async getBilansATraiter(coachId) {
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .select('id, client_id, semaine, completed_at, client:profiles!bilan_instances_client_id_fkey(prenom, nom, coach_referent_id)')
+      .eq('statut', 'complete')
+      .eq('coach_lu', false)
+      .order('completed_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).filter(b => b.client?.coach_referent_id === coachId);
+  },
+
+  // Bilans envoyés, pas encore remplis par les clients
+  async getBilansEnAttente(coachId) {
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .select('id, client_id, semaine, created_at, client:profiles!bilan_instances_client_id_fkey(prenom, nom, coach_referent_id)')
+      .eq('statut', 'en_attente')
+      .order('semaine', { ascending: true });
+    if (error) throw error;
+    return (data || []).filter(b => b.client?.coach_referent_id === coachId);
+  },
+
+  // Programmes actifs des clients du coach, avec les semaines cochées au studio
+  async getCyclesClients(coachId) {
+    const { data, error } = await getSupabase()
+      .from('client_programmes')
+      .select('id, nom, nb_semaines, date_debut, client_id, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, lieu, cardio, seances_studio_semaines(semaine))')
+      .eq('actif', true);
+    if (error) throw error;
+    return (data || []).filter(p => p.client?.coach_referent_id === coachId && p.client?.actif !== false);
+  },
+
   // Coachings du jour d'un coach, avec le nom du client
   async getCoachingsDuJour(coachId) {
     const debut = new Date(); debut.setHours(0, 0, 0, 0);

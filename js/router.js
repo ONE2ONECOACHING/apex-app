@@ -77,7 +77,7 @@ const Router = {
     // Connecté sur login → rediriger
     if (user && hash === 'login') {
       if (this.userProfile && this.userProfile.role === 'coach') {
-        window.location.hash = '#coach-clients';
+        window.location.hash = '#coach-accueil';
       } else if (this.userProfile && !this.userProfile.onboarding_done) {
         window.location.hash = '#onboarding';
       } else {
@@ -103,10 +103,10 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
-        window.location.hash = '#coach-clients';
+        window.location.hash = '#coach-accueil';
         return;
       }
       if (this.userProfile.role === 'client' && coachRoutes.includes(hash)) {
@@ -114,6 +114,9 @@ const Router = {
         return;
       }
     }
+
+    // Menu de gauche de l'espace coach
+    afficherMenuCoach(this.userProfile?.role === 'coach' && coachRoutes.includes(hash) ? hash : null);
 
     // Charger la page avec transition
     this.currentPage = hash;
@@ -157,6 +160,7 @@ const Router = {
         case 'coach-equipe':          app.innerHTML = CoachEquipePage.render();        CoachEquipePage.init();        break;
         case 'coach-agenda':          app.innerHTML = CoachAgendaPage.render();        CoachAgendaPage.init();        break;
         case 'coach-seance-studio':   app.innerHTML = CoachSeanceStudioPage.render();  CoachSeanceStudioPage.init();  break;
+        case 'coach-accueil':         app.innerHTML = CoachAccueilPage.render();       CoachAccueilPage.init();       break;
         case 'formation':             app.innerHTML = FormationPage.render();           FormationPage.init();           break;
         default: window.location.hash = '#login';
       }
@@ -287,6 +291,60 @@ function clientNav(activeTab) {
 }
 
 // ── Navigation partagée — pages client coach ─────────────────
+// ── Menu de gauche de l'espace coach ───────────────────────────────────────
+// Chaque entrée regroupe les écrans qui lui appartiennent (pour la surbrillance).
+const MENU_COACH = [
+  { route: 'coach-accueil',         icone: '🏠', label: 'Tableau de bord', ecrans: ['coach-accueil'] },
+  { route: 'coach-agenda',          icone: '📅', label: 'Agenda',          ecrans: ['coach-agenda'] },
+  { route: 'coach-clients',         icone: '👥', label: 'Clients',         ecrans: ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal',
+      'coach-journal-view', 'coach-habits-edit', 'coach-bilan-client', 'coach-mesure-client', 'coach-client-programme',
+      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio'] },
+  { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
+      'coach-exercices', 'coach-bilan-templates', 'coach-formations'] },
+  { route: 'coach-equipe',          icone: '🧑‍🤝‍🧑', label: 'Équipe',     ecrans: ['coach-equipe'], gerant: true },
+];
+
+function afficherMenuCoach(hash) {
+  let nav = document.getElementById('coachMenu');
+  if (!hash) {
+    document.body.classList.remove('coach-layout');
+    if (nav) nav.remove();
+    return;
+  }
+  const me = Router.userProfile || {};
+  if (!nav) {
+    nav = document.createElement('nav');
+    nav.id = 'coachMenu';
+    nav.className = 'coach-menu';
+    document.body.insertBefore(nav, document.getElementById('app'));
+  }
+  document.body.classList.add('coach-layout');
+  const lien = m => `<a href="#${m.route}" class="coach-menu-item ${m.ecrans.includes(hash) ? 'on' : ''}">
+      <span class="coach-menu-icone">${m.icone}</span>${m.label}</a>`;
+  const coachs = MENU_COACH.filter(m => !m.gerant);
+  const gerants = MENU_COACH.filter(m => m.gerant && me.is_gerant);
+  nav.innerHTML = `
+    <div class="coach-menu-logo">ONE2ONE</div>
+    ${coachs.map(lien).join('')}
+    ${gerants.length ? `<div class="coach-menu-section">Gérants</div>${gerants.map(lien).join('')}` : ''}
+    <div class="coach-menu-pied">
+      <div class="coach-menu-moi">${escHtml(`${me.prenom || ''} ${me.nom || ''}`.trim())}${me.is_gerant ? '<span>gérant</span>' : ''}</div>
+      <button class="coach-menu-item" onclick="Router.confirmLogout()"><span class="coach-menu-icone">⏻</span>Déconnexion</button>
+    </div>`;
+}
+
+// Onglets de la bibliothèque (programmes, exercices, modèles de bilans, formations)
+function biblioNav(actif) {
+  const onglets = [
+    ['coach-prog-templates', 'Programmes'],
+    ['coach-exercices', 'Exercices'],
+    ['coach-bilan-templates', 'Modèles de bilans'],
+    ['coach-formations', 'Formations'],
+  ];
+  return `<div class="tabs" style="margin-bottom:1.25rem;">${onglets.map(([k, l]) =>
+    `<button class="tab${k === actif ? ' active' : ''}" onclick="window.location.hash='#${k}'">${l}</button>`).join('')}</div>`;
+}
+
 // Onglets de la fiche client, regroupés comme dans le cahier des charges.
 // Chaque onglet n'apparaît que si le coach y a droit (Suivi : référent ou
 // gérant) et selon le type de client (studio sans suivi : ni plan ni suivi).
@@ -297,6 +355,7 @@ const FICHE_ONGLETS = [
   { cle: 'suivi',        label: '📈 Suivi',            pages: [['coach-journal', 'Journal'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
 ];
 const _ficheClients = new Map();   // profils déjà chargés, pour les droits
+let _ficheCoachs = null;           // comptes coach, pour afficher le référent
 
 function coachClientNav(clientId, activeTab) {
   const page = { 'coach-seance-studio': 'coach-client-programme', 'coach-journal-view': 'coach-journal',
@@ -308,6 +367,7 @@ function coachClientNav(clientId, activeTab) {
       onclick="Router.navigate('${k}',{clientId:'${clientId}'})">${label}</button>`;
   return `
     <div id="${navId}" style="margin-bottom:1.25rem;">
+      <div class="fiche-entete" data-entete></div>
       <div class="tabs">${FICHE_ONGLETS.map(g => btn(g.pages[0][0], g.label, g === groupe, `data-groupe="${g.cle}"`)).join('')}</div>
       ${groupe.pages.length > 1 ? `<div class="fiche-sous-onglets">${
         groupe.pages.map(([k, label]) => `<button class="${k === page ? 'on' : ''}"
@@ -326,6 +386,21 @@ async function ajusterFicheNav(navId, clientId) {
     if (!nav) return;
     nav.querySelector('[data-groupe="plan"]')?.classList.toggle('hidden', studio);
     nav.querySelector('[data-groupe="suivi"]')?.classList.toggle('hidden', !suivi);
+
+    const entete = nav.querySelector('[data-entete]');
+    if (entete) {
+      const types = { suivi: 'Studio + suivi', distance: 'Suivi à distance', studio: 'Studio sans suivi' };
+      if (!_ficheCoachs) _ficheCoachs = await db.getCoachs().catch(() => []);
+      const ref = _ficheCoachs.find(c => c.id === client.coach_referent_id);
+      const tags = { ben: 'Ben', chris: 'Chris', lola: 'Lola' };
+      entete.innerHTML = `
+        <div class="fiche-nom">${escHtml(`${client.prenom || ''} ${client.nom || ''}`.trim())}</div>
+        <div class="fiche-infos">
+          <span class="fiche-pastille">${types[client.type_client] || 'Client'}</span>
+          ${ref ? `<span>Référent : ${escHtml(`${ref.prenom || ''} ${ref.nom || ''}`.trim())}</span>` : ''}
+          ${client.coach_tag ? `<span class="coach-tag coach-tag-${client.coach_tag}">${tags[client.coach_tag] || client.coach_tag}</span>` : ''}
+        </div>`;
+    }
   } catch (_) { /* en cas d'erreur, tous les onglets restent affichés ; la base applique les droits */ }
 }
 

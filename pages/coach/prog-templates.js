@@ -12,8 +12,8 @@ const CoachProgTemplatesPage = {
           <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Programmes d'entraînement</div>
         </div>
-        <button class="header-btn" onclick="window.location.hash='#coach-clients'">←</button>
       </div>
+      ${biblioNav('coach-prog-templates')}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
         <div style="font-size:13px;color:var(--gray);">
           Vos templates de programme réutilisables et assignables à vos clients.
@@ -21,12 +21,7 @@ const CoachProgTemplatesPage = {
         <button class="btn btn-primary btn-small"
           onclick="CoachProgTemplatesPage.newTemplate()">+ Nouveau programme</button>
       </div>
-      <div id="tplList"><div class="spinner"></div></div>
-      <nav class="nav-bottom"><div class="nav-inner">
-        <a class="nav-item" href="#coach-clients"><span class="nav-icon">👥</span><span class="nav-label">Clients</span></a>
-        <a class="nav-item active" href="#coach-prog-templates"><span class="nav-icon">📋</span><span class="nav-label">Programmes</span></a>
-        <a class="nav-item" href="#coach-exercices"><span class="nav-icon">🏋️</span><span class="nav-label">Exercices</span></a>
-      </div></nav>`;
+      <div id="tplList"><div class="spinner"></div></div>`;
   },
 
   async init() {

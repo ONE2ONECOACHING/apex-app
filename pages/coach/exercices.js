@@ -66,8 +66,8 @@ const CoachExercicesPage = {
           <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Bibliothèque d'exercices</div>
         </div>
-        <button class="header-btn" onclick="window.location.hash='#coach-clients'">←</button>
       </div>
+      ${biblioNav('coach-exercices')}
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
         <input type="text" class="input" placeholder="🔍 Rechercher un exercice…"
           id="exoSearch" style="flex:1;min-width:200px;height:42px;"
@@ -78,12 +78,7 @@ const CoachExercicesPage = {
       <div id="exoFilters"></div>
 
       <div id="exoList"></div>
-      <div id="exoModal"></div>
-      <nav class="nav-bottom"><div class="nav-inner">
-        <a class="nav-item" href="#coach-clients"><span class="nav-icon">👥</span><span class="nav-label">Clients</span></a>
-        <a class="nav-item" href="#coach-prog-templates"><span class="nav-icon">📋</span><span class="nav-label">Programmes</span></a>
-        <a class="nav-item active" href="#coach-exercices"><span class="nav-icon">🏋️</span><span class="nav-label">Exercices</span></a>
-      </div></nav>`;
+      <div id="exoModal"></div>`;
   },
 
   async init() {

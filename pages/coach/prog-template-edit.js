@@ -65,12 +65,7 @@ const CoachProgTemplateEditPage = {
         <button class="header-btn" onclick="CoachProgTemplateEditPage._goBack()">←</button>
       </div>
       <div id="tplEditContent"><div class="spinner" style="margin-top:3rem;"></div></div>
-      <div id="tplExoPicker"></div>
-      <nav class="nav-bottom"><div class="nav-inner">
-        <a class="nav-item" href="#coach-clients"><span class="nav-icon">👥</span><span class="nav-label">Clients</span></a>
-        <a class="nav-item active" href="#coach-prog-templates"><span class="nav-icon">📋</span><span class="nav-label">Programmes</span></a>
-        <a class="nav-item" href="#coach-exercices"><span class="nav-icon">🏋️</span><span class="nav-label">Exercices</span></a>
-      </div></nav>`;
+      <div id="tplExoPicker"></div>`;
   },
 
   _goBack() {

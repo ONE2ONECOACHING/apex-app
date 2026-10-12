@@ -13,26 +13,19 @@ const CoachClientsPage = {
   _coachNotes: [],
   _lastPoids: {},
   _bilanAssignations: [],
-  _coachingsDuJour: [],
 
   render() {
+    document.body.classList.add('coach-wide');
     return `
       <div class="app-header">
         <div>
           <div class="app-logo">ONE2ONE · COACH</div>
-          <div class="app-title">Dashboard</div>
+          <div class="app-title">Clients</div>
         </div>
-        <button class="header-btn" onclick="Router.confirmLogout()">⏻</button>
+        <button class="btn btn-primary btn-small" onclick="CoachClientsPage.showCreateModal()">+ Nouveau client</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-small" onclick="CoachClientsPage.showCreateModal()">+ Nouveau client</button>
-        <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-agenda'">📅 Agenda</button>
-        <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-bilan-templates'">📝 Bilans</button>
-        <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-prog-templates'">📋 Programmes</button>
-        <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-exercices'">🏋️ Exercices</button>
-        <button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-formations'">📚 Formations</button>
-        ${Router.userProfile?.is_gerant ? `<button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-equipe'">👥 Équipe</button>` : ''}
-        <div id="tagFilters" style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;"></div>
+        <div id="tagFilters" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
       </div>
       <div id="dashContent"><div class="spinner" style="margin-top:2rem;"></div></div>
       <div id="coachModal"></div>`;
@@ -52,7 +45,6 @@ const CoachClientsPage = {
         db.getAllPendingBilans(),
         db.getAllBilanAssignations().catch(() => []),
       ]);
-      this._coachingsDuJour = await db.getCoachingsDuJour(Router.userProfile.id).catch(() => []);
       this.clients = clients;
       const clientIds = clients.map(c => c.id);
 
@@ -146,13 +138,13 @@ const CoachClientsPage = {
                  font-size:14px;font-weight:600;cursor:pointer;
                  color:${this._mainTab==='dashboard'?'var(--gold)':'var(--gray-muted)'};
                  border-bottom:2px solid ${this._mainTab==='dashboard'?'var(--gold)':'transparent'};
-                 margin-bottom:-2px;">👥 Clients</button>
+                 margin-bottom:-2px;">👥 Liste</button>
         <button onclick="CoachClientsPage._setMainTab('suivi')"
           style="flex:1;padding:10px 6px;border:none;background:none;font-family:var(--font);
                  font-size:14px;font-weight:600;cursor:pointer;
                  color:${this._mainTab==='suivi'?'var(--gold)':'var(--gray-muted)'};
                  border-bottom:2px solid ${this._mainTab==='suivi'?'var(--gold)':'transparent'};
-                 margin-bottom:-2px;">📊 Suivi</button>
+                 margin-bottom:-2px;">📊 Suivi de la semaine</button>
       </div>`;
 
     if (this._mainTab === 'suivi') {
@@ -161,20 +153,6 @@ const CoachClientsPage = {
     }
 
     let html = tabsHtml;
-
-    // ── ZONE 0 : MES COACHINGS DU JOUR ───────────────────────────────────
-    const hm = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    html += `<div class="dash-section">
-      <div class="dash-section-title">📅 Mes coachings du jour <span class="dash-badge dash-badge-gray">${this._coachingsDuJour.length}</span></div>
-      ${this._coachingsDuJour.length === 0
-        ? `<div class="dash-rdv" onclick="window.location.hash='#coach-agenda'"><div class="dash-rdv-nom" style="color:var(--gray-light);font-weight:500;">Aucun coaching aujourd'hui · ouvrir l'agenda</div></div>`
-        : this._coachingsDuJour.map(r => `
-          <div class="dash-rdv" onclick="CoachSeanceStudioPage.ouvrirPourClient('${r.client_id}')">
-            <div class="dash-rdv-heure">${hm(r.debut)} – ${hm(r.fin)}</div>
-            <div class="dash-rdv-nom">${escHtml(`${r.client?.prenom || ''} ${r.client?.nom || ''}`.trim() || 'Client')}</div>
-            <div class="dash-action-arrow">›</div>
-          </div>`).join('')}
-    </div>`;
 
     // ── ZONE 1 : À FAIRE ─────────────────────────────────────────────────
     const actions = this._buildActions(filtered, planMap);
