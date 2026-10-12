@@ -335,7 +335,7 @@ const CoachAgendaPage = {
         const titre = indispo ? 'Indisponible' : this._nomClient(c.client_id);
         const heure = `${this._hm(new Date(c.debut))}–${this._hm(new Date(c.fin))}`;
         return `<div class="ag-bloc ${indispo ? 'indispo' : ''}" style="top:${top}px;height:${h - 2}px;left:${p.couloir * largeur}%;width:calc(${largeur}% - 3px);--c:${this._couleur(c.coach_id)}"
-                  onclick="event.stopPropagation()" onpointerdown="CoachAgendaPage.debutDrag(event, '${c.id}')" title="${escHtml(titre + ' · ' + heure)}">
+                  onclick="event.stopPropagation()" oncontextmenu="event.preventDefault()" onpointerdown="CoachAgendaPage.debutDrag(event, '${c.id}')" title="${escHtml(titre + ' · ' + heure)}">
           <div class="ag-poignee haut"></div><div class="ag-poignee bas"></div>
           <div class="ag-bloc-titre">${escHtml(titre)}${c.serie_id ? ' ↻' : ''}${c.en_plus ? ' · en plus' : ''}</div>
           <div class="ag-bloc-sub">${heure}${this.vue === 'semaine' || this._mobile ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}</div>
@@ -482,6 +482,7 @@ const CoachAgendaPage = {
         g.actif = true;
         g.bloc.classList.add('ag-drag-source');
         document.body.classList.add('ag-dragging');
+        window.getSelection?.().removeAllRanges();
         this._bloquerDefilement = e => e.preventDefault();
         document.addEventListener('touchmove', this._bloquerDefilement, { passive: false });
         if (navigator.vibrate) navigator.vibrate(30);

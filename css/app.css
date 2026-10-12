@@ -1342,3 +1342,7 @@ body.coach-layout .nav-bottom { display: none; }
 .ag-m-jour .ag-bloc { padding: 3px 6px; }
 .ag-journee { line-height: 16px; height: 20px; box-sizing: border-box; }
 .ag-m .ag-journee { line-height: 12px; height: 16px; }
+
+/* Agenda au doigt (iPhone) : pas de sélection de texte ni de menu « Copier » à l'appui long */
+.ag-grille, .ag-grille * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.ag-bloc, .ag-journee { -webkit-tap-highlight-color: transparent; }
