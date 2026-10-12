@@ -45,7 +45,7 @@ Rien ne doit changer pour les clients pendant cette étape.
    Lot 6 (écran Équipe) : `sql/2026-10-08_equipe.sql` exécuté, Edge Function `manage-team` déployée le 8 octobre 2026 (attention : dans le tableau de bord Supabase, saisir le nom avant de déployer, sinon l'adresse prend un nom aléatoire), création et suppression d'un coach test validées par Benjamin sur la preview.
    Lot 4 (référent dans l'app) : garder l'étiquette `coach_tag` affichée à côté du référent tant que l'équipe utilise le compte partagé (validé par Benjamin).
 3. Écran Équipe : fait (lot 6).
-4. Coach référent : fait (lot 4). Bascule prévue le lundi 12 octobre 2026 : toute l'équipe passe sur ses propres comptes, puis `sql/2026-10-12_bascule_referents.sql` répartit les clients d'après `coach_tag` (ben → Benjamin, chris → Christophe, lola → Lola). Avant la bascule, ne pas changer de référent (le compte partagé perdrait l'écriture sur ces clients).
+4. Coach référent : fait (lot 4). Bascule faite le 12 octobre 2026 avec `sql/2026-10-12_bascule_referents.sql` : Benjamin 23 clients (21 « ben » + 2 sans étiquette), Christophe 33, Lola 5 ; plus aucun client rattaché au compte partagé. `handle_new_user` ne donne plus de référent par défaut : le coach qui crée le client le devient.
 5. Droits : faits (lot 5).
 6. Sécurité : en production (lot 7).
 
