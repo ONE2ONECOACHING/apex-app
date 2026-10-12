@@ -207,12 +207,7 @@ const CoachClientProgrammePage = {
     if (!seances.length) { box.innerHTML = ''; return; }
     const gardees = seances.filter(se => this._lieux[se.id] !== 'exclue').length;
     box.innerHTML = `
-      <label class="field-label">Nombre de séances par semaine</label>
-      <div class="cp-lieu" style="margin-bottom:14px;">
-        ${seances.map((_, i) => `<button class="${gardees === i + 1 ? 'on' : ''}" style="min-width:42px;"
-          onclick="CoachClientProgrammePage.choisirNombre(${i + 1})">${i + 1}</button>`).join('')}
-      </div>
-      <label class="field-label">Séances et lieu</label>
+      <label class="field-label">Séances du client (${gardees} par semaine) et lieu</label>
       ${seances.map(se => {
         const lieu = this._lieux[se.id] || 'distance';
         const exclue = lieu === 'exclue';
@@ -229,16 +224,6 @@ const CoachClientProgrammePage = {
             </div>`}
           </div>`;
       }).join('')}`;
-  },
-
-  // Garde les n premières séances du modèle
-  choisirNombre(n) {
-    const seances = (this._tplAssign?.seances || []).filter(se => !se.cardio);
-    seances.forEach((se, i) => {
-      if (i < n) { if (this._lieux[se.id] === 'exclue') delete this._lieux[se.id]; }
-      else this._lieux[se.id] = 'exclue';
-    });
-    this._renderLieux();
   },
 
   garderSeance(seanceId, garder) {
