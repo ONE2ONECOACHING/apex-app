@@ -35,7 +35,7 @@ Application du studio ONE2ONE (Saint-Estève, près de Perpignan). Côté client
 - Rappels automatiques : seule `cron-notifications` est déployée (`check-reminders` ne l'est pas). Elle appelle `send-push` avec `CRON_SECRET`, qui n'est pas un JWT : « Verify JWT » doit rester désactivé sur `send-push` (désactivé le 12 octobre 2026 ; avant, tous les rappels étaient refusés en 401). `send-push` fait elle-même le contrôle (CRON_SECRET ou compte coach). `push_notifications_log` note les tentatives, pas les envois réussis.
 - Risque accepté par Benjamin (8 octobre 2026) : les clients déjà inscrits qui n'ont jamais changé le mot de passe commun `Apex2026!` le gardent ; on ne force pas de changement pour eux (option B). Les nouveaux clients doivent choisir leur mot de passe avant l'onboarding (`user_metadata.mdp_personnel`).
 
-## Étape en cours : 1 — Fondations
+## Étape 1 — Fondations (terminée, en production)
 
 Rien ne doit changer pour les clients pendant cette étape.
 
@@ -49,14 +49,14 @@ Rien ne doit changer pour les clients pendant cette étape.
 5. Droits : faits (lot 5).
 6. Sécurité : en production (lot 7).
 
-## Étape 2 — Agenda (branche `etape-2-agenda`, à fusionner après la bascule du 12 octobre)
+## Étape 2 — Agenda (en production depuis le 12 octobre 2026)
 
 - `sql/2026-10-09_agenda.sql` exécuté le 9 octobre 2026 : `profiles.type_client` (`suivi` = studio + suivi, `distance` = suivi sans agenda, `studio` = studio sans suivi ; les 59 clients existants en `suivi`), `profiles.telephone`, `profiles.facturation_mixte`, tables `agenda_creneaux` (tous les coachs) et `agenda_suppressions` (copie automatique par trigger, lecture gérants).
 - Clients du studio : vrai compte Supabase mais bloqué (`ban_duration`), email interne `studio-…@clients.one2onecoaching.fr` si pas d'email, créés par `invite-client` (`studio: true`), déployée le 9 octobre 2026.
 - Écran `pages/coach/agenda.js` (route `coach-agenda`), bloc « Mes coachings du jour » sur le tableau de bord. Glisser-déposer (heure, jour, coach en vue jour, semaine voisine en tenant le créneau contre le bord, avec animation), durée par les bordures haute et basse. Testé par Benjamin sur la preview le 9 octobre 2026.
 - Les tests sur la preview ont laissé des lignes dans `agenda_suppressions` (client « Test Studio ») : à ignorer ou retirer avant la facturation (étape 6).
 
-## Étape 3 — Fiche client et programmes (branche `etape-3-fiche-client`, partie de `etape-2-agenda`)
+## Étape 3 — Fiche client et programmes (en production depuis le 12 octobre 2026)
 
 - Décisions de Benjamin (12 octobre 2026) : phases enchaînées à la main comme avant ; à l'attribution d'une phase, le coach coche les séances du client puis choisit studio ou distance pour chacune ; le client voit sa grille du studio en lecture seule ; semaine en cours = première case « faite » non cochée.
 - `sql/2026-10-12_fiche_entrainement.sql` : `client_programmes.nb_semaines`, `client_prog_seances.lieu` (`distance` par défaut), tables `seances_studio_semaines`, `seances_studio_saisies` (tous les coachs, lecture client) et `fiche_coach` (profil coaching, coachs uniquement, écriture référent et gérants).
@@ -65,6 +65,16 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Côté client : rubrique « Au studio » ; `seances_log` reçoit maintenant `programme_id` et `seance_id`.
 - Testé par Benjamin sur la preview le 12 octobre 2026.
 
+## Interface coach et agenda téléphone (en production depuis le 12 octobre 2026)
+
+- Menu de gauche (`afficherMenuCoach` dans `js/router.js`), tableau de bord `pages/coach/accueil.js` (route `coach-accueil`, page d'accueil des coachs) : coachings du jour, bilans à traiter, bilans en attente (comptés à partir du 12 octobre 2026, une ligne par client, relance), cycles d'entraînement (« ✓ Vu » = `client_programmes.fin_vue`).
+- Bibliothèque à onglets (`biblioNav`), fiche client avec en-tête ; calcul TDEE dans Plan alimentaire › Calcul (`pages/coach/calcul-nutrition.js`). L'étiquette `coach_tag` n'est plus affichée : filtres et badges par coach référent.
+- Clients inactifs : `profiles.actif = false` (bouton sur la fiche, filtre « Inactifs »), bilans automatiques arrêtés.
+- Agenda sur téléphone (≤ 700 px) inspiré de Google Agenda : barre et en-tête fixes, couleurs pleines, bouton +, balayage, appui long pour déplacer. Compte partagé masqué de l'agenda et du choix du référent (`COMPTE_PARTAGE_ID`, `pages/coach/equipe.js`).
+
+## Étape en cours : 4 — Journal de suivi et reste du tableau de bord
+
 ## Dépôt
 
-- Branche de travail de l'étape 1 : `etape-1-fondations` (preview Cloudflare sur l'adresse de la branche). Benjamin pousse avec GitHub Desktop : le terminal de Claude n'a pas accès à ses identifiants GitHub.
+- Une branche par chantier (preview Cloudflare sur l'adresse de la branche), fusionnée sur `main` après validation de Benjamin. Benjamin pousse avec GitHub Desktop : le terminal de Claude n'a pas accès à ses identifiants GitHub. Attention : s'il change de branche dans GitHub Desktop pendant que Claude travaille, les commits partent sur la mauvaise branche ; vérifier `git branch --show-current` avant chaque commit.
+- Copier un fichier pour Benjamin : `LANG=en_US.UTF-8 pbcopy`, sinon les accents sont abîmés.
