@@ -1232,7 +1232,8 @@ const db = {
     };
   },
 
-  async assignProgrammeFromTemplate(template, clientId, coachId, dateDebut = null, deactivateOthers = false) {
+  // lieux : { [id de séance du modèle]: 'studio' | 'distance' } (distance par défaut)
+  async assignProgrammeFromTemplate(template, clientId, coachId, dateDebut = null, deactivateOthers = false, lieux = {}) {
     const sb = getSupabase();
     // Multi-programmes : par défaut on AJOUTE (ne désactive pas les autres)
     if (deactivateOthers) {
@@ -1252,6 +1253,7 @@ const db = {
         nom:         template.nom,
         consignes:   template.consignes || null,
         date_debut:  dateDebut,
+        nb_semaines: template.nb_semaines || 4,
         actif:       true,
       })
       .select()
@@ -1266,6 +1268,7 @@ const db = {
         jour:         s.jour ?? 0,
         ordre:        s.ordre ?? 0,
         notes_coach:  s.notes_coach || null,
+        lieu:         lieux[s.id] === 'studio' ? 'studio' : 'distance',
       };
       if (s.cardio) { seanceRow.cardio = true; seanceRow.cardio_weeks = s.cardio_weeks || []; }
       let seance, e2;
@@ -1355,8 +1358,12 @@ const db = {
       }
       keepIds.add(seanceId);
 
-      // Exercices : delete + recreate (pas de FK externe sur client_prog_exercices)
-      await sb.from('client_prog_exercices').delete().eq('seance_id', seanceId);
+      // Exercices : mis à jour sur place (les saisies de la grille du studio et
+      // l'historique y sont rattachés) ; seuls les exercices retirés sont supprimés
+      const { data: exExistants } = await sb
+        .from('client_prog_exercices').select('id').eq('seance_id', seanceId);
+      const exIds = new Set((exExistants || []).map(e => e.id));
+      const exGardes = new Set();
       for (let j = 0; j < s.exercices.length; j++) {
         const ex = s.exercices[j];
         const exRow = {
@@ -1372,10 +1379,21 @@ const db = {
           series_data:     ex.series_data || null,
           notes:           ex.notes || null,
         };
-        if (ex.reps_secondaire)         exRow.reps_secondaire = ex.reps_secondaire;
-        if (ex.repos_intra_sec != null) exRow.repos_intra_sec = ex.repos_intra_sec;
-        const { error: ee } = await sb.from('client_prog_exercices').insert(exRow);
-        if (ee) throw ee;
+        exRow.reps_secondaire = ex.reps_secondaire || null;
+        exRow.repos_intra_sec = ex.repos_intra_sec ?? null;
+        if (ex.id && exIds.has(ex.id) && !exGardes.has(ex.id)) {
+          const { error: ee } = await sb.from('client_prog_exercices').update(exRow).eq('id', ex.id);
+          if (ee) throw ee;
+          exGardes.add(ex.id);
+        } else {
+          const { error: ee } = await sb.from('client_prog_exercices').insert(exRow);
+          if (ee) throw ee;
+        }
+      }
+      const exRetires = [...exIds].filter(id => !exGardes.has(id));
+      if (exRetires.length) {
+        const { error: de } = await sb.from('client_prog_exercices').delete().in('id', exRetires);
+        if (de) throw de;
       }
     }
     // Supprimer les séances retirées
@@ -1384,6 +1402,91 @@ const db = {
         await sb.from('client_prog_seances').delete().eq('id', id);
       }
     }
+  },
+
+  async setSeanceLieu(seanceId, lieu) {
+    const { error } = await getSupabase()
+      .from('client_prog_seances')
+      .update({ lieu })
+      .eq('id', seanceId);
+    if (error) throw error;
+  },
+
+  // ── Grille de séance au studio ───────────────────────────────────────────
+
+  // Séance (avec son programme et ses exercices), semaines cochées et saisies
+  async getGrilleStudio(seanceId) {
+    const sb = getSupabase();
+    const { data: seance, error } = await sb
+      .from('client_prog_seances')
+      .select('*, client_programmes(id, nom, client_id, nb_semaines, date_debut), client_prog_exercices(*, exercices_bdd(nom, youtube_url))')
+      .eq('id', seanceId)
+      .single();
+    if (error) throw error;
+    const exercices = (seance.client_prog_exercices || []).sort((a, b) => a.ordre - b.ordre);
+    const [{ data: semaines, error: e1 }, { data: saisies, error: e2 }] = await Promise.all([
+      sb.from('seances_studio_semaines').select('*').eq('seance_id', seanceId),
+      exercices.length
+        ? sb.from('seances_studio_saisies').select('*').in('exercice_id', exercices.map(e => e.id))
+        : Promise.resolve({ data: [] }),
+    ]);
+    if (e1) throw e1;
+    if (e2) throw e2;
+    return { seance, exercices, semaines: semaines || [], saisies: saisies || [] };
+  },
+
+  // Coche (ou décoche) une semaine d'une séance au studio
+  async setSemaineStudio(seanceId, semaine, faite) {
+    const sb = getSupabase();
+    if (faite) {
+      const { data, error } = await sb.from('seances_studio_semaines')
+        .upsert({ seance_id: seanceId, semaine, faite: true, faite_le: formatDate(new Date()),
+                  coach_id: Router.userProfile?.id || null, maj_le: new Date().toISOString() },
+                { onConflict: 'seance_id,semaine' })
+        .select().single();
+      if (error) throw error;
+      return data;
+    }
+    const { error } = await sb.from('seances_studio_semaines')
+      .delete().eq('seance_id', seanceId).eq('semaine', semaine);
+    if (error) throw error;
+    return null;
+  },
+
+  // Charge, reps et remarque d'un exercice pour une semaine
+  async saveSaisieStudio(exerciceId, semaine, champs) {
+    const { error } = await getSupabase().from('seances_studio_saisies')
+      .upsert({ exercice_id: exerciceId, semaine, ...champs,
+                maj_par: Router.userProfile?.id || null, maj_le: new Date().toISOString() },
+              { onConflict: 'exercice_id,semaine' });
+    if (error) throw error;
+  },
+
+  // Toutes les semaines cochées des séances au studio d'un client (vue d'ensemble)
+  async getSemainesStudioClient(clientId) {
+    const { data, error } = await getSupabase()
+      .from('seances_studio_semaines')
+      .select('semaine, faite_le, seance_id, client_prog_seances!inner(nom, ordre, client_programmes!inner(client_id))')
+      .eq('client_prog_seances.client_programmes.client_id', clientId);
+    if (error) throw error;
+    return data || [];
+  },
+
+  // ── Profil coaching (réservé aux coachs) ─────────────────────────────────
+
+  async getFicheCoach(clientId) {
+    const { data, error } = await getSupabase()
+      .from('fiche_coach').select('*').eq('client_id', clientId).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async saveFicheCoach(clientId, champs) {
+    const { error } = await getSupabase().from('fiche_coach')
+      .upsert({ client_id: clientId, ...champs,
+                maj_par: Router.userProfile?.id || null, maj_le: new Date().toISOString() },
+              { onConflict: 'client_id' });
+    if (error) throw error;
   },
 
   async deactivateClientProgramme(programmeId) {

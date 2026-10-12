@@ -5,6 +5,8 @@ const CoachClientProgrammePage = {
   programmes:  [],
   templates:   [],
   _assigning:  false,
+  _tplAssign:  null,   // modèle complet choisi dans la fenêtre d'attribution
+  _lieux:      {},     // { id séance du modèle: 'studio' | 'distance' }
 
   render() {
     document.body.classList.add('coach-wide');
@@ -92,9 +94,17 @@ const CoachClientProgrammePage = {
         </div>`;
       }
       const exos = s.exercices || [];
+      const studio = s.lieu === 'studio';
       return `
         <div style="padding:10px 0;border-bottom:1px solid var(--border);">
-          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">📌 ${s.nom}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+            <div style="font-weight:600;font-size:13px;flex:1;min-width:120px;">📌 ${escHtml(s.nom)}</div>
+            <div class="cp-lieu">
+              <button class="${studio ? 'on' : ''}" onclick="CoachClientProgrammePage.changerLieu('${s.id}','studio')">Studio</button>
+              <button class="${!studio ? 'on' : ''}" onclick="CoachClientProgrammePage.changerLieu('${s.id}','distance')">Distance</button>
+            </div>
+            ${studio ? `<button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-seance-studio',{seanceId:'${s.id}',clientId:'${this.client.id}'})">📋 Grille</button>` : ''}
+          </div>
           ${exos.slice(0, 4).map(e => {
             const te  = e.type_effort || 'reps';
             // Reps réelles : dérivées de series_data (reps_cible peut être obsolète)
@@ -165,6 +175,47 @@ const CoachClientProgrammePage = {
     } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
+  async changerLieu(seanceId, lieu) {
+    try {
+      await db.setSeanceLieu(seanceId, lieu);
+      for (const p of this.programmes) for (const se of (p.seances || [])) if (se.id === seanceId) se.lieu = lieu;
+      this._render(coachClientNav(this.client.id, 'coach-client-programme'));
+      toast(lieu === 'studio' ? 'Séance au studio' : 'Séance à distance', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  // Choix studio / distance pour chaque séance du modèle choisi
+  async choisirModele() {
+    const tplId = document.getElementById('cpTplSelect')?.value;
+    const box = document.getElementById('cpLieux');
+    if (!box || !tplId) return;
+    box.innerHTML = '<div class="spinner" style="margin:0.5rem auto;"></div>';
+    try {
+      this._tplAssign = await db.getProgTemplateWithSeances(tplId);
+      this._lieux = {};
+      const seances = (this._tplAssign.seances || []).filter(se => !se.cardio);
+      box.innerHTML = seances.length ? `
+        <label class="field-label">Où se fait chaque séance ?</label>
+        ${seances.map(se => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;">
+            <div style="font-size:14px;">${escHtml(se.nom)}</div>
+            <div class="cp-lieu" id="cpLieu-${se.id}">
+              <button onclick="CoachClientProgrammePage.choisirLieu('${se.id}','studio')">Studio</button>
+              <button class="on" onclick="CoachClientProgrammePage.choisirLieu('${se.id}','distance')">Distance</button>
+            </div>
+          </div>`).join('')}` : '';
+    } catch (e) {
+      box.innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
+    }
+  },
+
+  choisirLieu(seanceId, lieu) {
+    this._lieux[seanceId] = lieu;
+    const [bStudio, bDistance] = document.querySelectorAll(`#cpLieu-${seanceId} button`);
+    bStudio.classList.toggle('on', lieu === 'studio');
+    bDistance.classList.toggle('on', lieu !== 'studio');
+  },
+
   openAssignModal() {
     if (!this.templates.length) {
       document.getElementById('cpModal').innerHTML = `
@@ -193,7 +244,7 @@ const CoachClientProgrammePage = {
 
           <div class="field" style="margin-bottom:14px;">
             <label class="field-label">Template</label>
-            <select class="input" id="cpTplSelect">
+            <select class="input" id="cpTplSelect" onchange="CoachClientProgrammePage.choisirModele()">
               ${this.templates.map(t =>
                 `<option value="${t.id}">${t.nom} (${t.nb_semaines} sem.)</option>`
               ).join('')}
@@ -205,6 +256,8 @@ const CoachClientProgrammePage = {
             <input type="date" class="input" id="cpDateDebut" value="${new Date().toISOString().slice(0,10)}">
           </div>
 
+          <div class="field" id="cpLieux" style="margin-bottom:20px;"></div>
+
           <div id="cpAssignErr"></div>
           <button class="btn btn-primary" style="width:100%;"
             onclick="CoachClientProgrammePage.confirmAssign()">
@@ -212,6 +265,7 @@ const CoachClientProgrammePage = {
           </button>
         </div>
       </div>`;
+    this.choisirModele();
   },
 
   async confirmAssign() {
@@ -226,14 +280,15 @@ const CoachClientProgrammePage = {
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Assignation…'; }
 
     try {
-      // Charger le template complet avec ses séances
-      const tplFull = await db.getProgTemplateWithSeances(tplId);
+      // Modèle complet (déjà chargé pour le choix studio / distance)
+      const tplFull = this._tplAssign?.id === tplId ? this._tplAssign : await db.getProgTemplateWithSeances(tplId);
       await db.assignProgrammeFromTemplate(
         tplFull,
         this.client.id,
         Router.userProfile.id,
-        dateDebut
-        // deactivateOthers omis → ajoute sans remplacer les autres
+        dateDebut,
+        false,          // ajoute sans remplacer les autres programmes
+        this._lieux
       );
 
       // Recharger la liste des programmes actifs

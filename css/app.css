@@ -1180,3 +1180,34 @@ body.ag-dragging, body.ag-dragging * { cursor: grabbing !important; user-select:
 .dash-rdv:hover { border-color: var(--gold); }
 .dash-rdv-heure { font-size: 13px; font-weight: 700; color: var(--gold); min-width: 92px; }
 .dash-rdv-nom { font-size: 14px; font-weight: 600; flex: 1; }
+
+/* Programmes : choix studio / distance */
+.cp-lieu { display: inline-flex; border: 1px solid var(--border-solid); border-radius: 8px; overflow: hidden; background: var(--white); }
+.cp-lieu button { border: none; background: none; padding: 4px 10px; font-family: var(--font); font-size: 12px; font-weight: 600; color: var(--gray-light); cursor: pointer; }
+.cp-lieu button.on { background: var(--gold); color: var(--white); }
+
+/* Grille de séance au studio */
+.ss-entete { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-bottom: 10px; }
+.ss-etat { font-size: 12px; color: var(--gray-light); white-space: nowrap; }
+.ss-etat.erreur { color: var(--error); }
+.ss-scroll { overflow-x: auto; background: var(--white); border: 1px solid var(--border-solid); border-radius: 14px; }
+.ss-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+.ss-table th, .ss-table td { border-bottom: 1px solid var(--border-solid); border-right: 1px solid var(--border-solid); vertical-align: top; }
+.ss-exo { position: sticky; left: 0; z-index: 2; background: var(--white); width: 250px; min-width: 250px; max-width: 250px; padding: 10px 12px; text-align: left; font-weight: 400; }
+.ss-coin { z-index: 3; font-size: 12px; font-weight: 700; color: var(--gray); vertical-align: middle; }
+.ss-exo-nom { font-size: 14px; font-weight: 700; }
+.ss-ss { font-size: 10px; font-weight: 700; color: var(--gold); background: var(--gold-light); border-radius: 4px; padding: 1px 5px; }
+.ss-exo-meth { font-size: 12px; color: var(--gray); margin-top: 3px; }
+.ss-exo-notes { font-size: 12px; color: var(--gray-light); font-style: italic; margin-top: 3px; white-space: pre-line; }
+.ss-exo-video { display: inline-block; font-size: 12px; color: var(--gold); margin-top: 4px; text-decoration: none; }
+.ss-sem { min-width: 210px; padding: 8px 10px; font-size: 13px; font-weight: 700; color: var(--gray); text-align: center; background: #FAFAF8; }
+.ss-sem.en-cours { background: var(--gold-light); color: var(--gold); }
+.ss-sem.faite { color: #059669; }
+.ss-faite { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.ss-case { padding: 6px; }
+.ss-case.en-cours { background: rgba(0, 74, 173, 0.03); }
+.ss-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.ss-duo textarea, .ss-remarque { width: 100%; box-sizing: border-box; border: 1px solid var(--border-solid); border-radius: 6px; padding: 5px 6px;
+  font-family: var(--font); font-size: 13px; background: var(--white); resize: vertical; }
+.ss-duo textarea:focus, .ss-remarque:focus { outline: none; border-color: var(--gold); }
+.ss-remarque { margin-top: 4px; font-size: 12px; background: #F4FAF4; }
