@@ -392,13 +392,11 @@ async function ajusterFicheNav(navId, clientId) {
       const types = { suivi: 'Studio + suivi', distance: 'Suivi à distance', studio: 'Studio sans suivi' };
       if (!_ficheCoachs) _ficheCoachs = await db.getCoachs().catch(() => []);
       const ref = _ficheCoachs.find(c => c.id === client.coach_referent_id);
-      const tags = { ben: 'Ben', chris: 'Chris', lola: 'Lola' };
       entete.innerHTML = `
         <div class="fiche-nom">${escHtml(`${client.prenom || ''} ${client.nom || ''}`.trim())}</div>
         <div class="fiche-infos">
           <span class="fiche-pastille">${types[client.type_client] || 'Client'}</span>
           ${ref ? `<span>Référent : ${escHtml(`${ref.prenom || ''} ${ref.nom || ''}`.trim())}</span>` : ''}
-          ${client.coach_tag ? `<span class="coach-tag coach-tag-${client.coach_tag}">${tags[client.coach_tag] || client.coach_tag}</span>` : ''}
         </div>`;
     }
   } catch (_) { /* en cas d'erreur, tous les onglets restent affichés ; la base applique les droits */ }

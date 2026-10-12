@@ -34,6 +34,7 @@ const CoachClientsPage = {
   async init() {
     this.activeFilter = 'all';
     this._inactifs    = null;
+    this._coachs      = await db.getCoachs().catch(() => []);
     this._searchQuery = '';
     this._mainTab     = 'dashboard';
     try {
@@ -86,9 +87,8 @@ const CoachClientsPage = {
     el.innerHTML = `
       <button class="tag-filter-btn ${f === 'mine'  ? 'active' : ''}" onclick="CoachClientsPage.setFilter('mine')">Mes clients</button>
       <button class="tag-filter-btn ${f === 'all'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('all')">Tous</button>
-      <button class="tag-filter-btn tag-filter-ben   ${f === 'ben'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('ben')">Ben</button>
-      <button class="tag-filter-btn tag-filter-chris ${f === 'chris' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('chris')">Chris</button>
-      <button class="tag-filter-btn tag-filter-lola  ${f === 'lola'  ? 'active' : ''}" onclick="CoachClientsPage.setFilter('lola')">Lola</button>
+      ${(this._coachs || []).filter(co => this.clients.some(c => c.coach_referent_id === co.id)).map(co =>
+        `<button class="tag-filter-btn ${f === 'coach:' + co.id ? 'active' : ''}" onclick="CoachClientsPage.setFilter('coach:${co.id}')">${escHtml(co.prenom || co.email)}</button>`).join('')}
       <button class="tag-filter-btn ${f === 'inactifs' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('inactifs')">Inactifs</button>
     `;
   },
@@ -100,6 +100,12 @@ const CoachClientsPage = {
     }
     this.renderFilters();
     this.renderDashboard();
+  },
+
+  // Prénom du coach référent, à côté du nom du client
+  _badgeReferent(client) {
+    const co = (this._coachs || []).find(x => x.id === client.coach_referent_id);
+    return co ? `<span class="ref-badge">${escHtml(co.prenom || '')}</span>` : '';
   },
 
   setSearch(q) {
@@ -126,7 +132,7 @@ const CoachClientsPage = {
       ? this.clients
       : this.activeFilter === 'mine'
         ? this.clients.filter(c => c.coach_referent_id === me)
-        : this.clients.filter(c => c.coach_tag === this.activeFilter);
+        : this.clients.filter(c => 'coach:' + c.coach_referent_id === this.activeFilter);
 
     if (this._searchQuery) {
       filtered = filtered.filter(c => {
@@ -222,7 +228,7 @@ const CoachClientsPage = {
 
     clients.forEach(c => {
       const initials  = ((c.prenom||'C')[0]+(c.nom?c.nom[0]:'')).toUpperCase();
-      const tagHtml   = c.coach_tag ? `<span class="coach-tag coach-tag-${c.coach_tag}" style="font-size:10px;">${c.coach_tag==='ben'?'Ben':c.coach_tag==='chris'?'Chris':'Lola'}</span>` : '';
+      const tagHtml   = this._badgeReferent(c);
 
       // ── Statut bilan ───────────────────────────────────────────────
       const asgn       = this._bilanAssignations.find(a => a.client_id === c.id && a.actif);
@@ -382,9 +388,7 @@ const CoachClientsPage = {
     const completedBilan = this._completedBilans.find(b => b.client_id === client.id);
 
     const initials = ((client.prenom || 'C')[0] + (client.nom ? client.nom[0] : '')).toUpperCase();
-    const tagHtml = client.coach_tag
-      ? `<span class="coach-tag coach-tag-${client.coach_tag}">${client.coach_tag === 'ben' ? 'Ben' : client.coach_tag === 'chris' ? 'Chris' : 'Lola'}</span>`
-      : '';
+    const tagHtml = this._badgeReferent(client);
 
     let badges = '';
     if (completedBilan) badges += `<span class="dash-status-badge dash-status-bilan">📋 Bilan</span>`;

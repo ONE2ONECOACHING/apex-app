@@ -4,7 +4,6 @@ const CoachClientEditPage = {
   client: null,
   activites: [],
   coachs: [],
-  selectedTag: null,
   fiche: null,           // profil coaching (table fiche_coach, réservée aux coachs)
   semainesStudio: [],    // semaines cochées des séances au studio
   _topoTimer: null,
@@ -27,7 +26,6 @@ const CoachClientEditPage = {
     this.client      = null;
     this.activites   = [];
     this.coachs      = [];
-    this.selectedTag = null;
     this.fiche       = null;
     this.semainesStudio = [];
 
@@ -42,7 +40,6 @@ const CoachClientEditPage = {
         db.getFicheCoach(params.clientId).catch(() => null),
         db.getSemainesStudioClient(params.clientId).catch(() => []),
       ]);
-      this.selectedTag = this.client.coach_tag || null;
       document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
       this.renderForm();
     } catch (e) {
@@ -72,14 +69,6 @@ const CoachClientEditPage = {
             <option value="">— Aucun —</option>
             ${this.coachs.map(co => `<option value="${co.id}" ${c.coach_referent_id === co.id ? 'selected' : ''}>${escHtml(this._coachLabel(co))}</option>`).join('')}
           </select>
-        </div>
-        <div class="field">
-          <label class="field-label">Étiquette</label>
-          <div style="display:flex;gap:8px;">
-            <button type="button" id="tagBtnBen" class="tag-pill-btn ${this.selectedTag === 'ben' ? 'active-ben' : ''}" onclick="CoachClientEditPage.setTag('ben')">Ben</button>
-            <button type="button" id="tagBtnChris" class="tag-pill-btn ${this.selectedTag === 'chris' ? 'active-chris' : ''}" onclick="CoachClientEditPage.setTag('chris')">Chris</button>
-            <button type="button" id="tagBtnLola" class="tag-pill-btn ${this.selectedTag === 'lola' ? 'active-lola' : ''}" onclick="CoachClientEditPage.setTag('lola')">Lola</button>
-          </div>
         </div>
         <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="field"><label class="field-label">Type de client</label>
@@ -320,13 +309,6 @@ const CoachClientEditPage = {
     return co.is_gerant ? `${nom} (gérant)` : nom;
   },
 
-  setTag(tag) {
-    this.selectedTag = (this.selectedTag === tag) ? null : tag;
-    document.getElementById('tagBtnBen').className = 'tag-pill-btn' + (this.selectedTag === 'ben' ? ' active-ben' : '');
-    document.getElementById('tagBtnChris').className = 'tag-pill-btn' + (this.selectedTag === 'chris' ? ' active-chris' : '');
-    document.getElementById('tagBtnLola').className = 'tag-pill-btn' + (this.selectedTag === 'lola' ? ' active-lola' : '');
-  },
-
   async confirmDelete() {
     const prenom = this.client.prenom || 'ce client';
     if (!confirm(`Supprimer ${prenom} ? Cette action est irréversible.`)) return;
@@ -408,7 +390,6 @@ const CoachClientEditPage = {
         return formatDate(debut);
       })(),
       masse_grasse_pct: +document.getElementById('ceFat').value || null,
-      coach_tag: this.selectedTag,
       type_client: document.getElementById('ceTypeClient').value,
       telephone: document.getElementById('ceTelephone').value.trim() || null,
       facturation_mixte: document.getElementById('ceFactMixte').checked

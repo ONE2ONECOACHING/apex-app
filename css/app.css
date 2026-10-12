@@ -1293,3 +1293,5 @@ body.coach-layout .nav-bottom { display: none; }
 .fiche-nom { font-size: 20px; font-weight: 700; }
 .fiche-infos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; font-size: 13px; color: var(--gray); }
 .fiche-pastille { background: var(--gold-light); color: var(--gold); font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 999px; }
+
+.ref-badge { font-size: 10px; font-weight: 700; color: var(--gold); background: var(--gold-light); border-radius: 999px; padding: 1px 8px; }

@@ -558,7 +558,6 @@ const CoachFormationsPage = {
                     <div class="client-avatar" style="width:32px;height:32px;font-size:11px;flex-shrink:0;">${initials}</div>
                     <div style="flex:1;">
                       <div style="font-size:14px;font-weight:600;">${escHtml(c.prenom)} ${escHtml(c.nom || '')}</div>
-                      ${c.coach_tag ? `<div style="font-size:11px;color:var(--gray-muted);">${escHtml(c.coach_tag)}</div>` : ''}
                     </div>
                   </label>
                   <div id="foffwrap_${c.id}" style="display:${isAssigned?'flex':'none'};align-items:center;gap:8px;margin-top:8px;padding-left:30px;">
