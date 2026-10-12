@@ -1232,7 +1232,8 @@ const db = {
     };
   },
 
-  // lieux : { [id de séance du modèle]: 'studio' | 'distance' } (distance par défaut)
+  // lieux : { [id de séance du modèle]: 'studio' | 'distance' | 'exclue' } (distance par défaut ;
+  //          une séance « exclue » n'est pas copiée chez le client)
   async assignProgrammeFromTemplate(template, clientId, coachId, dateDebut = null, deactivateOthers = false, lieux = {}) {
     const sb = getSupabase();
     // Multi-programmes : par défaut on AJOUTE (ne désactive pas les autres)
@@ -1261,7 +1262,8 @@ const db = {
     if (e1) throw e1;
 
     // Copier séances et exercices
-    for (const s of (template.seances || [])) {
+    const seancesGardees = (template.seances || []).filter(s => lieux[s.id] !== 'exclue');
+    for (const s of seancesGardees) {
       const seanceRow = {
         programme_id: prog.id,
         nom:          s.nom,

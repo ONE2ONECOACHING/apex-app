@@ -6,7 +6,7 @@ const CoachClientProgrammePage = {
   templates:   [],
   _assigning:  false,
   _tplAssign:  null,   // modèle complet choisi dans la fenêtre d'attribution
-  _lieux:      {},     // { id séance du modèle: 'studio' | 'distance' }
+  _lieux:      {},     // { id séance du modèle: 'studio' | 'distance' | 'exclue' }
 
   render() {
     document.body.classList.add('coach-wide');
@@ -193,27 +193,63 @@ const CoachClientProgrammePage = {
     try {
       this._tplAssign = await db.getProgTemplateWithSeances(tplId);
       this._lieux = {};
-      const seances = (this._tplAssign.seances || []).filter(se => !se.cardio);
-      box.innerHTML = seances.length ? `
-        <label class="field-label">Où se fait chaque séance ?</label>
-        ${seances.map(se => `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;">
-            <div style="font-size:14px;">${escHtml(se.nom)}</div>
-            <div class="cp-lieu" id="cpLieu-${se.id}">
-              <button onclick="CoachClientProgrammePage.choisirLieu('${se.id}','studio')">Studio</button>
-              <button class="on" onclick="CoachClientProgrammePage.choisirLieu('${se.id}','distance')">Distance</button>
-            </div>
-          </div>`).join('')}` : '';
+      this._renderLieux();
     } catch (e) {
       box.innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
+  // Séances du modèle (hors cardio) : gardées ou non, et studio / distance
+  _renderLieux() {
+    const box = document.getElementById('cpLieux');
+    const seances = (this._tplAssign?.seances || []).filter(se => !se.cardio);
+    if (!box) return;
+    if (!seances.length) { box.innerHTML = ''; return; }
+    const gardees = seances.filter(se => this._lieux[se.id] !== 'exclue').length;
+    box.innerHTML = `
+      <label class="field-label">Nombre de séances par semaine</label>
+      <div class="cp-lieu" style="margin-bottom:14px;">
+        ${seances.map((_, i) => `<button class="${gardees === i + 1 ? 'on' : ''}" style="min-width:42px;"
+          onclick="CoachClientProgrammePage.choisirNombre(${i + 1})">${i + 1}</button>`).join('')}
+      </div>
+      <label class="field-label">Séances et lieu</label>
+      ${seances.map(se => {
+        const lieu = this._lieux[se.id] || 'distance';
+        const exclue = lieu === 'exclue';
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;${exclue ? 'opacity:.45;' : ''}">
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
+              <input type="checkbox" ${exclue ? '' : 'checked'} onchange="CoachClientProgrammePage.garderSeance('${se.id}', this.checked)">
+              ${escHtml(se.nom)}
+            </label>
+            ${exclue ? '<span style="font-size:12px;color:var(--gray-light);">non attribuée</span>' : `
+            <div class="cp-lieu">
+              <button class="${lieu === 'studio' ? 'on' : ''}" onclick="CoachClientProgrammePage.choisirLieu('${se.id}','studio')">Studio</button>
+              <button class="${lieu === 'distance' ? 'on' : ''}" onclick="CoachClientProgrammePage.choisirLieu('${se.id}','distance')">Distance</button>
+            </div>`}
+          </div>`;
+      }).join('')}`;
+  },
+
+  // Garde les n premières séances du modèle
+  choisirNombre(n) {
+    const seances = (this._tplAssign?.seances || []).filter(se => !se.cardio);
+    seances.forEach((se, i) => {
+      if (i < n) { if (this._lieux[se.id] === 'exclue') delete this._lieux[se.id]; }
+      else this._lieux[se.id] = 'exclue';
+    });
+    this._renderLieux();
+  },
+
+  garderSeance(seanceId, garder) {
+    if (garder) delete this._lieux[seanceId];
+    else this._lieux[seanceId] = 'exclue';
+    this._renderLieux();
+  },
+
   choisirLieu(seanceId, lieu) {
     this._lieux[seanceId] = lieu;
-    const [bStudio, bDistance] = document.querySelectorAll(`#cpLieu-${seanceId} button`);
-    bStudio.classList.toggle('on', lieu === 'studio');
-    bDistance.classList.toggle('on', lieu !== 'studio');
+    this._renderLieux();
   },
 
   openAssignModal() {
@@ -274,6 +310,12 @@ const CoachClientProgrammePage = {
     const dateDebut = document.getElementById('cpDateDebut')?.value || null;
     const template  = this.templates.find(t => t.id === tplId);
     if (!template) return;
+    const seancesTpl = (this._tplAssign?.id === tplId ? this._tplAssign.seances : null) || [];
+    if (seancesTpl.length && seancesTpl.every(se => this._lieux[se.id] === 'exclue' || se.cardio)
+        && !seancesTpl.some(se => se.cardio)) {
+      document.getElementById('cpAssignErr').innerHTML = '<div class="alert alert-error">Garde au moins une séance.</div>';
+      return;
+    }
 
     this._assigning = true;
     const btn = document.querySelector('#cpModal .btn-primary');
