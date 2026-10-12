@@ -72,7 +72,15 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Clients inactifs : `profiles.actif = false` (bouton sur la fiche, filtre « Inactifs »), bilans automatiques arrêtés.
 - Agenda sur téléphone (≤ 700 px) inspiré de Google Agenda : barre et en-tête fixes, couleurs pleines, bouton +, balayage, appui long pour déplacer. Compte partagé masqué de l'agenda et du choix du référent (`COMPTE_PARTAGE_ID`, `pages/coach/equipe.js`).
 
-## Étape en cours : 4 — Journal de suivi et reste du tableau de bord
+## Étape 4 — Journal de suivi (en production depuis le 12 octobre 2026)
+
+- `sql/2026-10-12_journal_suivi.sql` : `journal_suivi` (une ligne par client et par lundi : nutrition et entraînement prévus / appliqués, retour, `fait`) et `journal_suivi_entete` (durée, 26 semaines par défaut, leviers). Référent en écriture, gérants en lecture, ni les autres coachs ni le client.
+- Écran `pages/coach/journal-suivi.js` (route `coach-journal-suivi`, Suivi › Journal de suivi ; l'ancien « Journal » alimentaire s'appelle « Logbook »). Statuts et retards calculés par `JournalSuivi` : retard = deux dernières semaines passées non faites, uniquement à partir du 12 octobre 2026 (`JOURNAL_DEPART`). Bloc « Retards de suivi » sur le tableau de bord, badge dans la liste.
+- Le journal part de `profiles.date_debut` (date de début du suivi, réglée dans Plan alimentaire › Calcul).
+
+## Prochaines étapes
+
+5. Messageries (suivi client ↔ référent ; messagerie générale des clients studio, avec ouverture de l'accès app des clients studio). 6. Formules, facturation, Stripe (retirer d'abord les suppressions de test « Test Studio » d'`agenda_suppressions`). 7. CRM. 8. Version mobile complète des coachs.
 
 ## Dépôt
 
