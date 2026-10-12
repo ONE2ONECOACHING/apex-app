@@ -1437,6 +1437,36 @@ const db = {
     return { seance, exercices, semaines: semaines || [], saisies: saisies || [] };
   },
 
+  // Exercices d'une séance client, modifiés depuis la grille du studio
+  async updateClientExercice(id, patch) {
+    const { data, error } = await getSupabase()
+      .from('client_prog_exercices')
+      .update(patch)
+      .eq('id', id)
+      .select('*, exercices_bdd(nom, youtube_url)')
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async insertClientExercice(row) {
+    const { data, error } = await getSupabase()
+      .from('client_prog_exercices')
+      .insert(row)
+      .select('*, exercices_bdd(nom, youtube_url)')
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteClientExercice(id) {
+    const { error } = await getSupabase()
+      .from('client_prog_exercices')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   // Coche (ou décoche) une semaine d'une séance au studio
   async setSemaineStudio(seanceId, semaine, faite) {
     const sb = getSupabase();

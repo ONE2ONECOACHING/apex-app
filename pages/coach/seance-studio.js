@@ -6,6 +6,8 @@ const CoachSeanceStudioPage = {
   data: null,          // { seance, exercices, semaines, saisies }
   client: null,
   _timers: {},         // enregistrements différés par case
+  _biblio: null,       // bibliothèque d'exercices (chargée au premier besoin)
+  _choix: null,        // { mode: 'remplacer' | 'ajouter', exerciceId }
 
   render() {
     document.body.classList.add('coach-wide');
@@ -19,7 +21,8 @@ const CoachSeanceStudioPage = {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
       </div>
-      <div id="ssContent"><div class="spinner" style="margin-top:2rem;"></div></div>`;
+      <div id="ssContent"><div class="spinner" style="margin-top:2rem;"></div></div>
+      <div id="ssModal"></div>`;
   },
 
   async init() {
@@ -102,7 +105,7 @@ const CoachSeanceStudioPage = {
         </th>`;
     }).join('');
 
-    const lignes = d.exercices.map(e => {
+    const lignes = d.exercices.map((e, i) => {
       const nom = e.exercices_bdd?.nom || 'Exercice';
       const video = e.exercices_bdd?.youtube_url;
       const cases = semaines.map(k => {
@@ -123,8 +126,14 @@ const CoachSeanceStudioPage = {
       return `
         <tr>
           <th class="ss-exo">
-            <div class="ss-exo-nom">${escHtml(nom)}${e.superset_groupe ? ` <span class="ss-ss">${escHtml(e.superset_groupe)}</span>` : ''}</div>
-            <div class="ss-exo-meth">${escHtml(this._methode(e))}</div>
+            <div class="ss-exo-outils">
+              <button title="Monter" ${i === 0 ? 'disabled' : ''} onclick="CoachSeanceStudioPage.deplacer('${e.id}', -1)">↑</button>
+              <button title="Descendre" ${i === d.exercices.length - 1 ? 'disabled' : ''} onclick="CoachSeanceStudioPage.deplacer('${e.id}', 1)">↓</button>
+              <button title="Modifier la méthode" onclick="CoachSeanceStudioPage.editerMethode('${e.id}')">✏️</button>
+              <button title="Supprimer l'exercice" onclick="CoachSeanceStudioPage.supprimerExercice('${e.id}')">✕</button>
+            </div>
+            <div class="ss-exo-nom ss-cliquable" title="Remplacer l'exercice" onclick="CoachSeanceStudioPage.choisirExercice('remplacer', '${e.id}')">${escHtml(nom)}${e.superset_groupe ? ` <span class="ss-ss">${escHtml(e.superset_groupe)}</span>` : ''}</div>
+            <div class="ss-exo-meth ss-cliquable" title="Modifier la méthode" onclick="CoachSeanceStudioPage.editerMethode('${e.id}')">${escHtml(this._methode(e))}</div>
             ${e.notes ? `<div class="ss-exo-notes">${escHtml(e.notes)}</div>` : ''}
             ${video ? `<a class="ss-exo-video" href="${escHtml(video)}" target="_blank" rel="noopener">🎥 Vidéo</a>` : ''}
           </th>
@@ -148,9 +157,13 @@ const CoachSeanceStudioPage = {
       <div class="ss-scroll" id="ssScroll">
         <table class="ss-table">
           <thead><tr><th class="ss-exo ss-coin">Exercices</th>${enTetes}</tr></thead>
-          <tbody>${lignes}</tbody>
+          <tbody>${lignes}
+            <tr><th class="ss-exo"><button class="btn btn-secondary btn-small" style="width:100%;" onclick="CoachSeanceStudioPage.choisirExercice('ajouter')">+ Ajouter un exercice</button></th>
+              ${semaines.map(() => '<td></td>').join('')}</tr>
+          </tbody>
         </table>
-      </div>` : '<div class="empty-state"><div class="empty-text">Aucun exercice dans cette séance.</div></div>'}`;
+      </div>` : `<div class="empty-state"><div class="empty-text">Aucun exercice dans cette séance.</div>
+        <button class="btn btn-primary btn-small" style="margin-top:10px;" onclick="CoachSeanceStudioPage.choisirExercice('ajouter')">+ Ajouter un exercice</button></div>`}`;
 
     // Amener à l'écran la semaine en cours, précédée de la semaine d'avant
     const enTetesSem = [...document.querySelectorAll('.ss-sem')];
@@ -211,6 +224,178 @@ const CoachSeanceStudioPage = {
       this._etat(faite ? `✓ Semaine ${semaine} faite` : `Semaine ${semaine} décochée`);
     } catch (e) {
       this._etat('Erreur : ' + e.message, true);
+    }
+  },
+
+  // ── Modifier la séance depuis la grille ────────────────────────────────────
+
+  _fermerModal() { this._choix = null; document.getElementById('ssModal').innerHTML = ''; },
+
+  // Remplacer un exercice (il garde ses charges) ou en ajouter un
+  async choisirExercice(mode, exerciceId = null) {
+    this._choix = { mode, exerciceId };
+    const actuel = this.data.exercices.find(e => e.id === exerciceId);
+    document.getElementById('ssModal').innerHTML = `
+      <div class="modal-overlay" onclick="if(event.target===this)CoachSeanceStudioPage._fermerModal()">
+        <div class="modal">
+          <div class="modal-title">${mode === 'remplacer' ? `Remplacer « ${escHtml(actuel?.exercices_bdd?.nom || '')} »` : 'Ajouter un exercice'}
+            <button class="modal-close" onclick="CoachSeanceStudioPage._fermerModal()">×</button>
+          </div>
+          ${mode === 'remplacer' ? '<div style="font-size:13px;color:var(--gray);margin-bottom:10px;">Les charges déjà notées et la méthode sont conservées.</div>' : ''}
+          <input class="input" id="ssRecherche" placeholder="Chercher un exercice…" oninput="CoachSeanceStudioPage._filtrerBiblio(this.value)" autocomplete="off">
+          <div id="ssResultats" class="ag-results" style="max-height:320px;overflow-y:auto;"><div class="spinner" style="margin:1rem auto;"></div></div>
+          <div id="ssModalErr"></div>
+        </div>
+      </div>`;
+    document.getElementById('ssRecherche').focus();
+    try {
+      if (!this._biblio) this._biblio = await db.getExercicesBdd();
+      this._filtrerBiblio('');
+    } catch (e) {
+      document.getElementById('ssResultats').innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+    }
+  },
+
+  _filtrerBiblio(q) {
+    const box = document.getElementById('ssResultats');
+    if (!box || !this._biblio) return;
+    const s = q.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const res = this._biblio
+      .filter(x => !s || `${x.nom} ${x.muscle_principal || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(s))
+      .slice(0, 60);
+    box.innerHTML = res.length
+      ? res.map(x => `<div class="ag-result" onclick="CoachSeanceStudioPage._appliquerExercice('${x.id}')">${escHtml(x.nom)}
+          <span style="font-size:11px;color:var(--gray-light);">${escHtml(x.muscle_principal || '')}</span></div>`).join('')
+      : '<div class="ag-result" style="color:var(--gray-light);cursor:default;">Aucun exercice trouvé</div>';
+  },
+
+  async _appliquerExercice(exoBddId) {
+    const { mode, exerciceId } = this._choix || {};
+    try {
+      if (mode === 'remplacer') {
+        const maj = await db.updateClientExercice(exerciceId, { exercice_id: exoBddId });
+        const i = this.data.exercices.findIndex(e => e.id === exerciceId);
+        this.data.exercices[i] = maj;
+      } else {
+        const exo = this._biblio.find(x => x.id === exoBddId);
+        const te = exo?.type_effort || 'reps';
+        const nouveau = await db.insertClientExercice({
+          seance_id: this.data.seance.id,
+          exercice_id: exoBddId,
+          ordre: Math.max(-1, ...this.data.exercices.map(e => e.ordre ?? 0)) + 1,
+          type_effort: te, series: 3, reps_cible: '10', repos_secondes: 90,
+          series_data: te === 'reps' ? Array.from({ length: 3 }, () => ({ reps: '10', charge: '' })) : null,
+        });
+        this.data.exercices.push(nouveau);
+      }
+      this._fermerModal();
+      this._render();
+      this._etat(mode === 'remplacer' ? '✓ Exercice remplacé' : '✓ Exercice ajouté');
+    } catch (e) {
+      document.getElementById('ssModalErr').innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+    }
+  },
+
+  editerMethode(exerciceId) {
+    const e = this.data.exercices.find(x => x.id === exerciceId);
+    if (!e) return;
+    const te = e.type_effort || 'reps';
+    const sd = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
+    const reps = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : (e.reps_cible || '');
+    const types = [['reps', 'Séries × reps'], ['amrap', 'Max de reps en un temps'], ['temps', 'Durée'], ['distance', 'Distance']];
+    document.getElementById('ssModal').innerHTML = `
+      <div class="modal-overlay" onclick="if(event.target===this)CoachSeanceStudioPage._fermerModal()">
+        <div class="modal">
+          <div class="modal-title">${escHtml(e.exercices_bdd?.nom || 'Exercice')}
+            <button class="modal-close" onclick="CoachSeanceStudioPage._fermerModal()">×</button>
+          </div>
+          <div class="field"><label class="field-label">Type</label>
+            <select class="input" id="ssmType">${types.map(([v, l]) => `<option value="${v}" ${te === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          </div>
+          <div class="field-row" style="display:grid;grid-template-columns:1fr 1.4fr;gap:10px;">
+            <div class="field"><label class="field-label">Séries</label><input class="input" type="number" min="1" id="ssmSeries" value="${e.series || 1}"></div>
+            <div class="field"><label class="field-label">Reps / objectif</label><input class="input" id="ssmReps" value="${escHtml(te === 'reps' ? reps : (e.reps_cible || ''))}" placeholder="10, 8/8/6, 5 min…"></div>
+          </div>
+          <div class="field-row" style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px;">
+            <div class="field"><label class="field-label">Charge cible</label><input class="input" id="ssmCharge" value="${escHtml(e.charge_cible || '')}"></div>
+            <div class="field"><label class="field-label">Repos (secondes)</label><input class="input" type="number" min="0" step="15" id="ssmRepos" value="${e.repos_secondes ?? 90}"></div>
+          </div>
+          <div class="field"><label class="field-label">Notes</label>
+            <textarea class="input" id="ssmNotes" rows="2" style="height:auto;" placeholder="Objectif 40-60 reps, tempo…">${escHtml(e.notes || '')}</textarea>
+          </div>
+          <div id="ssModalErr"></div>
+          <button class="btn btn-primary" style="width:100%;" onclick="CoachSeanceStudioPage._enregistrerMethode('${e.id}')">Enregistrer</button>
+        </div>
+      </div>`;
+  },
+
+  async _enregistrerMethode(exerciceId) {
+    const v = id => document.getElementById(id).value.trim();
+    const te = v('ssmType');
+    const series = Math.max(1, parseInt(v('ssmSeries')) || 1);
+    const repsTxt = v('ssmReps');
+    const charge = v('ssmCharge');
+    const patch = {
+      type_effort: te, series, charge_cible: charge || null,
+      repos_secondes: parseInt(v('ssmRepos')) || 0, notes: v('ssmNotes') || null,
+    };
+    if (te === 'reps') {
+      // « 8/8/6 » = une valeur par série ; « 10 » = la même pour toutes
+      const parts = repsTxt.split('/').map(x => x.trim()).filter(Boolean);
+      const parSerie = Array.from({ length: series }, (_, i) => parts[i] || parts[parts.length - 1] || '10');
+      patch.reps_cible = parSerie[0];
+      patch.series_data = parSerie.map(r => ({ reps: r, charge: charge || '' }));
+    } else {
+      patch.reps_cible = repsTxt || null;
+      patch.series_data = null;
+    }
+    try {
+      const maj = await db.updateClientExercice(exerciceId, patch);
+      const i = this.data.exercices.findIndex(e => e.id === exerciceId);
+      this.data.exercices[i] = maj;
+      this._fermerModal();
+      this._render();
+      this._etat('✓ Méthode modifiée');
+    } catch (e) {
+      document.getElementById('ssModalErr').innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+    }
+  },
+
+  async supprimerExercice(exerciceId) {
+    const e = this.data.exercices.find(x => x.id === exerciceId);
+    if (!e) return;
+    const nb = this.data.saisies.filter(x => x.exercice_id === exerciceId && (x.charge || x.reps || x.remarque)).length;
+    if (!confirm(`Supprimer « ${e.exercices_bdd?.nom || 'cet exercice'} » de cette séance ?` +
+      (nb ? `\n${nb} semaine${nb > 1 ? 's' : ''} de charges notées seront perdues.` : ''))) return;
+    try {
+      await db.deleteClientExercice(exerciceId);
+      this.data.exercices = this.data.exercices.filter(x => x.id !== exerciceId);
+      this.data.saisies = this.data.saisies.filter(x => x.exercice_id !== exerciceId);
+      this._render();
+      this._etat('✓ Exercice supprimé');
+    } catch (err) {
+      this._etat('Erreur : ' + err.message, true);
+    }
+  },
+
+  async deplacer(exerciceId, sens) {
+    const ex = this.data.exercices;
+    const i = ex.findIndex(e => e.id === exerciceId);
+    const j = i + sens;
+    if (i < 0 || j < 0 || j >= ex.length) return;
+    [ex[i], ex[j]] = [ex[j], ex[i]];
+    try {
+      // Réécrit l'ordre des deux exercices échangés (0, 1, 2… selon la liste)
+      await Promise.all([
+        db.updateClientExercice(ex[i].id, { ordre: i }),
+        db.updateClientExercice(ex[j].id, { ordre: j }),
+      ]);
+      ex[i].ordre = i; ex[j].ordre = j;
+      this._render();
+      this._etat('✓ Ordre modifié');
+    } catch (err) {
+      [ex[i], ex[j]] = [ex[j], ex[i]];
+      this._etat('Erreur : ' + err.message, true);
     }
   },
 

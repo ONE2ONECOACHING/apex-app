@@ -1235,3 +1235,10 @@ body.ag-dragging, body.ag-dragging * { cursor: grabbing !important; user-select:
 .st-table td { padding: 1px; }
 .st-case { display: block; width: 14px; height: 14px; border: 1.5px solid var(--border-solid); border-radius: 3px; }
 .st-case.on { background: #059669; border-color: #059669; }
+
+.ss-exo-outils { float: right; display: flex; gap: 2px; margin: -2px -4px 0 6px; }
+.ss-exo-outils button { border: none; background: none; cursor: pointer; font-size: 12px; color: var(--gray-light); padding: 2px 4px; border-radius: 4px; }
+.ss-exo-outils button:hover:not(:disabled) { background: var(--gold-light); color: var(--gold); }
+.ss-exo-outils button:disabled { opacity: 0.3; cursor: default; }
+.ss-cliquable { cursor: pointer; }
+.ss-cliquable:hover { color: var(--gold); text-decoration: underline dotted; }
