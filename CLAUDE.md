@@ -89,6 +89,7 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Edge Function `message-push` (déployée le 13 octobre 2026) : notifie le client, le référent, ou pour un client studio le coach de son prochain rendez-vous. Les coachs sont maintenant abonnés aux notifications.
 - Clients studio : bouton « Ouvrir l'accès à l'app » (`invite-client`, action `ouvrir_acces`), app réduite (Entraînement, Messages) imposée par le routeur.
 - Messagerie coach (13 octobre 2026) : seulement les discussions existantes (la recherche montre aussi les clients sans message), filtre Toutes / Non lues, sans pastilles, lignes de même hauteur. « Non lu » = non lu par le coach connecté, uniquement sur les conversations où il peut répondre (choix de Benjamin : pas d'indicateur « pas lu par tel coach » pour les gérants). Prénom des coachs visible des clients via `prenoms_coachs()` (`sql/2026-10-13_prenoms_coachs.sql`, exécuté le 13 octobre 2026).
+- Deux conversations pour les clients studio + suivi (13 octobre 2026, `sql/2026-10-13_messagerie_deux_canaux.sql` exécuté) : « Mon coach » (canal `suivi`, par défaut) et « Équipe ONE2ONE » (canal `equipe`, ex. prévenir d'un retard). Distance : `suivi` seulement ; studio sans suivi : `equipe` seulement.
 - Transparence sur la lecture des conversations par les gérants : gérée hors de l'app par Benjamin (validation juridique à sa charge).
 
 ## Prochaines étapes
