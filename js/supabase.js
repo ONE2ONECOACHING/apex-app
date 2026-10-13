@@ -438,15 +438,38 @@ const db = {
     const progs = (data || []).filter(p => p.client?.coach_referent_id === coachId && p.client?.actif !== false && !p.fin_vue);
 
     // Séances faites à distance (journal d'entraînement des clients concernés)
+    // et semaines cardio validées. Lecture par paquets : Supabase renvoie au
+    // plus 1 000 lignes par demande.
+    const toutLire = async fabrique => {
+      const lignes = [];
+      for (let de = 0; ; de += 1000) {
+        const { data: paquet, error: e } = await fabrique().range(de, de + 999);
+        if (e) throw e;
+        lignes.push(...(paquet || []));
+        if (!paquet || paquet.length < 1000) return lignes;
+      }
+    };
     const clientIds = [...new Set(progs.map(p => p.client_id))];
+    const cardioIds = progs.flatMap(p => (p.client_prog_seances || []).filter(s => s.cardio).map(s => s.id));
     if (clientIds.length) {
       const debut = progs.map(p => p.date_debut).filter(Boolean).sort()[0];
-      let q = getSupabase().from('seances_log')
-        .select('client_id, programme_id, seance_id, nom_seance, date_seance')
-        .in('client_id', clientIds);
-      if (debut) q = q.gte('date_seance', debut);
-      const { data: logs } = await q;
-      for (const p of progs) p._logs = (logs || []).filter(l => l.client_id === p.client_id);
+      const [logs, cardio] = await Promise.all([
+        toutLire(() => {
+          let q = getSupabase().from('seances_log')
+            .select('client_id, programme_id, seance_id, nom_seance, date_seance')
+            .in('client_id', clientIds)
+            .order('date_seance');
+          return debut ? q.gte('date_seance', debut) : q;
+        }),
+        cardioIds.length
+          ? toutLire(() => getSupabase().from('cardio_validations').select('seance_id, semaine').in('seance_id', cardioIds).order('seance_id'))
+          : Promise.resolve([]),
+      ]);
+      for (const p of progs) {
+        p._logs = logs.filter(l => l.client_id === p.client_id);
+        const ids = new Set((p.client_prog_seances || []).map(s => s.id));
+        p._cardio = cardio.filter(v => ids.has(v.seance_id));
+      }
     }
     return progs;
   },

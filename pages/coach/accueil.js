@@ -87,7 +87,9 @@ const CoachAccueilPage = {
   // nom si elle a été faite après l'attribution de la phase).
   _avancement(p) {
     const nb = p.nb_semaines || 4;
-    const seances = (p.client_prog_seances || []).filter(s => !s.cardio);
+    // Renforcement d'abord ; un programme 100 % cardio compte ses semaines cardio validées
+    const renfo = (p.client_prog_seances || []).filter(s => !s.cardio);
+    const seances = renfo.length ? renfo : (p.client_prog_seances || []);
     const logs = p._logs || [];
     // Une séance reconnue par son nom ne compte que si elle a été faite après
     // l'attribution de la phase : chaque nouvelle phase repart à zéro, même si
@@ -95,6 +97,7 @@ const CoachAccueilPage = {
     const attribuee = (p.created_at || '').slice(0, 10);
     const depuis = [p.date_debut, attribuee].filter(Boolean).sort().pop() || '';
     const fois = s => {
+      if (s.cardio) return (p._cardio || []).filter(v => v.seance_id === s.id).length;
       if (s.lieu === 'studio') return (s.seances_studio_semaines || []).length;
       return logs.filter(l => l.seance_id === s.id || (!l.seance_id
         && (!l.programme_id || l.programme_id === p.id)
