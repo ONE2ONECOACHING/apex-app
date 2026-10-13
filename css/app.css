@@ -1461,6 +1461,10 @@ body.coach-layout .nav-bottom { display: none; }
 .msg-conv-chat { flex: 1; min-height: 0; }
 .msg-fiche { height: calc(100vh - 260px); min-height: 420px; border: 1px solid var(--border-solid); border-radius: 14px; overflow: hidden; }
 .msg-client { height: calc(100vh - 150px - env(safe-area-inset-bottom, 0px)); margin: 0 -1rem; }
+.msg-client.avec-onglets { height: calc(100vh - 200px - env(safe-area-inset-bottom, 0px)); }
+.msg-canaux { width: 100%; margin-bottom: 10px; }
+.msg-canaux button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.msg-point-onglet { width: 8px; height: 8px; border-radius: 50%; background: #0A84FF; display: inline-block; }
 @media (max-width: 700px) {
   .msg-cadre { grid-template-columns: minmax(0, 1fr); height: calc(100vh - 170px); margin: 0 -1rem; border-radius: 0; border-left: none; border-right: none; }
   .msg-cadre .msg-conv { display: none; }

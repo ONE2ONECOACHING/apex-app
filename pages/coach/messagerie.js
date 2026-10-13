@@ -1,7 +1,8 @@
 // APEX APP — Coach : messagerie (liste des conversations + conversation ouverte)
-// Conversations visibles : mes clients suivis (canal « suivi »), tous les clients
-// studio (canal « equipe ») ; un gérant voit aussi toutes les conversations de
-// suivi, en lecture seule quand il n'est pas le référent.
+// Conversations visibles : mes clients suivis (canal « suivi »), la conversation
+// Équipe (canal « equipe ») des clients qui viennent au studio ; un gérant voit
+// aussi toutes les conversations de suivi, en lecture seule quand il n'est pas
+// le référent. Un client studio + suivi a donc deux conversations.
 
 const CoachMessageriePage = {
   conversations: [],   // { client, canal, resume, peutEcrire }
@@ -38,12 +39,13 @@ const CoachMessageriePage = {
       ]);
       this.coachs = coachs.filter(c => c.id !== COMPTE_PARTAGE_ID);
       const resumes = new Map(resume.map(r => [`${r.client_id}|${r.canal}`, r]));
-      this.conversations = clients.map(c => {
-        const canal = c.type_client === 'studio' ? 'equipe' : 'suivi';
+      this.conversations = clients.flatMap(c => {
         const referent = c.coach_referent_id === moi.id;
-        if (canal === 'suivi' && !referent && !moi.is_gerant) return null;
-        return { client: c, canal, resume: resumes.get(`${c.id}|${canal}`) || null, peutEcrire: canal === 'equipe' || referent };
-      }).filter(Boolean);
+        const canaux = c.type_client === 'studio' ? ['equipe'] : c.type_client === 'suivi' ? ['suivi', 'equipe'] : ['suivi'];
+        return canaux
+          .filter(canal => canal === 'equipe' || referent || moi.is_gerant)
+          .map(canal => ({ client: c, canal, resume: resumes.get(`${c.id}|${canal}`) || null, peutEcrire: canal === 'equipe' || referent }));
+      });
       this._renderListe();
 
       // Nouvelles discussions et nouveaux messages des autres conversations
