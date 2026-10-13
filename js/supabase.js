@@ -429,13 +429,16 @@ const db = {
   },
 
   // Programmes actifs des clients du coach, avec les semaines cochées au studio
-  async getCyclesClients(coachId) {
+  // tous = true : programmes actifs de tous les clients visibles (page Clients),
+  // phases « vues » comprises ; sinon ceux des clients dont je suis le référent
+  async getCyclesClients(coachId, tous = false) {
     const { data, error } = await getSupabase()
       .from('client_programmes')
       .select('*, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, nom, lieu, cardio, seances_studio_semaines(semaine, faite_le))')
       .eq('actif', true);
     if (error) throw error;
-    const progs = (data || []).filter(p => p.client?.coach_referent_id === coachId && p.client?.actif !== false && !p.fin_vue);
+    const progs = (data || []).filter(p => p.client?.actif !== false
+      && (tous || (p.client?.coach_referent_id === coachId && !p.fin_vue)));
 
     // Séances faites à distance (journal d'entraînement des clients concernés)
     // et semaines cardio validées. Lecture par paquets : Supabase renvoie au
@@ -1059,6 +1062,29 @@ const db = {
   },
 
   // ── Coach Dashboard ───────────────────────────────────────────────────────
+
+  // Tous les clients actifs, quel que soit leur type (page Clients)
+  async getTousClientsActifs() {
+    const { data, error } = await getSupabase()
+      .from('profiles')
+      .select('*')
+      .eq('role', 'client')
+      .neq('actif', false)
+      .order('prenom');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Bilans récents (le plus récent par client sert à la colonne « Bilan »)
+  async getBilansRecents(depuis) {
+    const { data, error } = await getSupabase()
+      .from('bilan_instances')
+      .select('client_id, semaine, statut, coach_lu, completed_at, reponses')
+      .gte('semaine', depuis)
+      .order('semaine', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
 
   async getAllActivePlans() {
     const { data, error } = await getSupabase()

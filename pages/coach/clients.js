@@ -1,18 +1,17 @@
-﻿// APEX APP — Coach : Dashboard
+// APEX APP — Coach : page Clients (un seul tableau, filtres regroupés, tri)
+
+const TYPES_CLIENT = { suivi: 'Studio + suivi', distance: 'Suivi à distance', studio: 'Studio sans suivi' };
 
 const CoachClientsPage = {
-  clients: [],
-  activeFilter: 'all',
-  _searchQuery: '',
-  _mainTab: 'dashboard', // 'dashboard' | 'suivi'
-  _plans: [],
-  _completedBilans: [],
-  _pendingBilans: [],
-  _weekEntries: [],
-  _mondayStr: null,
-  _coachNotes: [],
-  _lastPoids: {},
-  _bilanAssignations: [],
+  lignes: [],          // une ligne par client, avec tout ce que le tableau affiche
+  coachs: [],
+  _perimetre: 'mine',  // mine | all | inactifs
+  _type: '',
+  _filtreRef: '',
+  _surveiller: '',     // '' | alerte | retard | sans_plan | sans_programme | bilan_a_lire | cycle_termine
+  _recherche: '',
+  _tri: { cle: 'nom', sens: 1 },
+  _inactifs: null,
 
   render() {
     document.body.classList.add('coach-wide');
@@ -20,406 +19,182 @@ const CoachClientsPage = {
       <div class="app-header">
         <div>
           <div class="app-logo">ONE2ONE · COACH</div>
-          <div class="app-title">Clients</div>
+          <div class="app-title">Clients <span class="cl-total" id="clTotal"></span></div>
         </div>
         <button class="btn btn-primary btn-small" onclick="CoachClientsPage.showCreateModal()">+ Nouveau client</button>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
-        <div id="tagFilters" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-      </div>
+      <div id="clFiltres"></div>
       <div id="dashContent"><div class="spinner" style="margin-top:2rem;"></div></div>
       <div id="coachModal"></div>`;
   },
 
   async init() {
-    this.activeFilter = 'all';
-    this._inactifs    = null;
-    this._coachs      = await db.getCoachs().catch(() => []);
-    this._retards     = new Set();
-    this._searchQuery = '';
-    this._mainTab     = 'dashboard';
+    const moi = Router.userProfile;
+    this._inactifs = null;
+    this._recherche = '';
     try {
-      this._mondayStr = this._getMondayStr();
-
-      const [clients, plans, completedBilans, pendingBilans, bilanAssignations] = await Promise.all([
-        db.getAllClients(),
-        db.getAllActivePlans(),
-        db.getRecentCompletedBilans(7),
-        db.getAllPendingBilans(),
-        db.getAllBilanAssignations().catch(() => []),
+      const depuis = new Date(Date.now() - 56 * 864e5).toISOString().slice(0, 10);
+      const [clients, coachs, plans, programmes, bilans, suivis] = await Promise.all([
+        db.getTousClientsActifs(),
+        db.getCoachs().catch(() => []),
+        db.getAllActivePlans().catch(() => []),
+        db.getCyclesClients(moi.id, true).catch(() => []),
+        db.getBilansRecents(depuis).catch(() => []),
+        db.getSuivisPourRetards().catch(() => []),
       ]);
-      this.clients = clients;
-      const clientIds = clients.map(c => c.id);
-
-      const [weekEntries, coachNotes, lastPoids] = await Promise.all([
-        clientIds.length > 0 ? db.getJournalEntriesForClients(clientIds, this._mondayStr, todayStr()) : Promise.resolve([]),
-        db.getCoachNotesForWeek(this._mondayStr).catch(() => []),
-        db.getLastPoidsPerClient(clientIds).catch(() => ({})),
-      ]);
-
-      this._plans              = plans;
-      this._completedBilans    = completedBilans;
-      this._pendingBilans      = pendingBilans;
-      this._weekEntries        = weekEntries;
-      this._coachNotes         = coachNotes;
-      this._lastPoids          = lastPoids;
-      this._bilanAssignations  = bilanAssignations;
-
-      // Retards de suivi (journal) : badge rouge à côté du nom
-      const suivis = await db.getSuivisPourRetards().catch(() => []);
-      this._retards = new Set(suivis.filter(c => JournalSuivi.enRetard(
-        c.date_debut, [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26, c.journal_suivi)).map(c => c.id));
-
-      this.renderFilters();
-      this.renderDashboard();
+      this.coachs = coachs.filter(c => c.id !== COMPTE_PARTAGE_ID);
+      const poids = await db.getLastPoidsPerClient(clients.map(c => c.id)).catch(() => ({}));
+      this._donnees = { plans, programmes, bilans, suivis, poids };
+      this.lignes = this._construire(clients);
+      this._renderFiltres();
+      this._renderTableau();
     } catch (e) {
-      document.getElementById('dashContent').innerHTML =
-        '<div class="alert alert-error">Erreur : ' + e.message + '</div>';
+      document.getElementById('dashContent').innerHTML = '<div class="alert alert-error">Erreur : ' + escHtml(e.message) + '</div>';
     }
   },
 
-  _getMondayStr() {
-    const d   = new Date();
-    const day = d.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    d.setDate(d.getDate() + diff);
-    return formatDate(d);
-  },
-
-  renderFilters() {
-    const el = document.getElementById('tagFilters');
-    if (!el) return;
-    const f = this.activeFilter;
-    el.innerHTML = `
-      <button class="tag-filter-btn ${f === 'mine'  ? 'active' : ''}" onclick="CoachClientsPage.setFilter('mine')">Mes clients</button>
-      <button class="tag-filter-btn ${f === 'all'   ? 'active' : ''}" onclick="CoachClientsPage.setFilter('all')">Tous</button>
-      ${(this._coachs || []).filter(co => this.clients.some(c => c.coach_referent_id === co.id)).map(co =>
-        `<button class="tag-filter-btn ${f === 'coach:' + co.id ? 'active' : ''}" onclick="CoachClientsPage.setFilter('coach:${co.id}')">${escHtml(co.prenom || co.email)}</button>`).join('')}
-      <button class="tag-filter-btn ${f === 'inactifs' ? 'active' : ''}" onclick="CoachClientsPage.setFilter('inactifs')">Inactifs</button>
-    `;
-  },
-
-  async setFilter(tag) {
-    this.activeFilter = tag;
-    if (tag === 'inactifs' && !this._inactifs) {
-      this._inactifs = await db.getClientsInactifs().catch(() => []);
-    }
-    this.renderFilters();
-    this.renderDashboard();
-  },
-
-  // Prénom du coach référent, à côté du nom du client
-  _badgeReferent(client) {
-    const co = (this._coachs || []).find(x => x.id === client.coach_referent_id);
-    const retard = this._retards?.has(client.id) ? '<span class="badge-retard" title="Deux semaines sans suivi">retard de suivi</span>' : '';
-    return (co ? `<span class="ref-badge">${escHtml(co.prenom || '')}</span>` : '') + retard;
-  },
-
-  setSearch(q) {
-    this._searchQuery = q.trim().toLowerCase();
-    // Mémoriser quel champ avait le focus pour le restaurer après re-render
-    const activeId = document.activeElement?.id;
-    this.renderDashboard();
-    if (activeId === 'clientSearchInput' || activeId === 'suiviSearchInput') {
-      const input = document.getElementById(activeId);
-      if (input) {
-        input.focus();
-        const end = input.value.length;
-        try { input.setSelectionRange(end, end); } catch (e) {}
+  // ── Données d'une ligne ────────────────────────────────────────────────────
+  _construire(clients, inactifs = false) {
+    const { plans, programmes, bilans, suivis, poids } = this._donnees;
+    const avecPlan = new Set(plans.map(p => p.profile_id));
+    const retards = new Set(suivis.filter(c => JournalSuivi.enRetard(
+      c.date_debut, [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26, c.journal_suivi)).map(c => c.id));
+    return clients.map(c => {
+      const suivi = c.type_client !== 'studio';
+      // Programme principal : celui dont la fin est la plus proche
+      const progs = programmes.filter(p => p.client_id === c.id)
+        .map(p => ({ p, a: CoachAccueilPage._avancement(p) }))
+        .sort((x, y) => x.a.restantes - y.a.restantes);
+      const prog = progs[0] || null;
+      const bilan = bilans.find(b => b.client_id === c.id) || null;
+      const aLire = bilan && bilan.statut === 'complete' && bilan.coach_lu === false;
+      const alertes = [];
+      if (!inactifs) {
+        if (retards.has(c.id)) alertes.push(['retard', 'Retard de suivi']);
+        if (suivi && !avecPlan.has(c.id)) alertes.push(['sans_plan', 'Sans plan']);
+        if (!prog) alertes.push(['sans_programme', 'Sans programme']);
+        if (aLire) alertes.push(['bilan_a_lire', 'Bilan à lire']);
+        if (prog?.a.termine) alertes.push(['cycle_termine', 'Cycle terminé']);
       }
-    }
-  },
-
-  renderDashboard() {
-    const el = document.getElementById('dashContent');
-    const me = Router.userProfile.id;
-    let filtered = this.activeFilter === 'inactifs'
-      ? (this._inactifs || [])
-      : this.activeFilter === 'all'
-      ? this.clients
-      : this.activeFilter === 'mine'
-        ? this.clients.filter(c => c.coach_referent_id === me)
-        : this.clients.filter(c => 'coach:' + c.coach_referent_id === this.activeFilter);
-
-    if (this._searchQuery) {
-      filtered = filtered.filter(c => {
-        const full = `${c.prenom || ''} ${c.nom || ''}`.toLowerCase();
-        return full.includes(this._searchQuery);
-      });
-    }
-
-    const planMap = new Map(this._plans.map(p => [p.profile_id, p]));
-
-    // ── Onglets principaux ────────────────────────────────────────────────
-    const tabsHtml = `
-      <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:1rem;">
-        <button onclick="CoachClientsPage._setMainTab('dashboard')"
-          style="flex:1;padding:10px 6px;border:none;background:none;font-family:var(--font);
-                 font-size:14px;font-weight:600;cursor:pointer;
-                 color:${this._mainTab==='dashboard'?'var(--gold)':'var(--gray-muted)'};
-                 border-bottom:2px solid ${this._mainTab==='dashboard'?'var(--gold)':'transparent'};
-                 margin-bottom:-2px;">👥 Liste</button>
-        <button onclick="CoachClientsPage._setMainTab('suivi')"
-          style="flex:1;padding:10px 6px;border:none;background:none;font-family:var(--font);
-                 font-size:14px;font-weight:600;cursor:pointer;
-                 color:${this._mainTab==='suivi'?'var(--gold)':'var(--gray-muted)'};
-                 border-bottom:2px solid ${this._mainTab==='suivi'?'var(--gold)':'transparent'};
-                 margin-bottom:-2px;">📊 Suivi de la semaine</button>
-      </div>`;
-
-    if (this._mainTab === 'suivi') {
-      el.innerHTML = tabsHtml + this._renderSuivi(filtered);
-      return;
-    }
-
-    let html = tabsHtml;
-
-    // ── ZONE 1 : À FAIRE ─────────────────────────────────────────────────
-    const actions = this._buildActions(filtered, planMap);
-    if (actions.length > 0) {
-      html += `<div class="dash-section">
-        <div class="dash-section-title">🔴 À faire <span class="dash-badge">${actions.length}</span></div>
-        ${actions.map(a => `
-          <div class="dash-action-card" onclick="${a.onclick}">
-            <div class="dash-action-icon">${a.icon}</div>
-            <div class="dash-action-body">
-              <div class="dash-action-label">${a.label}</div>
-              ${a.sub ? `<div class="dash-action-sub">${a.sub}</div>` : ''}
-            </div>
-            <div class="dash-action-arrow">›</div>
-          </div>`).join('')}
-      </div>`;
-    }
-
-    // ── ZONE 3 : CLIENTS ─────────────────────────────────────────────────
-    html += `<div class="dash-section">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.6rem;">
-        <div class="dash-section-title" style="margin-bottom:0;">👥 Clients <span class="dash-badge dash-badge-gray">${filtered.length}</span></div>
-        <input id="clientSearchInput" class="input" type="search"
-          placeholder="🔍 Chercher…"
-          value="${escHtml(this._searchQuery)}"
-          oninput="CoachClientsPage.setSearch(this.value)"
-          style="height:32px;font-size:13px;padding:0 10px;flex:1;min-width:0;border-radius:10px;">
-      </div>
-      ${filtered.length === 0
-        ? '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Aucun client pour ce filtre.</div></div>'
-        : filtered.map(c => this._renderClientRow(c, planMap)).join('')}
-    </div>`;
-
-    el.innerHTML = html;
-  },
-
-  _setMainTab(tab) {
-    this._mainTab    = tab;
-    this._searchQuery = '';
-    this.renderDashboard();
-  },
-
-  _renderSuivi(clients) {
-    if (clients.length === 0) return `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Aucun client pour ce filtre.</div></div>`;
-
-    const semaine = this._mondayStr;
-    const semStr  = new Date(semaine + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-
-    // Barre de recherche
-    let html = `
-      <div style="font-size:11px;color:var(--gray-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">
-        Semaine du ${semStr} · ${clients.length} client${clients.length > 1 ? 's' : ''}
-      </div>
-      <div style="position:relative;margin-bottom:1rem;">
-        <input id="suiviSearchInput" class="input" type="search" placeholder="🔍 Chercher…"
-          value="${escHtml(this._searchQuery)}"
-          oninput="CoachClientsPage.setSearch(this.value)"
-          style="height:38px;font-size:14px;">
-      </div>`;
-
-    clients.forEach(c => {
-      const initials  = ((c.prenom||'C')[0]+(c.nom?c.nom[0]:'')).toUpperCase();
-      const tagHtml   = this._badgeReferent(c);
-
-      // ── Statut bilan ───────────────────────────────────────────────
-      const asgn       = this._bilanAssignations.find(a => a.client_id === c.id && a.actif);
-      const pending    = this._pendingBilans.find(b => b.client_id === c.id);
-      const completed  = this._completedBilans.find(b => b.client_id === c.id);
-      const coachNote  = this._coachNotes.find(n => n.client_id === c.id);
-      const poids      = this._lastPoids[c.id];
-
-      let bilanBadge;
-      if (!asgn) {
-        bilanBadge = `<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:#f1f5f9;color:#94a3b8;font-weight:600;">Pas de bilan</span>`;
-      } else if (completed) {
-        const lu = completed.coach_lu !== false;
-        if (coachNote?.note?.trim()) {
-          bilanBadge = `<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:#dcfce7;color:#16a34a;font-weight:600;">💬 Répondu</span>`;
-        } else if (lu) {
-          bilanBadge = `<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:#e0f2fe;color:#0284c7;font-weight:600;">👁 Lu</span>`;
-        } else {
-          bilanBadge = `<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:#fef9c3;color:#b45309;font-weight:600;">✅ Rempli</span>`;
-        }
-      } else if (pending) {
-        bilanBadge = `<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:#fef3c7;color:#d97706;font-weight:600;">⏳ En attente</span>`;
-      } else {
-        bilanBadge = `<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:#f1f5f9;color:#94a3b8;font-weight:600;">— Aucun</span>`;
-      }
-
-      // ── Scores scales du dernier bilan ────────────────────────────
-      const scalesHtml = completed?.reponses
-        ? completed.reponses.filter(r => r.type === 'scale').slice(0, 5).map(r => {
-            const val   = parseFloat(r.reponse) || 0;
-            const color = val >= 7 ? '#10B981' : val >= 5 ? '#C4820A' : '#EF4444';
-            const short = r.label.replace(/\?.*/, '').replace(/cette semaine/i,'').trim().split(' ').slice(0,3).join(' ');
-            return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;">
-              <div style="flex:1;font-size:11px;color:var(--gray);">${short}</div>
-              <div style="font-size:11px;font-weight:700;color:${color};min-width:28px;text-align:right;">${val}/10</div>
-              <div style="width:80px;height:4px;background:var(--border-solid);border-radius:2px;overflow:hidden;">
-                <div style="height:100%;width:${val*10}%;background:${color};border-radius:2px;"></div>
-              </div>
-            </div>`;
-          }).join('') : '';
-
-      html += `
-        <div class="card" style="margin-bottom:0.65rem;padding:12px 14px;"
-          onclick="Router.navigate('coach-client-suivi',{clientId:'${c.id}'})">
-          <div style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-            <div class="client-avatar" style="width:38px;height:38px;font-size:13px;flex-shrink:0;">${initials}</div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:14px;font-weight:700;color:var(--black);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                ${c.prenom} ${c.nom || ''} ${tagHtml}
-              </div>
-              <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">
-                ${bilanBadge}
-                ${coachNote?.note?.trim() ? `<span style="font-size:11px;color:var(--gold);font-weight:600;">✍️ Note</span>` : ''}
-                ${poids ? `<span style="font-size:11px;color:var(--gray-muted);">⚖️ ${poids.poids} kg</span>` : ''}
-              </div>
-            </div>
-            <div style="color:var(--gray-muted);font-size:18px;">›</div>
-          </div>
-          ${scalesHtml ? `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">${scalesHtml}</div>` : ''}
-        </div>`;
+      return {
+        client: c, suivi, prog, autresProgs: progs.length - 1,
+        plan: suivi ? avecPlan.has(c.id) : null,
+        bilan, aLire, poids: poids[c.id]?.poids ?? null, alertes,
+      };
     });
-
-    return html;
   },
 
-  _buildActions(clients, planMap) {
-    const actions = [];
+  _nom(c) { return `${c.prenom || ''} ${c.nom || ''}`.trim() || 'Client'; },
 
-    // 1. Bilans répondus (complétés dans les 7 derniers jours, non lus)
-    for (const bilan of this._completedBilans) {
-      const client = clients.find(c => c.id === bilan.client_id);
-      if (!client) continue;
-      actions.push({
-        icon: '📋',
-        label: `Bilan répondu — ${client.prenom} ${client.nom || ''}`,
-        sub: this._timeAgo(bilan.completed_at),
-        onclick: `Router.navigate('coach-bilan-client', { clientId: '${client.id}' })`
-      });
-    }
-
-    // 2. Clients sans plan actif
-    for (const client of clients) {
-      if (!planMap.has(client.id)) {
-        actions.push({
-          icon: '📝',
-          label: `Sans plan — ${client.prenom} ${client.nom || ''}`,
-          sub: 'Créer un plan nutritionnel',
-          onclick: `Router.navigate('coach-plan-edit', { clientId: '${client.id}' })`
-        });
-      }
-    }
-
-
-    return actions;
+  _referent(c) {
+    const co = this.coachs.find(x => x.id === c.coach_referent_id);
+    return co ? (co.prenom || '') : '—';
   },
 
-  _renderWeekRow(client, planMap) {
-    const plan    = planMap.get(client.id);
-    const entries = this._weekEntries.filter(e => e.profile_id === client.id);
+  // ── Filtres ────────────────────────────────────────────────────────────────
+  _renderFiltres() {
+    const p = this._perimetre;
+    const seg = (v, l) => `<button class="${p === v ? 'on' : ''}" onclick="CoachClientsPage.perimetre('${v}')">${l}</button>`;
+    const sel = (id, val, options) => `<select class="input cl-select" onchange="CoachClientsPage.${id}=this.value;CoachClientsPage._renderTableau()">
+      ${options.map(([v, l]) => `<option value="${v}" ${val === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+    document.getElementById('clFiltres').innerHTML = `
+      <div class="cl-filtres">
+        <input class="input cl-recherche" id="clRecherche" type="search" placeholder="🔍 Chercher un client…" value="${escHtml(this._recherche)}"
+          oninput="CoachClientsPage._recherche=this.value;CoachClientsPage._renderTableau()">
+        <div class="ag-switch">${seg('mine', 'Mes clients')}${seg('all', 'Tous')}${seg('inactifs', 'Inactifs')}</div>
+        ${sel('_type', this._type, [['', 'Tous les types'], ...Object.entries(TYPES_CLIENT)])}
+        ${sel('_filtreRef', this._filtreRef, [['', 'Tous les référents'], ...this.coachs.map(c => [c.id, `${c.prenom || ''} ${c.nom || ''}`.trim()])])}
+        ${sel('_surveiller', this._surveiller, [['', 'À surveiller : tout'], ['alerte', 'Avec une alerte'], ['retard', 'Retard de suivi'],
+          ['sans_plan', 'Sans plan'], ['sans_programme', 'Sans programme'], ['bilan_a_lire', 'Bilan à lire'], ['cycle_termine', 'Cycle terminé']])}
+      </div>`;
+  },
 
-    // Jours distincts loggués
-    const datesLogged = new Set(entries.map(e => e.date_entree));
-    const daysLogged  = datesLogged.size;
+  async perimetre(v) {
+    this._perimetre = v;
+    if (v === 'inactifs' && !this._inactifs) {
+      this._inactifs = this._construire(await db.getClientsInactifs().catch(() => []), true);
+    }
+    this._renderFiltres();
+    this._renderTableau();
+  },
 
-    // Jours écoulés depuis lundi (min 1, max 7)
-    const monday       = new Date(this._mondayStr + 'T00:00:00');
-    const today        = new Date();
-    const daysSinceMon = Math.floor((today - monday) / 86400000) + 1;
-    const totalDays    = Math.min(daysSinceMon, 7);
-
-    // Calories moyennes / jour loggué
-    const calsByDate = {};
-    entries.forEach(e => {
-      calsByDate[e.date_entree] = (calsByDate[e.date_entree] || 0) + (e.calories || 0);
+  _filtrees() {
+    const moi = Router.userProfile.id;
+    const s = this._recherche.trim().toLowerCase();
+    const base = this._perimetre === 'inactifs' ? (this._inactifs || []) : this.lignes;
+    return base.filter(l => {
+      const c = l.client;
+      if (this._perimetre === 'mine' && c.coach_referent_id !== moi) return false;
+      if (this._type && c.type_client !== this._type) return false;
+      if (this._filtreRef && c.coach_referent_id !== this._filtreRef) return false;
+      if (this._surveiller === 'alerte' && !l.alertes.length) return false;
+      if (this._surveiller && this._surveiller !== 'alerte' && !l.alertes.some(a => a[0] === this._surveiller)) return false;
+      if (s && !this._nom(c).toLowerCase().includes(s)) return false;
+      return true;
     });
-    const totalCals = Object.values(calsByDate).reduce((s, c) => s + c, 0);
-    const avgCals   = daysLogged > 0 ? Math.round(totalCals / daysLogged) : 0;
-    const target    = plan ? plan.calories_cible : 0;
-
-    // Couleur selon adhérence
-    const pct   = totalDays > 0 ? daysLogged / totalDays : 0;
-    const color = pct >= 0.71 ? 'var(--success)' : pct >= 0.43 ? '#F59E0B' : 'var(--error)';
-    const initials = ((client.prenom || 'C')[0] + (client.nom ? client.nom[0] : '')).toUpperCase();
-
-    // Sous-texte calories
-    let calLine = '';
-    if (daysLogged > 0 && target > 0) {
-      const diff = avgCals - target;
-      const sign = diff >= 0 ? '+' : '';
-      calLine = `${avgCals} kcal moy. <span style="color:${diff > 100 ? 'var(--error)' : diff < -100 ? '#3B82F6' : 'var(--success)'}">(${sign}${diff})</span> / ${target} cible`;
-    } else if (daysLogged > 0) {
-      calLine = `${avgCals} kcal moy.`;
-    } else if (plan) {
-      calLine = `Aucun log cette semaine`;
-    } else {
-      calLine = `Pas de plan actif`;
-    }
-
-    return `<div class="dash-week-row" onclick="Router.navigate('coach-journal-view', { clientId: '${client.id}' })">
-      <div class="client-avatar" style="width:36px;height:36px;font-size:13px;flex-shrink:0;">${initials}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <div style="font-size:13px;font-weight:700;">${client.prenom} ${client.nom || ''}</div>
-          <div style="font-size:12px;color:${color};font-weight:700;">${daysLogged}/${totalDays}j</div>
-        </div>
-        <div style="height:5px;background:var(--border-solid);border-radius:3px;overflow:hidden;margin-bottom:4px;">
-          <div style="height:100%;width:${Math.round(pct * 100)}%;background:${color};border-radius:3px;transition:width 0.6s;"></div>
-        </div>
-        <div style="font-size:11px;color:var(--gray-muted);">${calLine}</div>
-      </div>
-    </div>`;
   },
 
-  _renderClientRow(client, planMap) {
-    const hasPlan       = planMap.has(client.id);
-    const pendingBilan  = this._pendingBilans.find(b  => b.client_id === client.id);
-    const completedBilan = this._completedBilans.find(b => b.client_id === client.id);
+  // ── Tri ────────────────────────────────────────────────────────────────────
+  trier(cle) {
+    this._tri = this._tri.cle === cle ? { cle, sens: -this._tri.sens } : { cle, sens: 1 };
+    this._renderTableau();
+  },
 
-    const initials = ((client.prenom || 'C')[0] + (client.nom ? client.nom[0] : '')).toUpperCase();
-    const tagHtml = this._badgeReferent(client);
+  _valeurTri(l, cle) {
+    switch (cle) {
+      case 'referent':  return this._referent(l.client).toLowerCase();
+      case 'programme': return l.prog ? l.prog.a.restantes : 999;
+      case 'plan':      return l.plan === null ? 2 : l.plan ? 1 : 0;
+      case 'bilan':     return l.aLire ? '0' : l.bilan ? '1' + (9e12 - new Date(l.bilan.completed_at || l.bilan.semaine).getTime()) : '9';
+      case 'poids':     return l.poids ?? 9999;
+      case 'alertes':   return -l.alertes.length;
+      default:          return this._nom(l.client).toLowerCase();
+    }
+  },
 
-    let badges = '';
-    if (completedBilan) badges += `<span class="dash-status-badge dash-status-bilan">📋 Bilan</span>`;
-    if (pendingBilan)   badges += `<span class="dash-status-badge dash-status-pending">⏳ Attente</span>`;
-    if (!hasPlan)       badges += `<span class="dash-status-badge dash-status-noplan">Sans plan</span>`;
+  // ── Tableau ────────────────────────────────────────────────────────────────
+  _bilanHtml(l) {
+    const b = l.bilan;
+    if (!b) return '<span class="cl-muted">—</span>';
+    const quand = b.completed_at ? this._timeAgo(b.completed_at).replace('Il y a ', 'il y a ') : '';
+    const scores = (b.reponses || []).filter(r => r.type === 'scale').slice(0, 5)
+      .map(r => `${r.label.replace(/\?.*/, '').trim()} : ${r.reponse}/10`).join('\n');
+    const [classe, texte] = b.statut !== 'complete' ? ['attente', 'En attente'] : l.aLire ? ['alire', 'À lire'] : ['lu', 'Lu'];
+    return `<span class="cl-pastille ${classe}" ${scores ? `title="${escHtml(scores)}"` : ''}>${texte}</span>${quand ? `<span class="cl-sous">${quand}</span>` : ''}`;
+  },
 
-    return `<div class="client-row" onclick="CoachClientsPage.openClient('${client.id}')">
-      <div class="client-avatar">${initials}</div>
-      <div class="client-info">
-        <div class="client-name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          ${escHtml(client.prenom)} ${escHtml(client.nom || '')} ${tagHtml}${badges}
-        </div>
-        <div class="client-meta">Semaine ${clientCurrentWeek(client)}</div>
-      </div>
-      <div style="display:flex;gap:5px;align-items:center;">
-        <button class="icon-btn" title="Journal"
-          onclick="event.stopPropagation();Router.navigate('coach-journal-view',{clientId:'${client.id}'})">📖</button>
-        <button class="icon-btn" title="Plan"
-          onclick="event.stopPropagation();Router.navigate('coach-plan-edit',{clientId:'${client.id}'})">📋</button>
-        <button class="icon-btn" title="Mesures"
-          onclick="event.stopPropagation();Router.navigate('coach-mesure-client',{clientId:'${client.id}',clientName:'${escJs(client.prenom)}'})">📏</button>
-        <div class="client-arrow">›</div>
-      </div>
-    </div>`;
+  _renderTableau() {
+    const lignes = this._filtrees().sort((a, b) => {
+      const va = this._valeurTri(a, this._tri.cle), vb = this._valeurTri(b, this._tri.cle);
+      return (va < vb ? -1 : va > vb ? 1 : 0) * this._tri.sens
+        || this._nom(a.client).localeCompare(this._nom(b.client));
+    });
+    document.getElementById('clTotal').textContent = lignes.length;
+    const th = (cle, label) => `<th onclick="CoachClientsPage.trier('${cle}')" class="${this._tri.cle === cle ? 'trie' : ''}">${label}${this._tri.cle === cle ? (this._tri.sens > 0 ? ' ↑' : ' ↓') : ''}</th>`;
+    document.getElementById('dashContent').innerHTML = lignes.length ? `
+      <div class="cl-cadre">
+        <table class="cl-table">
+          <thead><tr>
+            ${th('nom', 'Client')}${th('referent', 'Référent')}${th('programme', 'Programme')}${th('plan', 'Plan')}${th('bilan', 'Bilan')}${th('poids', 'Poids')}${th('alertes', 'Alertes')}
+          </tr></thead>
+          <tbody>${lignes.map(l => {
+            const c = l.client;
+            return `
+            <tr onclick="CoachClientsPage.openClient('${c.id}')">
+              <td data-label="Client"><div class="cl-nom">${escHtml(this._nom(c))}</div><span class="cl-sous">${TYPES_CLIENT[c.type_client] || ''}</span></td>
+              <td data-label="Référent">${escHtml(this._referent(c))}</td>
+              <td data-label="Programme">${l.prog
+                ? `<div class="cl-prog">${escHtml(l.prog.p.nom)}${l.autresProgs > 0 ? ` <span class="cl-sous">+${l.autresProgs}</span>` : ''}</div>
+                   <span class="cl-sous ${l.prog.a.termine ? 'cl-rouge' : l.prog.a.restantes <= 0 ? 'cl-orange' : ''}">${l.prog.a.termine ? 'terminé' : `sem. ${l.prog.a.faites}/${l.prog.a.nb}`}</span>`
+                : '<span class="cl-muted">Aucun</span>'}</td>
+              <td data-label="Plan">${l.plan === null ? '<span class="cl-muted">—</span>' : l.plan ? '<span class="cl-vert">Actif</span>' : '<span class="cl-rouge">Sans plan</span>'}</td>
+              <td data-label="Bilan">${this._bilanHtml(l)}</td>
+              <td data-label="Poids">${l.poids != null ? `${String(l.poids).replace('.', ',')} kg` : '<span class="cl-muted">—</span>'}</td>
+              <td data-label="Alertes">${l.alertes.map(a => `<span class="cl-alerte ${a[0]}">${a[1]}</span>`).join('') || ''}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>` : '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Aucun client pour ces filtres.</div></div>';
   },
 
   _timeAgo(iso) {
