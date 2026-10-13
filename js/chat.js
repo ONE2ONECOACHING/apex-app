@@ -78,6 +78,7 @@ const Chat = {
         const i = this.messages.findIndex(x => x.id === m.id);
         if (i >= 0) this.messages[i] = m; else this.messages.push(m);
         this._render(true);
+        if (this.opts.surMessage) this.opts.surMessage(m);
         if (m.auteur_id !== this._moi()) this._marquerLu();
       })
       // « Vu » en direct : l'autre vient d'ouvrir la conversation
@@ -202,6 +203,7 @@ const Chat = {
   _ajouter(m) {
     if (!this.messages.some(x => x.id === m.id)) this.messages.push(m);
     this._render(true);
+    if (this.opts?.surMessage) this.opts.surMessage(m);
   },
 
   async envoyerTexte() {

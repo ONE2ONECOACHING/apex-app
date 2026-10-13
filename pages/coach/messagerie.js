@@ -46,6 +46,13 @@ const CoachMessageriePage = {
       }).filter(Boolean);
       this._renderListe();
 
+      // Nouvelles discussions et nouveaux messages des autres conversations
+      clearInterval(this._minuteur);
+      this._minuteur = setInterval(() => {
+        if (Router.currentPage !== 'coach-messagerie') { clearInterval(this._minuteur); return; }
+        this._rafraichirResumes();
+      }, 30000);
+
       // Conversation demandée par une notification (#coach-messagerie?c=…&k=…)
       const q = new URLSearchParams((window.location.hash.split('?')[1]) || '');
       const params = Router.getParams();
@@ -148,7 +155,40 @@ const CoachMessageriePage = {
       <div class="msg-conv-chat" id="msgChat"></div>`;
     Chat.ouvrir(document.getElementById('msgChat'), {
       clientId: v.client.id, canal: v.canal, peutEcrire: v.peutEcrire, clientNom: v.client.prenom,
+      surMessage: m => this._majApercu(v, m),
     });
+  },
+
+  // Un message envoyé ou reçu dans la conversation ouverte : la liste suit
+  _majApercu(v, m) {
+    if (this._actif !== `${v.client.id}|${v.canal}`) return;
+    v.resume = {
+      ...(v.resume || {}), client_id: v.client.id, canal: v.canal, dernier_le: m.cree_le,
+      dernier_texte: m.supprime ? 'Message supprimé' : m.texte, dernier_type: m.piece_type,
+      dernier_auteur: m.auteur_id, non_lus: 0,
+    };
+    this._rafraichirListe();
+  },
+
+  async _rafraichirResumes() {
+    const resume = await db.getConversationsResume().catch(() => null);
+    if (!resume) return;
+    const resumes = new Map(resume.map(r => [`${r.client_id}|${r.canal}`, r]));
+    for (const v of this.conversations) {
+      const cle = `${v.client.id}|${v.canal}`;
+      const r = resumes.get(cle);
+      if (r && cle === this._actif) r.non_lus = 0;
+      if (r) v.resume = r;
+    }
+    this._rafraichirListe();
+  },
+
+  // Redessine la liste sans faire perdre la saisie en cours dans la recherche
+  _rafraichirListe() {
+    if (!document.getElementById('msgListe')) return;
+    const champ = document.activeElement?.id === 'msgRecherche';
+    this._renderListe();
+    if (champ) this._chercher(this._recherche);
   },
 
   // Téléphone : revenir à la liste
