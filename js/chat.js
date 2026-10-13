@@ -38,7 +38,7 @@ const Chat = {
       const [messages, lectures, coachs, client] = await Promise.all([
         db.getMessages(opts.clientId, opts.canal),
         db.getLecturesConversation(opts.clientId, opts.canal).catch(() => []),
-        db.getCoachs().catch(() => []),
+        db.getPrenomsCoachs().catch(() => []),
         opts.clientNom ? Promise.resolve(null) : db.getProfile(opts.clientId).catch(() => null),
       ]);
       this.messages = messages;

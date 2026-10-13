@@ -544,6 +544,14 @@ const db = {
   },
 
   // Comptes coach (gérants compris), pour choisir un coach référent
+  // Prénoms des coachs, lisibles aussi par les clients (fonction prenoms_coachs).
+  // Repli sur la lecture des profils tant que la fonction n'existe pas.
+  async getPrenomsCoachs() {
+    const { data, error } = await getSupabase().rpc('prenoms_coachs');
+    if (error) return this.getCoachs();
+    return data || [];
+  },
+
   async getCoachs() {
     const { data, error } = await getSupabase()
       .from('profiles')
