@@ -74,6 +74,14 @@ const CoachMessageriePage = {
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   },
 
+  // La liste est redessinée à chaque lettre : on remet le curseur dans la nouvelle case
+  _chercher(valeur) {
+    this._recherche = valeur;
+    this._renderListe();
+    const champ = document.getElementById('msgRecherche');
+    if (champ) { champ.focus(); champ.setSelectionRange(valeur.length, valeur.length); }
+  },
+
   _renderListe() {
     const moi = Router.userProfile;
     const s = this._recherche.toLowerCase();
@@ -93,7 +101,7 @@ const CoachMessageriePage = {
           <button class="${this._nonLus ? 'on' : ''}" onclick="CoachMessageriePage._nonLus=true;CoachMessageriePage._renderListe()">Non lues</button>
         </div>
         <input class="input" type="search" placeholder="🔍 Chercher un client…" value="${escHtml(this._recherche)}"
-          oninput="CoachMessageriePage._recherche=this.value;CoachMessageriePage._renderListe();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
+          id="msgRecherche" oninput="CoachMessageriePage._chercher(this.value)">
         ${moi.is_gerant ? `
         <select class="input" onchange="CoachMessageriePage._filtreCoach=this.value;CoachMessageriePage._renderListe()">
           <option value="">Tous les coachs</option>
