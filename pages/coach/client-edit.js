@@ -76,7 +76,10 @@ const CoachClientEditPage = {
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px;">
           <input type="checkbox" id="ceFactMixte" ${c.facturation_mixte ? 'checked' : ''}> Abonnement + séances à la consommation
         </label>
-        <button class="btn btn-primary btn-small" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-small" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
+          ${c.type_client === 'studio' ? `<button class="btn btn-secondary btn-small" onclick="CoachClientEditPage.ouvrirAcces()">📲 Ouvrir l'accès à l'app</button>` : ''}
+        </div>
         <div id="ceSaveMsg" style="margin-top:0.75rem;"></div>
       </div>
 
@@ -227,6 +230,60 @@ const CoachClientEditPage = {
         </div>
         <div style="font-size:11px;color:var(--gray-light);margin-top:6px;">Se coche tout seul quand un coach coche « faite » dans la grille d'une séance au studio.</div>
       </div>`;
+  },
+
+  // Client studio : accès à l'app réduite (séances au studio, charges, messages)
+  ouvrirAcces() {
+    const c = this.client;
+    const emailInterne = /@clients\.one2onecoaching\.fr$/.test(c.email || '');
+    const fenetre = document.createElement('div');
+    fenetre.id = 'ceAccesModal';
+    fenetre.innerHTML = `
+      <div class="modal-overlay" onclick="if(event.target===this)this.parentElement.remove()">
+        <div class="modal">
+          <div class="modal-title">Accès à l'app — ${escHtml(c.prenom || '')}
+            <button class="modal-close" onclick="document.getElementById('ceAccesModal').remove()">×</button>
+          </div>
+          <div style="font-size:13px;color:var(--gray);margin-bottom:12px;line-height:1.5;">
+            Le client pourra se connecter et verra ses séances au studio, ses charges et la messagerie « Équipe ONE2ONE ».
+            Un nouveau mot de passe est créé à chaque fois : l'ancien ne fonctionnera plus.
+          </div>
+          <div class="field"><label class="field-label">Email du client</label>
+            <input class="input" type="email" id="ceAccesEmail" value="${emailInterne ? '' : escHtml(c.email || '')}" placeholder="client@email.com"></div>
+          <div id="ceAccesErr"></div>
+          <button class="btn btn-primary" style="width:100%;" id="ceAccesBtn" onclick="CoachClientEditPage._confirmerAcces()">Ouvrir l'accès</button>
+        </div>
+      </div>`;
+    document.body.appendChild(fenetre);
+  },
+
+  async _confirmerAcces() {
+    const email = document.getElementById('ceAccesEmail').value.trim();
+    const btn = document.getElementById('ceAccesBtn');
+    if (!email) { document.getElementById('ceAccesErr').innerHTML = '<div class="alert alert-error">Indique l\'email du client.</div>'; return; }
+    btn.disabled = true; btn.textContent = 'Ouverture…';
+    try {
+      const { email: emailFinal, password } = await db.ouvrirAccesClientStudio(this.client.id, email);
+      this.client.email = emailFinal;
+      const message = `Bonjour ${this.client.prenom || ''} 👊\n\nTon espace ONE2ONE est prêt : tu y retrouves tes séances au studio, tes charges et tu peux écrire à l'équipe.\n\n🔗 ${APP_CONFIG.APP_URL}\n📧 ${emailFinal}\n🔑 ${password}`;
+      document.querySelector('#ceAccesModal .modal').innerHTML = `
+        <div class="modal-title">Accès ouvert
+          <button class="modal-close" onclick="document.getElementById('ceAccesModal').remove()">×</button>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;font-size:13px;margin-bottom:1rem;line-height:1.8;">
+          <div>🔗 <b>Lien :</b> ${escHtml(APP_CONFIG.APP_URL)}</div>
+          <div>📧 <b>Email :</b> ${escHtml(emailFinal)}</div>
+          <div>🔑 <b>Mot de passe :</b> ${escHtml(password)}</div>
+        </div>
+        <div style="font-size:13px;color:var(--gray);margin-bottom:1rem;">Ce mot de passe ne sera plus affiché : copie-le maintenant.</div>
+        <button class="btn btn-primary" style="width:100%;" id="ceAccesCopier">📋 Copier le message WhatsApp</button>`;
+      document.getElementById('ceAccesCopier').onclick = () => navigator.clipboard.writeText(message)
+        .then(() => { document.getElementById('ceAccesCopier').textContent = '✅ Copié !'; })
+        .catch(() => prompt('Copie ce message :', message));
+    } catch (e) {
+      document.getElementById('ceAccesErr').innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+      btn.disabled = false; btn.textContent = 'Ouvrir l\'accès';
+    }
   },
 
   async changerActif(actif) {
