@@ -96,14 +96,14 @@ const Router = {
       return;
     }
 
-    // Init push notifications pour les clients (silencieux)
-    if (user && this.userProfile && this.userProfile.role === 'client' && this.userProfile.onboarding_done) {
+    // Notifications : clients (après l'inscription) et coachs (messagerie)
+    if (user && this.userProfile && (this.userProfile.role === 'coach' || this.userProfile.onboarding_done)) {
       PushNotifications.init(this.userProfile.id).catch(() => {});
     }
 
     // Cloisonnement role ↔ route
-    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi'];
+    const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation', 'messages'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
         window.location.hash = '#coach-accueil';
@@ -113,7 +113,16 @@ const Router = {
         window.location.hash = '#dashboard';
         return;
       }
+      // Client du studio sans suivi : app réduite (entraînement au studio, messages)
+      if (this.userProfile.role === 'client' && this.userProfile.type_client === 'studio'
+          && !['entrainement', 'messages', 'set-password'].includes(hash)) {
+        window.location.hash = '#entrainement';
+        return;
+      }
     }
+
+    // Une conversation ouverte se ferme quand on change de page
+    if (typeof Chat !== 'undefined' && Chat.opts) Chat.fermer();
 
     // Menu de gauche de l'espace coach
     afficherMenuCoach(this.userProfile?.role === 'coach' && coachRoutes.includes(hash) ? hash : null);
@@ -163,6 +172,9 @@ const Router = {
         case 'coach-accueil':         app.innerHTML = CoachAccueilPage.render();       CoachAccueilPage.init();       break;
         case 'coach-calcul-nutrition': app.innerHTML = CoachCalculNutritionPage.render(); CoachCalculNutritionPage.init(); break;
         case 'coach-journal-suivi':   app.innerHTML = CoachJournalSuiviPage.render();  CoachJournalSuiviPage.init();  break;
+        case 'coach-messagerie':      app.innerHTML = CoachMessageriePage.render();    CoachMessageriePage.init();    break;
+        case 'coach-client-messages': app.innerHTML = CoachClientMessagesPage.render(); CoachClientMessagesPage.init(); break;
+        case 'messages':              app.innerHTML = ClientMessagesPage.render();     ClientMessagesPage.init();     break;
         case 'formation':             app.innerHTML = FormationPage.render();           FormationPage.init();           break;
         default: window.location.hash = '#login';
       }
@@ -279,7 +291,10 @@ function noteEmoji(note) {
 
 // ── Navigation partagée — pages client ───────────────────────
 function clientNav(activeTab) {
-  const items = [
+  const items = Router.userProfile?.type_client === 'studio' ? [
+    { key: 'entrainement', icon: '💪', label: 'Entraînement' },
+    { key: 'messages',     icon: '💬', label: 'Messages' },
+  ] : [
     { key: 'dashboard',    icon: '🏠', label: 'Accueil' },
     { key: 'logbook',      icon: '🥗', label: 'Nutrition' },
     { key: 'entrainement', icon: '💪', label: 'Entraîn.' },
@@ -300,7 +315,8 @@ const MENU_COACH = [
   { route: 'coach-agenda',          icone: '📅', label: 'Agenda',          ecrans: ['coach-agenda'] },
   { route: 'coach-clients',         icone: '👥', label: 'Clients',         ecrans: ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal',
       'coach-journal-view', 'coach-habits-edit', 'coach-bilan-client', 'coach-mesure-client', 'coach-client-programme',
-      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi'] },
+      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-client-messages'] },
+  { route: 'coach-messagerie',      icone: '💬', label: 'Messagerie',      ecrans: ['coach-messagerie'], compteur: true },
   { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
       'coach-exercices', 'coach-bilan-templates', 'coach-formations'] },
   { route: 'coach-equipe',          icone: '🧑‍🤝‍🧑', label: 'Équipe',     ecrans: ['coach-equipe'], gerant: true },
@@ -322,7 +338,7 @@ function afficherMenuCoach(hash) {
   }
   document.body.classList.add('coach-layout');
   const lien = m => `<a href="#${m.route}" class="coach-menu-item ${m.ecrans.includes(hash) ? 'on' : ''}">
-      <span class="coach-menu-icone">${m.icone}</span>${m.label}</a>`;
+      <span class="coach-menu-icone">${m.icone}</span>${m.label}${m.compteur ? '<span class="coach-menu-badge" data-compteur-messages hidden></span>' : ''}</a>`;
   const coachs = MENU_COACH.filter(m => !m.gerant);
   const gerants = MENU_COACH.filter(m => m.gerant && me.is_gerant);
   nav.innerHTML = `
@@ -333,6 +349,7 @@ function afficherMenuCoach(hash) {
       <div class="coach-menu-moi">${escHtml(`${me.prenom || ''} ${me.nom || ''}`.trim())}${me.is_gerant ? '<span>gérant</span>' : ''}</div>
       <button class="coach-menu-item" onclick="Router.confirmLogout()"><span class="coach-menu-icone">⏻</span>Déconnexion</button>
     </div>`;
+  if (typeof rafraichirCompteurMessages === 'function') rafraichirCompteurMessages();
 }
 
 // Onglets de la bibliothèque (programmes, exercices, modèles de bilans, formations)
@@ -355,6 +372,7 @@ const FICHE_ONGLETS = [
   { cle: 'entrainement', label: '💪 Entraînement',     pages: [['coach-client-programme', 'Programmes'], ['coach-training-client', 'Séances faites']] },
   { cle: 'plan',         label: '📋 Plan alimentaire', pages: [['coach-plan-edit', 'Plan'], ['coach-calcul-nutrition', 'Calcul (TDEE)'], ['coach-habits-edit', 'Habitudes']] },
   { cle: 'suivi',        label: '📈 Suivi',            pages: [['coach-journal-suivi', 'Journal de suivi'], ['coach-journal', 'Journal'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
+  { cle: 'messages',     label: '💬 Messages',        pages: [['coach-client-messages', 'Messages']] },
 ];
 const _ficheClients = new Map();   // profils déjà chargés, pour les droits
 let _ficheCoachs = null;           // comptes coach, pour afficher le référent
@@ -388,6 +406,9 @@ async function ajusterFicheNav(navId, clientId) {
     if (!nav) return;
     nav.querySelector('[data-groupe="plan"]')?.classList.toggle('hidden', studio);
     nav.querySelector('[data-groupe="suivi"]')?.classList.toggle('hidden', !suivi);
+    // Messages : conversation de suivi (référent, gérants) ou Équipe ONE2ONE (tous les coachs)
+    nav.querySelector('[data-groupe="messages"]')?.classList.toggle('hidden',
+      !studio && !(me?.is_gerant || client.coach_referent_id === me?.id));
 
     const entete = nav.querySelector('[data-entete]');
     if (entete) {

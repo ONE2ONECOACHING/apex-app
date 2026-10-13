@@ -14,7 +14,10 @@ const DashboardPage = {
           <div class="app-logo">ONE2ONE</div>
           <div class="app-title" id="dashGreeting">Dashboard</div>
         </div>
-        <button class="header-btn" onclick="Router.confirmLogout()" title="Déconnexion">⏻</button>
+        <div style="display:flex;gap:8px;">
+          <button class="header-btn msg-btn-entete" onclick="window.location.hash='#messages'" title="Messages" aria-label="Messages">💬<span class="msg-badge-entete" data-compteur-messages hidden></span></button>
+          <button class="header-btn" onclick="Router.confirmLogout()" title="Déconnexion">⏻</button>
+        </div>
       </div>
       <div id="dashContent">${DashboardPage._skeletonHTML()}</div>
       ${clientNav('dashboard')}`;
@@ -40,6 +43,7 @@ const DashboardPage = {
   },
 
   async init() {
+    if (typeof rafraichirCompteurMessages === 'function') rafraichirCompteurMessages();
     const profile = Router.userProfile;
     if (!profile) return;
     if (profile.role === 'coach') { window.location.hash = '#coach-clients'; return; }

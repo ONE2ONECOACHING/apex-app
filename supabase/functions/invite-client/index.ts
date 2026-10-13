@@ -2,6 +2,7 @@
 //   { email, prenom, nom, type_client? }           → client suivi (accès app) :
 //                                                     'suivi' (studio + suivi) ou 'distance'
 //   { studio: true, prenom, nom, telephone, email? } → client du studio, sans accès app
+//   { action: 'ouvrir_acces', clientId, email? }      → donne l'accès app à un client studio
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -48,6 +49,34 @@ serve(async (req) => {
     if (!callerProfile || callerProfile.role !== 'coach') throw new Error('Accès refusé');
 
     const body = await req.json();
+
+    // ── Ouvrir l'accès à l'app d'un client du studio ───────────────────────
+    if (body.action === 'ouvrir_acces') {
+      const { data: cible } = await supabaseAdmin.from('profiles')
+        .select('id, email, prenom, role, type_client').eq('id', body.clientId).single();
+      if (!cible || cible.role !== 'client' || cible.type_client !== 'studio') {
+        throw new Error('Réservé aux clients du studio sans suivi.');
+      }
+      const emailInterne = /@clients\.one2onecoaching\.fr$/.test(cible.email || '');
+      const nouvelEmail = String(body.email || '').trim().toLowerCase();
+      if (emailInterne && !nouvelEmail) throw new Error('Indique l\'email du client.');
+      if (nouvelEmail && nouvelEmail !== cible.email) {
+        const { data: pris } = await supabaseAdmin.from('profiles')
+          .select('id').ilike('email', nouvelEmail).neq('id', cible.id).maybeSingle();
+        if (pris) throw new Error('Un compte existe déjà avec cet email.');
+      }
+      const email = nouvelEmail || cible.email;
+      const password = randomPassword();
+      const { error: majErr } = await supabaseAdmin.auth.admin.updateUserById(cible.id, {
+        email, email_confirm: true, password, ban_duration: 'none',
+      });
+      if (majErr) throw majErr;
+      await supabaseAdmin.from('profiles').update({ email }).eq('id', cible.id);
+      return new Response(
+        JSON.stringify({ email, password }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const studio = !!body.studio;
     const prenom = String(body.prenom || '').trim();
     const nom    = String(body.nom || '').trim();

@@ -179,7 +179,7 @@ const db = {
   async getClientsAgenda() {
     const { data, error } = await getSupabase()
       .from('profiles')
-      .select('id, prenom, nom, type_client, facturation_mixte, telephone')
+      .select('id, prenom, nom, type_client, facturation_mixte, telephone, coach_referent_id')
       .eq('role', 'client')
       .neq('actif', false)
       .order('prenom');
@@ -253,6 +253,99 @@ const db = {
       .eq('serie_id', serieId)
       .gte('debut', debut);
     if (error) throw error;
+  },
+
+  // ── Messagerie ───────────────────────────────────────────────────────────
+  // canal « suivi » : client suivi ↔ référent ; « equipe » : client studio ↔ équipe
+
+  async getMessages(clientId, canal, limite = 200) {
+    const { data, error } = await getSupabase()
+      .from('messages')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('canal', canal)
+      .order('cree_le', { ascending: false })
+      .limit(limite);
+    if (error) throw error;
+    return (data || []).reverse();
+  },
+
+  async envoyerMessage(clientId, canal, champs) {
+    const { data, error } = await getSupabase()
+      .from('messages')
+      .insert({ client_id: clientId, canal, auteur_id: Router.userProfile.id, ...champs })
+      .select()
+      .single();
+    if (error) throw error;
+    // Notification au(x) destinataire(s), sans bloquer l'envoi
+    this._notifierMessage(data.id).catch(() => {});
+    return data;
+  },
+
+  async _notifierMessage(messageId) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) return;
+    await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/message-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ messageId }),
+    });
+  },
+
+  async supprimerMessage(id) {
+    const { error } = await getSupabase().from('messages').update({ supprime: true }).eq('id', id);
+    if (error) throw error;
+  },
+
+  async marquerConversationLue(clientId, canal) {
+    const { error } = await getSupabase().from('messages_lectures')
+      .upsert({ client_id: clientId, canal, lecteur_id: Router.userProfile.id, lu_jusqu_a: new Date().toISOString() },
+              { onConflict: 'client_id,canal,lecteur_id' });
+    if (error) throw error;
+  },
+
+  async getLecturesConversation(clientId, canal) {
+    const { data, error } = await getSupabase().from('messages_lectures')
+      .select('lecteur_id, lu_jusqu_a').eq('client_id', clientId).eq('canal', canal);
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Photo ou vocal : envoyé dans le stockage privé « messages »
+  async envoyerPieceMessage(clientId, canal, fichier, extension) {
+    const path = `${clientId}/${canal}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+    const { error } = await getSupabase().storage.from('messages').upload(path, fichier, { upsert: false, contentType: fichier.type || undefined });
+    if (error) throw error;
+    return path;
+  },
+
+  async urlPieceMessage(path) {
+    const { data, error } = await getSupabase().storage.from('messages').createSignedUrl(path, 3600);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  // Dernière activité et non-lus de chaque conversation visible
+  async getConversationsResume() {
+    const { data, error } = await getSupabase().rpc('conversations_resume');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Client studio : ouvrir l'accès à l'app (mot de passe aléatoire)
+  async ouvrirAccesClientStudio(clientId, email) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/invite-client`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action: 'ouvrir_acces', clientId, email }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.error) throw new Error(json.error || json.message || `Erreur serveur (${res.status})`);
+    return json; // { email, password }
   },
 
   // ── Journal de suivi (référent : lecture et écriture ; gérants : lecture) ─
