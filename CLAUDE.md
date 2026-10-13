@@ -79,9 +79,17 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Écran `pages/coach/journal-suivi.js` (route `coach-journal-suivi`, Suivi › Journal de suivi ; l'ancien « Journal » alimentaire s'appelle « Logbook »). Statuts et retards calculés par `JournalSuivi` : retard = deux dernières semaines passées non faites, uniquement à partir du 12 octobre 2026 (`JOURNAL_DEPART`). Bloc « Retards de suivi » sur le tableau de bord, badge dans la liste.
 - Le journal part de `profiles.date_debut` (date de début du suivi, réglée dans Plan alimentaire › Calcul).
 
+## Étape 5 — Messageries (en production depuis le 13 octobre 2026)
+
+- `sql/2026-10-13_messagerie.sql` et `sql/2026-10-13_messagerie_vu.sql` : `messages` (canal `suivi` = client ↔ référent, gérants en lecture ; canal `equipe` = client studio ↔ tous les coachs), `messages_lectures` (« Vu », heure posée par le serveur via `marquer_conversation_lue`), stockage privé `messages` (`<client>/<canal>/<fichier>`), `conversations_resume()`, les deux tables en direct (Realtime). Un message n'est jamais effacé : son auteur peut seulement le marquer supprimé.
+- Conversation partagée `js/chat.js` (`Chat.ouvrir`), écrans `pages/coach/messagerie.js` (route `coach-messagerie`, notifications vers `#coach-messagerie?c=<client>&k=<canal>`), `pages/coach/client-messages.js`, `pages/client/messages.js` (route `messages`).
+- Edge Function `message-push` (déployée le 13 octobre 2026) : notifie le client, le référent, ou pour un client studio le coach de son prochain rendez-vous. Les coachs sont maintenant abonnés aux notifications.
+- Clients studio : bouton « Ouvrir l'accès à l'app » (`invite-client`, action `ouvrir_acces`), app réduite (Entraînement, Messages) imposée par le routeur.
+- Transparence sur la lecture des conversations par les gérants : gérée hors de l'app par Benjamin (validation juridique à sa charge).
+
 ## Prochaines étapes
 
-5. Messageries (suivi client ↔ référent ; messagerie générale des clients studio, avec ouverture de l'accès app des clients studio). 6. Formules, facturation, Stripe (retirer d'abord les suppressions de test « Test Studio » d'`agenda_suppressions`). 7. CRM. 8. Version mobile complète des coachs.
+6. Formules, facturation, Stripe (retirer d'abord les suppressions de test « Test Studio » d'`agenda_suppressions`). 7. CRM. 8. Version mobile complète des coachs.
 
 ## Dépôt
 
