@@ -80,21 +80,25 @@ const CoachAccueilPage = {
     return j <= 0 ? "aujourd'hui" : j === 1 ? 'hier' : `il y a ${j} j`;
   },
 
-  // Où en est un programme : semaine en cours et nombre de semaines
+  // Où en est un programme : semaines réellement faites (et non le temps écoulé).
+  // Une semaine est faite quand chaque séance (hors cardio) a été faite une fois de
+  // plus : séance au studio = semaine cochée dans la grille ; séance à distance =
+  // séance enregistrée par le client (reliée au programme, ou avant le 12 octobre
+  // 2026 reconnue par son nom et sa date).
   _avancement(p) {
     const nb = p.nb_semaines || 4;
-    const studio = (p.client_prog_seances || []).filter(s => s.lieu === 'studio' && !s.cardio);
-    let semaine;
-    if (studio.length) {
-      const faites = Math.max(...studio.map(s => (s.seances_studio_semaines || []).length));
-      semaine = faites + 1;
-    } else if (p.date_debut) {
-      semaine = Math.floor((Date.now() - new Date(p.date_debut + 'T00:00:00')) / (7 * 864e5)) + 1;
-    } else {
-      semaine = 1;
-    }
-    semaine = Math.max(1, semaine);
-    return { semaine, nb, restantes: nb - semaine, termine: semaine > nb };
+    const seances = (p.client_prog_seances || []).filter(s => !s.cardio);
+    const logs = p._logs || [];
+    const fois = s => {
+      if (s.lieu === 'studio') return (s.seances_studio_semaines || []).length;
+      return logs.filter(l => l.seance_id === s.id || (!l.seance_id
+        && (!l.programme_id || l.programme_id === p.id)
+        && (l.nom_seance || '').trim().toLowerCase() === (s.nom || '').trim().toLowerCase()
+        && (!p.date_debut || l.date_seance >= p.date_debut))).length;
+    };
+    const faites = seances.length ? Math.min(...seances.map(fois)) : 0;
+    const semaine = faites + 1;
+    return { semaine, faites, nb, restantes: nb - semaine, termine: faites >= nb };
   },
 
   _bloc(titre, nb, couleur, contenu) {
@@ -160,7 +164,7 @@ const CoachAccueilPage = {
           <div class="ac-ligne" onclick="Router.navigate('coach-client-programme',{clientId:'${p.client_id}'})">
             <span class="ac-nom">${this._nom(p.client)}</span>
             <span class="ac-meta">${escHtml(p.nom)}</span>
-            <span class="ac-sem ${a.termine ? 'fin' : a.restantes <= 0 ? 'derniere' : ''}">${a.termine ? 'terminé' : `sem. ${a.semaine}/${a.nb}`}</span>
+            <span class="ac-sem ${a.termine ? 'fin' : a.restantes <= 0 ? 'derniere' : ''}">${a.termine ? 'terminé' : `${a.faites}/${a.nb} faites`}</span>
             ${a.termine ? `<button class="ac-cloche" title="Ne plus afficher cette phase terminée" onclick="event.stopPropagation();CoachAccueilPage.cycleVu('${p.id}')">✓ Vu</button>` : '<span class="ac-fleche">›</span>'}
           </div>`).join('')
       : vide('Aucun programme en cours.');

@@ -432,10 +432,23 @@ const db = {
   async getCyclesClients(coachId) {
     const { data, error } = await getSupabase()
       .from('client_programmes')
-      .select('*, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, lieu, cardio, seances_studio_semaines(semaine))')
+      .select('*, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, nom, lieu, cardio, seances_studio_semaines(semaine))')
       .eq('actif', true);
     if (error) throw error;
-    return (data || []).filter(p => p.client?.coach_referent_id === coachId && p.client?.actif !== false && !p.fin_vue);
+    const progs = (data || []).filter(p => p.client?.coach_referent_id === coachId && p.client?.actif !== false && !p.fin_vue);
+
+    // Séances faites à distance (journal d'entraînement des clients concernés)
+    const clientIds = [...new Set(progs.map(p => p.client_id))];
+    if (clientIds.length) {
+      const debut = progs.map(p => p.date_debut).filter(Boolean).sort()[0];
+      let q = getSupabase().from('seances_log')
+        .select('client_id, programme_id, seance_id, nom_seance, date_seance')
+        .in('client_id', clientIds);
+      if (debut) q = q.gte('date_seance', debut);
+      const { data: logs } = await q;
+      for (const p of progs) p._logs = (logs || []).filter(l => l.client_id === p.client_id);
+    }
+    return progs;
   },
 
   // Phase terminée « vue » : elle n'apparaît plus sur le tableau de bord
