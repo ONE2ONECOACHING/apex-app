@@ -3,6 +3,7 @@
 const CoachClientProgrammePage = {
   client:      null,
   programmes:  [],
+  archives:    [],     // programmes archivés (actif = false)
   templates:   [],
   _assigning:  false,
   _tplAssign:  null,   // modèle complet choisi dans la fenêtre d'attribution
@@ -30,6 +31,7 @@ const CoachClientProgrammePage = {
     // Reset état pour éviter les fuites entre clients
     this.client     = null;
     this.programmes = [];
+    this.archives   = [];
     this.templates  = [];
     this._assigning = false;
 
@@ -40,10 +42,11 @@ const CoachClientProgrammePage = {
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
 
     try {
-      [this.client, this.programmes, this.templates] = await Promise.all([
+      [this.client, this.programmes, this.templates, this.archives] = await Promise.all([
         db.getProfile(params.clientId),
         db.getClientProgrammesActifs(params.clientId),
         db.getProgTemplates(),
+        db.getClientProgrammesArchives(params.clientId).catch(() => []),
       ]);
 
       const prenom = this.client?.prenom || 'Client';
@@ -76,7 +79,24 @@ const CoachClientProgrammePage = {
       <button id="cpNotifyBtn" class="btn btn-secondary" style="width:100%;margin-top:8px;"
         onclick="CoachClientProgrammePage.notifyClient()">
         🔔 Notifier le client
-      </button>` : ''}`;
+      </button>` : ''}
+      ${this._archivesHtml()}`;
+  },
+
+  _archivesHtml() {
+    const arch = this.archives || [];
+    if (!arch.length) return '';
+    const date = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `
+      <div class="cp-archives">
+        <div class="cp-archives-titre">Programmes archivés <span>${arch.length}</span></div>
+        ${arch.map(a => `
+          <div class="cp-archive" onclick="Router.navigate('coach-programme-archive',{clientId:'${this.client.id}',progId:'${a.id}'})">
+            <div class="cp-archive-nom">${escHtml(a.nom || 'Programme')}</div>
+            <div class="cp-archive-meta">${date(a.date_debut || a.created_at)} · ${a.nb_semaines || 4} sem. · ${(a.client_prog_seances || []).length} séance${(a.client_prog_seances || []).length > 1 ? 's' : ''}</div>
+            <span class="cp-archive-fleche">›</span>
+          </div>`).join('')}
+      </div>`;
   },
 
   _programmeCard(p) {
@@ -139,8 +159,8 @@ const CoachClientProgrammePage = {
               onclick="CoachClientProgrammePage.repartirDeZero('${p.id}')">↻</button>
             <button class="btn btn-secondary btn-small" title="Modifier"
               onclick="CoachClientProgrammePage.openEditor('${p.id}')">✏️</button>
-            <button class="btn btn-ghost btn-small" style="color:var(--error);" title="Retirer"
-              onclick="CoachClientProgrammePage.removeProgramme('${p.id}','${(p.nom||'').replace(/'/g,"\\'")}')">×</button>
+            <button class="btn btn-secondary btn-small" title="Archiver : le client ne le voit plus, ses charges restent consultables"
+              onclick="CoachClientProgrammePage.removeProgramme('${p.id}')">Archiver</button>
           </div>
         </div>
         ${seancesHtml || '<div style="font-size:13px;color:var(--gray-muted);">Aucune séance.</div>'}
@@ -180,14 +200,18 @@ const CoachClientProgrammePage = {
     } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
-  async removeProgramme(progId, nom) {
-    if (!confirm(`Retirer le programme "${nom}" de ce client ?\nL'historique de séances est conservé.`)) return;
+  // Archiver : le programme n'est plus en cours (le client ne le voit plus),
+  // il reste consultable avec les charges utilisées dans « Programmes archivés »
+  async removeProgramme(progId) {
+    const p = this.programmes.find(x => x.id === progId);
+    if (!p || !confirm(`Archiver « ${p.nom} » ?\n\nLe client ne le verra plus. Tu le retrouves avec les charges utilisées dans « Programmes archivés ».`)) return;
     try {
       await db.deactivateClientProgramme(progId);
-      this.programmes = this.programmes.filter(p => p.id !== progId);
+      this.programmes = this.programmes.filter(x => x.id !== progId);
+      this.archives = [{ ...p, client_prog_seances: p.seances || [] }, ...this.archives];
       const tabsHtml = coachClientNav(this.client.id, 'coach-client-programme');
       this._render(tabsHtml);
-      toast('Programme retiré', 'info');
+      toast('Programme archivé', 'info');
     } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 

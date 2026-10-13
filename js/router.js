@@ -109,7 +109,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation', 'messages'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash) && hash !== 'set-password') {
         window.location.hash = '#coach-accueil';
@@ -178,6 +178,7 @@ const Router = {
         case 'coach-equipe':          app.innerHTML = CoachEquipePage.render();        CoachEquipePage.init();        break;
         case 'coach-agenda':          app.innerHTML = CoachAgendaPage.render();        CoachAgendaPage.init();        break;
         case 'coach-seance-studio':   app.innerHTML = CoachSeanceStudioPage.render();  CoachSeanceStudioPage.init();  break;
+        case 'coach-programme-archive': app.innerHTML = CoachProgrammeArchivePage.render(); CoachProgrammeArchivePage.init(); break;
         case 'coach-accueil':         app.innerHTML = CoachAccueilPage.render();       CoachAccueilPage.init();       break;
         case 'coach-calcul-nutrition': app.innerHTML = CoachCalculNutritionPage.render(); CoachCalculNutritionPage.init(); break;
         case 'coach-journal-suivi':   app.innerHTML = CoachJournalSuiviPage.render();  CoachJournalSuiviPage.init();  break;
@@ -324,7 +325,7 @@ const MENU_COACH = [
   { route: 'coach-agenda',          icone: '📅', label: 'Agenda',          ecrans: ['coach-agenda'] },
   { route: 'coach-clients',         icone: '👥', label: 'Clients',         ecrans: ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal',
       'coach-journal-view', 'coach-habits-edit', 'coach-bilan-client', 'coach-mesure-client', 'coach-client-programme',
-      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-client-messages'] },
+      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-client-messages', 'coach-programme-archive'] },
   { route: 'coach-messagerie',      icone: '💬', label: 'Messagerie',      ecrans: ['coach-messagerie'], compteur: true },
   { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
       'coach-exercices', 'coach-bilan-templates', 'coach-formations'] },
@@ -387,7 +388,7 @@ const _ficheClients = new Map();   // profils déjà chargés, pour les droits
 let _ficheCoachs = null;           // comptes coach, pour afficher le référent
 
 function coachClientNav(clientId, activeTab) {
-  const page = { 'coach-seance-studio': 'coach-client-programme', 'coach-journal-view': 'coach-journal',
+  const page = { 'coach-seance-studio': 'coach-client-programme', 'coach-programme-archive': 'coach-client-programme', 'coach-journal-view': 'coach-journal',
                  'coach-client-suivi': 'coach-journal' }[activeTab] || activeTab;
   const groupe = FICHE_ONGLETS.find(g => g.pages.some(([k]) => k === page)) || FICHE_ONGLETS[0];
   const navId = 'ficheNav' + Math.random().toString(36).slice(2, 8);

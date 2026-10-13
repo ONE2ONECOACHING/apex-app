@@ -1819,6 +1819,44 @@ const db = {
     if (error) throw error;
   },
 
+  // Programmes archivés d'un client (retirés : actif = false), le plus récent d'abord
+  async getClientProgrammesArchives(clientId) {
+    const { data, error } = await getSupabase()
+      .from('client_programmes')
+      .select('id, nom, date_debut, created_at, nb_semaines, client_prog_seances(id)')
+      .eq('client_id', clientId)
+      .eq('actif', false)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async reactiverClientProgramme(programmeId) {
+    const { error } = await getSupabase()
+      .from('client_programmes')
+      .update({ actif: true, fin_vue: false })
+      .eq('id', programmeId);
+    if (error) throw error;
+  },
+
+  // Séances faites par un client depuis une date, avec les séries (par paquets de 1 000)
+  async getSeancesLogDepuis(clientId, depuis) {
+    const lignes = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await getSupabase()
+        .from('seances_log')
+        .select('id, programme_id, seance_id, nom_seance, date_seance, seances_log_sets(exercice_id, client_prog_exercice_id, ordre, type_effort, sets_data)')
+        .eq('client_id', clientId)
+        .gte('date_seance', depuis)
+        .order('date_seance', { ascending: true })
+        .range(de, de + 999);
+      if (error) throw error;
+      lignes.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    return lignes;
+  },
+
   async deactivateClientProgramme(programmeId) {
     const { error } = await getSupabase()
       .from('client_programmes')
