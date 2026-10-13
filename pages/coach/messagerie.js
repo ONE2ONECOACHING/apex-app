@@ -93,8 +93,8 @@ const CoachMessageriePage = {
         const cle = `${v.client.id}|${v.canal}`;
         const nonLus = v.peutEcrire ? Number(v.resume?.non_lus || 0) : 0;
         return `
-          <div class="msg-item ${this._actif === cle ? 'on' : ''}" onclick="CoachMessageriePage.ouvrir('${v.client.id}','${v.canal}')">
-            <div class="client-avatar" style="width:38px;height:38px;font-size:12px;">${escHtml(((v.client.prenom || 'C')[0] + (v.client.nom ? v.client.nom[0] : '')).toUpperCase())}</div>
+          <div class="msg-item ${this._actif === cle ? 'on' : ''} ${nonLus ? 'non-lu' : ''}" onclick="CoachMessageriePage.ouvrir('${v.client.id}','${v.canal}')">
+            <span class="msg-point"></span>
             <div class="msg-item-corps">
               <div class="msg-item-haut">
                 <span class="msg-item-nom">${escHtml(this._nom(v.client))}</span>

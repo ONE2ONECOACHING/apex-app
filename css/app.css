@@ -1429,7 +1429,13 @@ body.coach-layout .nav-bottom { display: none; }
 .msg-liste { border-right: 1px solid var(--border-solid); overflow-y: auto; }
 .msg-filtres { position: sticky; top: 0; z-index: 2; background: var(--white); padding: 10px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--border-solid); }
 .msg-filtres .input { height: 36px; font-size: 13px; }
-.msg-item { display: flex; gap: 10px; align-items: center; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border-light); }
+.msg-item { display: flex; gap: 8px; align-items: center; height: 64px; flex-shrink: 0; box-sizing: border-box; padding: 0 14px 0 8px; cursor: pointer; border-bottom: 1px solid var(--border-light); }
+.msg-point { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.msg-item.non-lu .msg-point { background: #0A84FF; }
+.msg-item-nom { font-weight: 500 !important; }
+.msg-item.non-lu .msg-item-nom { font-weight: 700 !important; }
+.msg-item.non-lu .msg-item-apercu { color: var(--black); }
+.msg-item-bas { min-height: 18px; margin-top: 2px; }
 .msg-item:hover { background: var(--bg); }
 .msg-item.on { background: var(--gold-light); }
 .msg-item-corps { flex: 1; min-width: 0; }
@@ -1438,8 +1444,8 @@ body.coach-layout .nav-bottom { display: none; }
 .msg-item-quand { font-size: 11px; color: var(--gray-light); flex-shrink: 0; }
 .msg-item-apercu { font-size: 12px; color: var(--gray-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-canal { font-size: 10px; font-weight: 700; color: var(--gold); background: var(--gold-light); border-radius: 4px; padding: 0 5px; }
-.msg-canal.lecture { color: var(--gray); background: var(--bg); }
-.msg-badge, .coach-menu-badge, .msg-badge-entete { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #25D366; color: var(--white);
+.msg-canal.lecture { color: var(--gray-light); background: none; padding: 0; font-weight: 500; }
+.msg-badge, .coach-menu-badge, .msg-badge-entete { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #0A84FF; color: var(--white);
   font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; flex-shrink: 0; }
 .coach-menu-badge { margin-left: auto; }
 .msg-badge-entete { position: absolute; top: -4px; right: -4px; }
