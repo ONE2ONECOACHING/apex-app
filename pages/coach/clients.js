@@ -71,8 +71,8 @@ const CoachClientsPage = {
       const alertes = [];
       if (!inactifs) {
         if (retards.has(c.id)) alertes.push(['retard', 'Retard de suivi']);
-        if (suivi && !avecPlan.has(c.id)) alertes.push(['sans_plan', 'Sans plan']);
-        if (!prog) alertes.push(['sans_programme', 'Sans programme']);
+        if (suivi && !avecPlan.has(c.id)) alertes.push(['sans_plan', 'Sans plan alimentaire']);
+        if (!prog) alertes.push(['sans_programme', 'Sans programme d\'entraînement']);
         if (aLire) alertes.push(['bilan_a_lire', 'Bilan à lire']);
         if (prog?.a.termine) alertes.push(['cycle_termine', 'Cycle terminé']);
       }
@@ -105,7 +105,7 @@ const CoachClientsPage = {
         ${sel('_type', this._type, [['', 'Tous les types'], ...Object.entries(TYPES_CLIENT)])}
         ${sel('_filtreRef', this._filtreRef, [['', 'Tous les référents'], ...this.coachs.map(c => [c.id, `${c.prenom || ''} ${c.nom || ''}`.trim()])])}
         ${sel('_surveiller', this._surveiller, [['', 'À surveiller : tout'], ['alerte', 'Avec une alerte'], ['retard', 'Retard de suivi'],
-          ['sans_plan', 'Sans plan'], ['sans_programme', 'Sans programme'], ['bilan_a_lire', 'Bilan à lire'], ['cycle_termine', 'Cycle terminé']])}
+          ['sans_plan', 'Sans plan alimentaire'], ['sans_programme', 'Sans programme d\'entraînement'], ['bilan_a_lire', 'Bilan à lire'], ['cycle_termine', 'Cycle terminé']])}
       </div>`;
   },
 
@@ -175,7 +175,7 @@ const CoachClientsPage = {
       <div class="cl-cadre">
         <table class="cl-table">
           <thead><tr>
-            ${th('nom', 'Client')}${th('referent', 'Référent')}${th('programme', 'Programme')}${th('plan', 'Plan')}${th('bilan', 'Bilan')}${th('poids', 'Poids')}${th('alertes', 'Alertes')}
+            ${th('nom', 'Client')}${th('referent', 'Référent')}${th('programme', 'Entraînement')}${th('plan', 'Nutrition')}${th('bilan', 'Bilan')}${th('poids', 'Poids')}${th('alertes', 'Alertes')}
           </tr></thead>
           <tbody>${lignes.map(l => {
             const c = l.client;
@@ -183,11 +183,11 @@ const CoachClientsPage = {
             <tr onclick="CoachClientsPage.openClient('${c.id}')">
               <td data-label="Client"><div class="cl-nom">${escHtml(this._nom(c))}</div><span class="cl-sous">${TYPES_CLIENT[c.type_client] || ''}</span></td>
               <td data-label="Référent">${escHtml(this._referent(c))}</td>
-              <td data-label="Programme">${l.prog
+              <td data-label="Entraînement">${l.prog
                 ? `<div class="cl-prog">${escHtml(l.prog.p.nom)}${l.autresProgs > 0 ? ` <span class="cl-sous">+${l.autresProgs}</span>` : ''}</div>
                    <span class="cl-sous ${l.prog.a.termine ? 'cl-rouge' : l.prog.a.restantes <= 0 ? 'cl-orange' : ''}">${l.prog.a.termine ? 'terminé' : `sem. ${l.prog.a.faites}/${l.prog.a.nb}`}</span>`
                 : '<span class="cl-muted">Aucun</span>'}</td>
-              <td data-label="Plan">${l.plan === null ? '<span class="cl-muted">—</span>' : l.plan ? '<span class="cl-vert">Actif</span>' : '<span class="cl-rouge">Sans plan</span>'}</td>
+              <td data-label="Nutrition">${l.plan === null ? '<span class="cl-muted">—</span>' : l.plan ? '<span class="cl-vert">Actif</span>' : '<span class="cl-rouge">Sans plan</span>'}</td>
               <td data-label="Bilan">${this._bilanHtml(l)}</td>
               <td data-label="Poids">${l.poids != null ? `${String(l.poids).replace('.', ',')} kg` : '<span class="cl-muted">—</span>'}</td>
               <td data-label="Alertes">${l.alertes.map(a => `<span class="cl-alerte ${a[0]}">${a[1]}</span>`).join('') || ''}</td>
