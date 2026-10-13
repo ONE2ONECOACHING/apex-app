@@ -298,10 +298,9 @@ const db = {
     if (error) throw error;
   },
 
+  // L'heure de lecture est celle du serveur (fiable pour le « Vu »)
   async marquerConversationLue(clientId, canal) {
-    const { error } = await getSupabase().from('messages_lectures')
-      .upsert({ client_id: clientId, canal, lecteur_id: Router.userProfile.id, lu_jusqu_a: new Date().toISOString() },
-              { onConflict: 'client_id,canal,lecteur_id' });
+    const { error } = await getSupabase().rpc('marquer_conversation_lue', { p_client: clientId, p_canal: canal });
     if (error) throw error;
   },
 

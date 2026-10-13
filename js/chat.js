@@ -80,6 +80,13 @@ const Chat = {
         this._render(true);
         if (m.auteur_id !== this._moi()) this._marquerLu();
       })
+      // « Vu » en direct : l'autre vient d'ouvrir la conversation
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages_lectures', filter: `client_id=eq.${clientId}` }, p => {
+        const l = p.new;
+        if (!l || l.canal !== canal || !this.opts) return;
+        this.lectures = this.lectures.filter(x => x.lecteur_id !== l.lecteur_id).concat(l);
+        this._render(false);
+      })
       .subscribe();
   },
 
