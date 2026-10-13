@@ -1464,3 +1464,6 @@ body.coach-layout .nav-bottom { display: none; }
 }
 
 .ac-en-cours { font-size: 10px; font-weight: 700; color: #059669; background: #E7F7EF; border-radius: 999px; padding: 1px 6px; margin-left: 4px; }
+
+/* Écrans coach en pleine largeur (agenda, tableau de bord, messagerie, grille, journal) */
+body.coach-layout.coach-plein #app { max-width: none !important; }

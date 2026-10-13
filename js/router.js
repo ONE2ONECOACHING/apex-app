@@ -126,6 +126,9 @@ const Router = {
 
     // Menu de gauche de l'espace coach
     afficherMenuCoach(this.userProfile?.role === 'coach' && coachRoutes.includes(hash) ? hash : null);
+    // Écrans qui utilisent toute la largeur (les formulaires gardent une largeur limitée)
+    document.body.classList.toggle('coach-plein', ['coach-agenda', 'coach-accueil', 'coach-messagerie',
+      'coach-seance-studio', 'coach-journal-suivi'].includes(hash));
 
     // Charger la page avec transition
     this.currentPage = hash;
