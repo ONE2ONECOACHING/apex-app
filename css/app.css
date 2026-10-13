@@ -1462,3 +1462,5 @@ body.coach-layout .nav-bottom { display: none; }
   .msg-fiche { margin: 0 -1rem; border-radius: 0; height: calc(100vh - 240px); }
   .chat-photo { max-width: 200px; }
 }
+
+.ac-en-cours { font-size: 10px; font-weight: 700; color: #059669; background: #E7F7EF; border-radius: 999px; padding: 1px 6px; margin-left: 4px; }

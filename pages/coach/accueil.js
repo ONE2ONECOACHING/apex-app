@@ -48,6 +48,11 @@ const CoachAccueilPage = {
       this.retards = suivis.filter(c => c.coach_referent_id === me.id && JournalSuivi.enRetard(
         c.date_debut, [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26, c.journal_suivi));
       this._render();
+      clearInterval(this._minuteur);
+      this._minuteur = setInterval(() => {
+        if (Router.currentPage !== 'coach-accueil') { clearInterval(this._minuteur); return; }
+        this._render();
+      }, 60000);
     } catch (e) {
       document.getElementById('acContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
@@ -103,13 +108,19 @@ const CoachAccueilPage = {
   _render() {
     const vide = texte => `<div class="ac-vide">${texte}</div>`;
 
-    const coachings = this.coachings.length
-      ? this.coachings.map(r => `
+    // Seulement les coachings en cours ou à venir : un créneau terminé disparaît
+    const maintenant = Date.now();
+    const aVenir = this.coachings.filter(r => new Date(r.fin).getTime() > maintenant);
+    const termines = this.coachings.length - aVenir.length;
+    const coachings = aVenir.length
+      ? aVenir.map(r => `
           <div class="ac-ligne" onclick="${r.type === 'prospect' ? "window.location.hash='#coach-agenda'" : `CoachSeanceStudioPage.ouvrirPourClient('${r.client_id}')`}">
-            <span class="ac-heure">${this._hm(r.debut)} – ${this._hm(r.fin)}</span>
+            <span class="ac-heure">${this._hm(r.debut)} – ${this._hm(r.fin)}${new Date(r.debut).getTime() <= maintenant ? ' <span class="ac-en-cours">en cours</span>' : ''}</span>
             <span class="ac-nom">${r.type === 'prospect' ? '🎯 ' + escHtml(r.prospect_nom || 'Prospect') : this._nom(r.client)}</span><span class="ac-fleche">›</span>
           </div>`).join('')
-      : vide(`Aucun coaching aujourd'hui · <a href="#coach-agenda">ouvrir l'agenda</a>`);
+      : vide(termines
+          ? `Plus de coaching aujourd'hui (${termines} terminé${termines > 1 ? 's' : ''}) · <a href="#coach-agenda">ouvrir l'agenda</a>`
+          : `Aucun coaching aujourd'hui · <a href="#coach-agenda">ouvrir l'agenda</a>`);
 
     const aTraiter = this.aTraiter.length
       ? this.aTraiter.map(b => `
@@ -156,7 +167,7 @@ const CoachAccueilPage = {
 
     document.getElementById('acContent').innerHTML = `
       <div class="ac-grille">
-        ${this._bloc('📅 Mes coachings du jour', this.coachings.length, 'var(--gold)', coachings)}
+        ${this._bloc('📅 Mes coachings du jour', aVenir.length, 'var(--gold)', coachings)}
         ${this._bloc('📋 Bilans à traiter', this.aTraiter.length, 'var(--error)', aTraiter)}
         ${this._bloc('⏳ Bilans en attente', parClient.size, '#D97706', enAttente)}
         ${this._bloc('⚠️ Retards de suivi', this.retards.length, 'var(--error)', this.retards.length
