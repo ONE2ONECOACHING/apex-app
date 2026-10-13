@@ -229,6 +229,20 @@ const CoachClientEditPage = {
       </div>`;
   },
 
+  async changerActif(actif) {
+    const prenom = this.client.prenom || 'ce client';
+    if (!actif && !confirm(`Passer ${prenom} en client inactif ?\n\nIl disparaît des listes, du tableau de bord et de l'agenda, ses bilans automatiques sont arrêtés et il ne reçoit plus de rappels. Toutes ses données sont conservées, et tu pourras le réactiver.`)) return;
+    try {
+      await db.setClientActif(this.client.id, actif);
+      this.client.actif = actif;
+      _ficheClients.delete(this.client.id);
+      this.renderForm();
+      toast(actif ? `${prenom} est de nouveau actif. Pense à relancer ses bilans si besoin.` : `${prenom} est inactif`, 'success');
+    } catch (e) {
+      toast('Erreur : ' + e.message, 'error');
+    }
+  },
+
   _coachLabel(co) {
     const nom = `${co.prenom || ''} ${co.nom || ''}`.trim() || co.email;
     return co.is_gerant ? `${nom} (gérant)` : nom;
