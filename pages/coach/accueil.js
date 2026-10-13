@@ -164,7 +164,7 @@ const CoachAccueilPage = {
           <div class="ac-ligne" onclick="Router.navigate('coach-client-programme',{clientId:'${p.client_id}'})">
             <span class="ac-nom">${this._nom(p.client)}</span>
             <span class="ac-meta">${escHtml(p.nom)}</span>
-            <span class="ac-sem ${a.termine ? 'fin' : a.restantes <= 0 ? 'derniere' : ''}">${a.termine ? 'terminé' : `${a.faites}/${a.nb} faites`}</span>
+            <span class="ac-sem ${a.termine ? 'fin' : a.restantes <= 0 ? 'derniere' : ''}">${a.termine ? 'terminé' : `sem. ${a.faites}/${a.nb}`}</span>
             ${a.termine ? `<button class="ac-cloche" title="Ne plus afficher cette phase terminée" onclick="event.stopPropagation();CoachAccueilPage.cycleVu('${p.id}')">✓ Vu</button>` : '<span class="ac-fleche">›</span>'}
           </div>`).join('')
       : vide('Aucun programme en cours.');
