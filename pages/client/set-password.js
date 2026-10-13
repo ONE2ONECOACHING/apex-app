@@ -89,8 +89,9 @@ const SetPasswordPage = {
     try {
       await db.updatePassword(pass1);
       // Recharger le profil puis aller à l'onboarding
+      const coach = Router.userProfile?.role === 'coach';
       Router.userProfile = null;
-      window.location.hash = '#onboarding';
+      window.location.hash = coach ? '#coach-accueil' : '#onboarding';
     } catch (e) {
       alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
       btn.disabled = false;

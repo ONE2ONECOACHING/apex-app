@@ -72,7 +72,8 @@ serve(async (req) => {
         email,
         email_confirm: true,
         password,
-        user_metadata: { prenom },
+        // mdp_a_choisir : le routeur lui fait choisir son mot de passe à la 1re connexion
+        user_metadata: { prenom, mdp_a_choisir: true },
       });
       if (createErr) {
         if (/already/i.test(createErr.message)) throw new Error('Un compte existe déjà avec cet email.');

@@ -113,7 +113,7 @@ const CoachEquipePage = {
       const { password } = await db.manageTeam({ action: 'add', email, prenom, nom, gerant });
       if (!password) throw new Error('Réponse inattendue du serveur : vérifie que la fonction manage-team est bien déployée.');
       const appUrl  = APP_CONFIG.APP_URL;
-      const message = `Bonjour ${prenom} 👊\n\nTon accès coach ONE2ONE est prêt.\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 ${password}\n\nPense à changer ton mot de passe avec « Mot de passe oublié ? » sur la page de connexion.`;
+      const message = `Bonjour ${prenom} 👊\n\nTon accès coach ONE2ONE est prêt.\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 ${password}\n\nConnecte-toi avec ce mot de passe : l'app te demandera aussitôt d'en choisir un nouveau.`;
       document.getElementById('eqModal').innerHTML = `
         <div class="modal-overlay">
           <div class="modal">

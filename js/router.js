@@ -95,6 +95,12 @@ const Router = {
       window.location.hash = '#set-password';
       return;
     }
+    // Nouveau coach (créé depuis l'écran Équipe) : choisir son mot de passe d'abord
+    if (user && this.userProfile && this.userProfile.role === 'coach'
+        && user.user_metadata?.mdp_a_choisir && !mdpPersonnel && hash !== 'set-password') {
+      window.location.hash = '#set-password';
+      return;
+    }
 
     // Notifications : clients (après l'inscription) et coachs (messagerie)
     if (user && this.userProfile && (this.userProfile.role === 'coach' || this.userProfile.onboarding_done)) {
@@ -105,7 +111,7 @@ const Router = {
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation', 'messages'];
     const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages'];
     if (this.userProfile) {
-      if (this.userProfile.role === 'coach' && clientRoutes.includes(hash)) {
+      if (this.userProfile.role === 'coach' && clientRoutes.includes(hash) && hash !== 'set-password') {
         window.location.hash = '#coach-accueil';
         return;
       }

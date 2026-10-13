@@ -257,7 +257,7 @@ const CoachClientsPage = {
       // Le coach qui crée le client en devient le référent (modifiable sur la fiche)
       await db.updateProfile(profileId, { coach_referent_id: Router.userProfile.id }).catch(() => {});
       const appUrl  = APP_CONFIG.APP_URL;
-      const message = `Bonjour ${prenom} 👊\n\nTon espace ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 ${password}\n\nConnecte-toi et choisis ton nouveau mot de passe.`;
+      const message = `Bonjour ${prenom} 👊\n\nTon espace ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 ${password}\n\nConnecte-toi avec ce mot de passe : l'app te demandera aussitôt d'en choisir un nouveau.`;
       document.getElementById('createForm').style.display = 'none';
       document.getElementById('inviteResult').style.display = 'block';
       document.getElementById('inviteResult').innerHTML = `
