@@ -1484,7 +1484,7 @@ body.coach-layout.coach-plein #app { max-width: none !important; }
 .cl-table tbody tr:hover { background: #F7F6F2; }
 .cl-table tbody tr:last-child td { border-bottom: none; }
 .cl-nom { font-weight: 700; color: var(--black); white-space: nowrap; }
-.cl-table td[data-label="Nutrition"], .cl-table td[data-label="Poids"], .cl-table td[data-label="Bilan"] { white-space: nowrap; }
+.cl-table td[data-label="Nutrition"], .cl-table td[data-label="Bilan"] { white-space: nowrap; }
 .cl-prog { font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cl-sous { display: block; font-size: 11px; color: #8A8A93; margin-top: 2px; }
 .cl-prog .cl-sous { display: inline; }

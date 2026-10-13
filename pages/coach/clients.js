@@ -43,8 +43,7 @@ const CoachClientsPage = {
         db.getSuivisPourRetards().catch(() => []),
       ]);
       this.coachs = coachs.filter(c => c.id !== COMPTE_PARTAGE_ID);
-      const poids = await db.getLastPoidsPerClient(clients.map(c => c.id)).catch(() => ({}));
-      this._donnees = { plans, programmes, bilans, suivis, poids };
+      this._donnees = { plans, programmes, bilans, suivis };
       this.lignes = this._construire(clients);
       this._renderFiltres();
       this._renderTableau();
@@ -55,7 +54,7 @@ const CoachClientsPage = {
 
   // ── Données d'une ligne ────────────────────────────────────────────────────
   _construire(clients, inactifs = false) {
-    const { plans, programmes, bilans, suivis, poids } = this._donnees;
+    const { plans, programmes, bilans, suivis } = this._donnees;
     const avecPlan = new Set(plans.map(p => p.profile_id));
     const retards = new Set(suivis.filter(c => JournalSuivi.enRetard(
       c.date_debut, [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26, c.journal_suivi)).map(c => c.id));
@@ -79,7 +78,7 @@ const CoachClientsPage = {
       return {
         client: c, suivi, prog, autresProgs: progs.length - 1,
         plan: suivi ? avecPlan.has(c.id) : null,
-        bilan, aLire, poids: poids[c.id]?.poids ?? null, alertes,
+        bilan, aLire, alertes,
       };
     });
   },
@@ -146,7 +145,6 @@ const CoachClientsPage = {
       case 'programme': return l.prog ? l.prog.a.restantes : 999;
       case 'plan':      return l.plan === null ? 2 : l.plan ? 1 : 0;
       case 'bilan':     return l.aLire ? '0' : l.bilan ? '1' + (9e12 - new Date(l.bilan.completed_at || l.bilan.semaine).getTime()) : '9';
-      case 'poids':     return l.poids ?? 9999;
       case 'alertes':   return -l.alertes.length;
       default:          return this._nom(l.client).toLowerCase();
     }
@@ -175,7 +173,7 @@ const CoachClientsPage = {
       <div class="cl-cadre">
         <table class="cl-table">
           <thead><tr>
-            ${th('nom', 'Client')}${th('referent', 'Référent')}${th('programme', 'Entraînement')}${th('plan', 'Nutrition')}${th('bilan', 'Bilan')}${th('poids', 'Poids')}${th('alertes', 'Alertes')}
+            ${th('nom', 'Client')}${th('referent', 'Référent')}${th('programme', 'Entraînement')}${th('plan', 'Nutrition')}${th('bilan', 'Bilan')}${th('alertes', 'Alertes')}
           </tr></thead>
           <tbody>${lignes.map(l => {
             const c = l.client;
@@ -189,7 +187,6 @@ const CoachClientsPage = {
                 : '<span class="cl-muted">Aucun</span>'}</td>
               <td data-label="Nutrition">${l.plan === null ? '<span class="cl-muted">—</span>' : l.plan ? '<span class="cl-vert">Actif</span>' : '<span class="cl-rouge">Sans plan</span>'}</td>
               <td data-label="Bilan">${this._bilanHtml(l)}</td>
-              <td data-label="Poids">${l.poids != null ? `${String(l.poids).replace('.', ',')} kg` : '<span class="cl-muted">—</span>'}</td>
               <td data-label="Alertes">${l.alertes.map(a => `<span class="cl-alerte ${a[0]}">${a[1]}</span>`).join('') || ''}</td>
             </tr>`;
           }).join('')}</tbody>
