@@ -1436,6 +1436,8 @@ body.coach-layout .nav-bottom { display: none; }
 .msg-item.non-lu .msg-item-nom { font-weight: 700 !important; }
 .msg-item.non-lu .msg-item-apercu { color: var(--black); }
 .msg-item-bas { min-height: 18px; margin-top: 2px; }
+.msg-switch { width: 100%; }
+.msg-switch button { flex: 1; }
 .msg-item:hover { background: var(--bg); }
 .msg-item.on { background: var(--gold-light); }
 .msg-item-corps { flex: 1; min-width: 0; }

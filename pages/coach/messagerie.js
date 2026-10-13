@@ -9,6 +9,7 @@ const CoachMessageriePage = {
   _actif: null,        // `${clientId}|${canal}`
   _recherche: '',
   _filtreCoach: '',
+  _nonLus: false,      // filtre « Non lus »
 
   render() {
     document.body.classList.add('coach-wide');
@@ -55,6 +56,8 @@ const CoachMessageriePage = {
     }
   },
 
+  _nonLu(v) { return v.peutEcrire ? Number(v.resume?.non_lus || 0) : 0; },
+
   _nom(c) { return `${c.prenom || ''} ${c.nom || ''}`.trim() || 'Client'; },
 
   _apercu(r) {
@@ -76,11 +79,19 @@ const CoachMessageriePage = {
     const s = this._recherche.toLowerCase();
     const liste = this.conversations
       .filter(v => !s || this._nom(v.client).toLowerCase().includes(s))
+      // Seulement les discussions existantes ; une recherche montre aussi les
+      // clients sans message, pour en commencer une
+      .filter(v => s || v.resume || this._actif === `${v.client.id}|${v.canal}`)
+      .filter(v => !this._nonLus || this._nonLu(v) || this._actif === `${v.client.id}|${v.canal}`)
       .filter(v => !this._filtreCoach || v.client.coach_referent_id === this._filtreCoach)
       .sort((a, b) => (b.resume?.dernier_le || '').localeCompare(a.resume?.dernier_le || '') || this._nom(a.client).localeCompare(this._nom(b.client)));
 
     document.getElementById('msgListe').innerHTML = `
       <div class="msg-filtres">
+        <div class="ag-switch msg-switch">
+          <button class="${this._nonLus ? '' : 'on'}" onclick="CoachMessageriePage._nonLus=false;CoachMessageriePage._renderListe()">Toutes</button>
+          <button class="${this._nonLus ? 'on' : ''}" onclick="CoachMessageriePage._nonLus=true;CoachMessageriePage._renderListe()">Non lues</button>
+        </div>
         <input class="input" type="search" placeholder="🔍 Chercher un client…" value="${escHtml(this._recherche)}"
           oninput="CoachMessageriePage._recherche=this.value;CoachMessageriePage._renderListe();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
         ${moi.is_gerant ? `
@@ -91,7 +102,7 @@ const CoachMessageriePage = {
       </div>
       ${liste.length ? liste.map(v => {
         const cle = `${v.client.id}|${v.canal}`;
-        const nonLus = v.peutEcrire ? Number(v.resume?.non_lus || 0) : 0;
+        const nonLus = this._nonLu(v);
         return `
           <div class="msg-item ${this._actif === cle ? 'on' : ''} ${nonLus ? 'non-lu' : ''}" onclick="CoachMessageriePage.ouvrir('${v.client.id}','${v.canal}')">
             <span class="msg-point"></span>
@@ -106,7 +117,7 @@ const CoachMessageriePage = {
               </div>
             </div>
           </div>`;
-      }).join('') : '<div class="chat-vide">Aucune conversation.</div>'}`;
+      }).join('') : `<div class="chat-vide">${this._nonLus ? 'Aucune conversation non lue.' : 'Aucune conversation.'}</div>`}`;
   },
 
   ouvrir(clientId, canal) {
