@@ -14,7 +14,7 @@ const CoachClientsPage = {
   _inactifs: null,
 
   render() {
-    document.body.classList.add('coach-wide');
+    document.body.classList.add('coach-wide', 'coach-plein');
     return `
       <div class="app-header">
         <div>
