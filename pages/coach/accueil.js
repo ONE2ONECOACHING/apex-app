@@ -96,13 +96,13 @@ const CoachAccueilPage = {
     // ses séances portent les mêmes noms que celles de la phase précédente.
     const attribuee = (p.created_at || '').slice(0, 10);
     const depuis = [p.date_debut, attribuee].filter(Boolean).sort().pop() || '';
+    // Tout ce qui précède « depuis » (attribution ou « Repartir de zéro ») est ignoré
     const fois = s => {
-      if (s.cardio) return (p._cardio || []).filter(v => v.seance_id === s.id).length;
-      if (s.lieu === 'studio') return (s.seances_studio_semaines || []).length;
-      return logs.filter(l => l.seance_id === s.id || (!l.seance_id
+      if (s.cardio) return (p._cardio || []).filter(v => v.seance_id === s.id && (v.completed_at || '').slice(0, 10) >= depuis).length;
+      if (s.lieu === 'studio') return (s.seances_studio_semaines || []).filter(w => (w.faite_le || '') >= depuis).length;
+      return logs.filter(l => l.date_seance >= depuis && (l.seance_id === s.id || (!l.seance_id
         && (!l.programme_id || l.programme_id === p.id)
-        && (l.nom_seance || '').trim().toLowerCase() === (s.nom || '').trim().toLowerCase()
-        && l.date_seance >= depuis)).length;
+        && (l.nom_seance || '').trim().toLowerCase() === (s.nom || '').trim().toLowerCase()))).length;
     };
     const faites = seances.length ? Math.min(...seances.map(fois)) : 0;
     const semaine = faites + 1;

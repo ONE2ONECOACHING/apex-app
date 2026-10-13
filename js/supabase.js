@@ -432,7 +432,7 @@ const db = {
   async getCyclesClients(coachId) {
     const { data, error } = await getSupabase()
       .from('client_programmes')
-      .select('*, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, nom, lieu, cardio, seances_studio_semaines(semaine))')
+      .select('*, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, nom, lieu, cardio, seances_studio_semaines(semaine, faite_le))')
       .eq('actif', true);
     if (error) throw error;
     const progs = (data || []).filter(p => p.client?.coach_referent_id === coachId && p.client?.actif !== false && !p.fin_vue);
@@ -462,7 +462,7 @@ const db = {
           return debut ? q.gte('date_seance', debut) : q;
         }),
         cardioIds.length
-          ? toutLire(() => getSupabase().from('cardio_validations').select('seance_id, semaine').in('seance_id', cardioIds).order('seance_id'))
+          ? toutLire(() => getSupabase().from('cardio_validations').select('seance_id, semaine, completed_at').in('seance_id', cardioIds).order('seance_id'))
           : Promise.resolve([]),
       ]);
       for (const p of progs) {
@@ -1775,6 +1775,13 @@ const db = {
       .upsert({ client_id: clientId, ...champs,
                 maj_par: Router.userProfile?.id || null, maj_le: new Date().toISOString() },
               { onConflict: 'client_id' });
+    if (error) throw error;
+  },
+
+  // Nouvelle date de début (et retour du cycle dans le tableau de bord)
+  async redemarrerProgramme(programmeId, dateDebut) {
+    const { error } = await getSupabase().from('client_programmes')
+      .update({ date_debut: dateDebut, fin_vue: false }).eq('id', programmeId);
     if (error) throw error;
   },
 

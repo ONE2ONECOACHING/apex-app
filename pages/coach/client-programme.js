@@ -135,6 +135,8 @@ const CoachClientProgrammePage = {
             </div>
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="btn btn-secondary btn-small" title="Repartir de zéro : seules les séances faites à partir d'aujourd'hui comptent"
+              onclick="CoachClientProgrammePage.repartirDeZero('${p.id}')">↻</button>
             <button class="btn btn-secondary btn-small" title="Modifier"
               onclick="CoachClientProgrammePage.openEditor('${p.id}')">✏️</button>
             <button class="btn btn-ghost btn-small" style="color:var(--error);" title="Retirer"
@@ -162,6 +164,20 @@ const CoachClientProgrammePage = {
       clientId:          this.client.id,
       clientPrenom:      this.client.prenom || '',
     });
+  },
+
+  // Le programme repart à zéro aujourd'hui : seules les séances faites à partir
+  // de ce jour comptent dans l'avancement du cycle (tableau de bord)
+  async repartirDeZero(progId) {
+    const p = this.programmes.find(x => x.id === progId);
+    if (!p || !confirm(`Faire repartir « ${p.nom} » de zéro à partir d'aujourd'hui ?\n\nL'avancement du cycle repart à « sem. 0/${p.nb_semaines || 4} ». Les séances déjà faites restent dans l'historique.`)) return;
+    try {
+      const aujourdhui = formatDate(new Date());
+      await db.redemarrerProgramme(progId, aujourdhui);
+      p.date_debut = aujourdhui;
+      this._render(coachClientNav(this.client.id, 'coach-client-programme'));
+      toast('Programme reparti de zéro', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   async removeProgramme(progId, nom) {
