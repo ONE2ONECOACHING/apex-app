@@ -83,18 +83,23 @@ const CoachAccueilPage = {
   // Où en est un programme : semaines réellement faites (et non le temps écoulé).
   // Une semaine est faite quand chaque séance (hors cardio) a été faite une fois de
   // plus : séance au studio = semaine cochée dans la grille ; séance à distance =
-  // séance enregistrée par le client (reliée au programme, ou avant le 12 octobre
-  // 2026 reconnue par son nom et sa date).
+  // séance enregistrée par le client (reliée au programme, sinon reconnue par son
+  // nom si elle a été faite après l'attribution de la phase).
   _avancement(p) {
     const nb = p.nb_semaines || 4;
     const seances = (p.client_prog_seances || []).filter(s => !s.cardio);
     const logs = p._logs || [];
+    // Une séance reconnue par son nom ne compte que si elle a été faite après
+    // l'attribution de la phase : chaque nouvelle phase repart à zéro, même si
+    // ses séances portent les mêmes noms que celles de la phase précédente.
+    const attribuee = (p.created_at || '').slice(0, 10);
+    const depuis = [p.date_debut, attribuee].filter(Boolean).sort().pop() || '';
     const fois = s => {
       if (s.lieu === 'studio') return (s.seances_studio_semaines || []).length;
       return logs.filter(l => l.seance_id === s.id || (!l.seance_id
         && (!l.programme_id || l.programme_id === p.id)
         && (l.nom_seance || '').trim().toLowerCase() === (s.nom || '').trim().toLowerCase()
-        && (!p.date_debut || l.date_seance >= p.date_debut))).length;
+        && l.date_seance >= depuis)).length;
     };
     const faites = seances.length ? Math.min(...seances.map(fois)) : 0;
     const semaine = faites + 1;
