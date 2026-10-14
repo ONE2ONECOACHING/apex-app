@@ -1623,6 +1623,13 @@ const db = {
       .from('client_prog_seances').select('id').eq('programme_id', programmeId);
     const existingIds = new Set((existing || []).map(s => s.id));
     const keepIds     = new Set();
+    // Exercices du programme, toutes séances confondues : un exercice déplacé vers
+    // une autre séance garde son identifiant (saisies de la grille, historique)
+    const { data: exProg } = existingIds.size
+      ? await sb.from('client_prog_exercices').select('id').in('seance_id', [...existingIds])
+      : { data: [] };
+    const exIds    = new Set((exProg || []).map(e => e.id));
+    const exGardes = new Set();
 
     for (let i = 0; i < seances.length; i++) {
       const s = seances[i];
@@ -1653,10 +1660,6 @@ const db = {
 
       // Exercices : mis à jour sur place (les saisies de la grille du studio et
       // l'historique y sont rattachés) ; seuls les exercices retirés sont supprimés
-      const { data: exExistants } = await sb
-        .from('client_prog_exercices').select('id').eq('seance_id', seanceId);
-      const exIds = new Set((exExistants || []).map(e => e.id));
-      const exGardes = new Set();
       for (let j = 0; j < s.exercices.length; j++) {
         const ex = s.exercices[j];
         const exRow = {
@@ -1683,11 +1686,11 @@ const db = {
           if (ee) throw ee;
         }
       }
-      const exRetires = [...exIds].filter(id => !exGardes.has(id));
-      if (exRetires.length) {
-        const { error: de } = await sb.from('client_prog_exercices').delete().in('id', exRetires);
-        if (de) throw de;
-      }
+    }
+    const exRetires = [...exIds].filter(id => !exGardes.has(id));
+    if (exRetires.length) {
+      const { error: de } = await sb.from('client_prog_exercices').delete().in('id', exRetires);
+      if (de) throw de;
     }
     // Supprimer les séances retirées
     for (const id of existingIds) {

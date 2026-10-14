@@ -1551,3 +1551,15 @@ body.coach-layout.coach-plein #app { max-width: none !important; }
 .pa-exo { font-weight: 600; position: sticky; left: 0; background: var(--white); white-space: normal !important; min-width: 140px; max-width: 200px; }
 .pa-vide { color: #C4C4CC; }
 .pa-legende { font-size: 11px; color: #A1A1AA; margin-top: 6px; }
+
+/* Éditeur de programmes : glisser-déposer des exercices et des séances */
+.dd-poignee { flex-shrink: 0; width: 18px; display: inline-flex; align-items: center; justify-content: center; align-self: center;
+  font-size: 16px; line-height: 1; color: #A1A1AA; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 4px; padding: 4px 0; }
+[data-ex] > div > .dd-poignee { align-self: flex-start; margin-left: -4px; }
+.dd-poignee:hover { color: var(--black); background: rgba(0,0,0,.05); }
+.dd-fantome { position: fixed; z-index: 1000; pointer-events: none; opacity: .92; transform: rotate(-1.5deg);
+  box-shadow: 0 10px 28px rgba(0,0,0,.18); border-radius: 10px; }
+.dd-source { opacity: .35; }
+.dd-ligne { position: fixed; z-index: 999; height: 3px; border-radius: 2px; background: #0A84FF; pointer-events: none; display: none; }
+.dd-ligne.verticale { width: 3px; }
+body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }

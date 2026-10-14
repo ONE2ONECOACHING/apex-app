@@ -332,7 +332,7 @@ const CoachProgTemplateEditPage = {
       </div>
 
       <!-- Colonnes séances -->
-      <div style="overflow-x:auto;padding-bottom:7rem;">
+      <div id="tplCols" style="overflow-x:auto;padding-bottom:7rem;">
         <div style="display:flex;gap:14px;align-items:flex-start;min-width:min-content;padding-bottom:2px;">
           ${this.seances.map((s, si) => this._renderSeanceCol(s, si)).join('')}
 
@@ -352,10 +352,12 @@ const CoachProgTemplateEditPage = {
   _renderSeanceCol(s, si) {
     const isCardio = !!s.cardio;
     return `
-      <div style="flex-shrink:0;width:290px;background:var(--card-bg);
+      <div data-col="${si}" data-cardio="${isCardio ? 1 : 0}" style="flex-shrink:0;width:290px;background:var(--card-bg);
                   border-radius:14px;padding:12px;border:1px solid ${isCardio ? '#EF4444' : 'var(--border-solid)'};">
         <!-- En-tête -->
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <span class="dd-poignee" title="Glisser pour changer l'ordre des séances"
+            onpointerdown="CoachProgTemplateEditPage._ddDebut(event,'seance',${si})">⠿</span>
           <input id="snom_${si}" class="input" value="${(s.nom||'').replace(/"/g,'&quot;')}"
             placeholder="Nom de la séance"
             style="flex:1;height:36px;font-weight:700;font-size:14px;padding:0 8px;">
@@ -383,7 +385,7 @@ const CoachProgTemplateEditPage = {
           ? this._renderCardioBlocks(s, si)
           : `
         <!-- Exercices -->
-        <div>
+        <div data-liste="${si}">
           ${s.exercices.length === 0
             ? `<div style="font-size:12px;color:var(--gray-muted);text-align:center;padding:12px 0;
                            border:1px dashed var(--border-solid);border-radius:8px;">
@@ -607,9 +609,11 @@ const CoachProgTemplateEditPage = {
     }).join('');
 
     return `
-      <div style="background:var(--white);border-radius:8px;padding:8px 10px;
+      <div data-ex="${si},${ei}" style="background:var(--white);border-radius:8px;padding:8px 10px;
                   margin-bottom:2px;border:1px solid var(--border);${borderLeft}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+          <span class="dd-poignee" title="Glisser pour déplacer l'exercice (aussi vers une autre séance)"
+            onpointerdown="CoachProgTemplateEditPage._ddDebut(event,'ex',${si},${ei})">⠿</span>
           <div style="flex:1;min-width:0;">
             <!-- Nom + badge superset + lien YT -->
             <div style="font-weight:600;font-size:13px;line-height:1.3;margin-bottom:6px;">
@@ -781,6 +785,120 @@ const CoachProgTemplateEditPage = {
           </div>
         </div>
       </div>`;
+  },
+
+  // ── Glisser-déposer : exercices (dans une séance ou vers une autre) et séances ──
+  // Poignée ⠿ ; souris et doigt (pointer events). Le déplacement compte à l'enregistrement.
+  _ddDebut(e, type, si, ei = null) {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    this._syncFromDOM();
+    const src = type === 'ex' ? e.target.closest('[data-ex]') : e.target.closest('[data-col]');
+    if (!src) return;
+    const r = src.getBoundingClientRect();
+    const fantome = src.cloneNode(true);
+    fantome.removeAttribute('data-ex'); fantome.removeAttribute('data-col');
+    fantome.className = 'dd-fantome';
+    Object.assign(fantome.style, { width: r.width + 'px', left: r.left + 'px', top: r.top + 'px',
+      maxHeight: type === 'seance' ? '160px' : '64px', overflow: 'hidden' });
+    document.body.appendChild(fantome);
+    const ligne = document.createElement('div');
+    ligne.className = 'dd-ligne' + (type === 'seance' ? ' verticale' : '');
+    document.body.appendChild(ligne);
+    src.classList.add('dd-source');
+    document.body.classList.add('dd-actif');
+    this._dd = { type, si, ei, src, fantome, ligne, dx: e.clientX - r.left, dy: e.clientY - r.top, cible: null };
+    this._ddBouge = ev => this._ddDeplacer(ev);
+    this._ddFin = ev => this._ddLacher(ev);
+    document.addEventListener('pointermove', this._ddBouge);
+    document.addEventListener('pointerup', this._ddFin);
+    document.addEventListener('pointercancel', this._ddFin);
+    this._ddDeplacer(e);
+  },
+
+  _ddDeplacer(e) {
+    const d = this._dd;
+    if (!d) return;
+    d.fantome.style.left = (e.clientX - d.dx) + 'px';
+    d.fantome.style.top = (e.clientY - d.dy) + 'px';
+
+    // Défilement automatique près des bords (colonnes et page)
+    const cols = document.getElementById('tplCols');
+    if (cols) {
+      const rc = cols.getBoundingClientRect();
+      if (e.clientX > rc.right - 50) cols.scrollLeft += 14;
+      else if (e.clientX < rc.left + 50) cols.scrollLeft -= 14;
+    }
+    if (e.clientY > window.innerHeight - 50) window.scrollBy(0, 14);
+    else if (e.clientY < 50) window.scrollBy(0, -14);
+
+    const colonnes = [...document.querySelectorAll('[data-col]')];
+    if (d.type === 'seance') {
+      // Position parmi les séances, d'après le milieu de chaque colonne
+      let idx = colonnes.length;
+      for (let i = 0; i < colonnes.length; i++) {
+        const rc = colonnes[i].getBoundingClientRect();
+        if (e.clientX < rc.left + rc.width / 2) { idx = i; break; }
+      }
+      const ref = colonnes[Math.min(idx, colonnes.length - 1)].getBoundingClientRect();
+      const x = idx < colonnes.length ? ref.left - 8 : ref.right + 6;
+      Object.assign(d.ligne.style, { left: x + 'px', top: ref.top + 'px', height: Math.min(ref.height, 300) + 'px', display: 'block' });
+      d.cible = { idx };
+      return;
+    }
+
+    // Exercice : séance (hors cardio) sous le pointeur, puis place dans la liste
+    const col = colonnes.find(c => {
+      const rc = c.getBoundingClientRect();
+      return c.dataset.cardio !== '1' && e.clientX >= rc.left && e.clientX <= rc.right;
+    });
+    if (!col) { d.ligne.style.display = 'none'; d.cible = null; return; }
+    const si = parseInt(col.dataset.col);
+    const liste = col.querySelector('[data-liste]');
+    const lignes = [...col.querySelectorAll('[data-ex]')];
+    let idx = lignes.length;
+    for (let i = 0; i < lignes.length; i++) {
+      const rl = lignes[i].getBoundingClientRect();
+      if (e.clientY < rl.top + rl.height / 2) { idx = i; break; }
+    }
+    let y;
+    if (!lignes.length) y = liste.getBoundingClientRect().top + 4;
+    else if (idx < lignes.length) y = lignes[idx].getBoundingClientRect().top - 3;
+    else y = lignes[lignes.length - 1].getBoundingClientRect().bottom + 2;
+    const rl = liste.getBoundingClientRect();
+    Object.assign(d.ligne.style, { left: rl.left + 'px', top: y + 'px', width: rl.width + 'px', display: 'block' });
+    d.cible = { si, idx };
+  },
+
+  _ddLacher() {
+    const d = this._dd;
+    if (!d) return;
+    document.removeEventListener('pointermove', this._ddBouge);
+    document.removeEventListener('pointerup', this._ddFin);
+    document.removeEventListener('pointercancel', this._ddFin);
+    d.fantome.remove(); d.ligne.remove();
+    d.src.classList.remove('dd-source');
+    document.body.classList.remove('dd-actif');
+    this._dd = null;
+    if (!d.cible) return;
+
+    if (d.type === 'seance') {
+      let idx = d.cible.idx;
+      if (idx === d.si || idx === d.si + 1) return;
+      const [s] = this.seances.splice(d.si, 1);
+      if (idx > d.si) idx--;
+      this.seances.splice(idx, 0, s);
+    } else {
+      let { si, idx } = d.cible;
+      if (si === d.si && (idx === d.ei || idx === d.ei + 1)) return;
+      const [ex] = this.seances[d.si].exercices.splice(d.ei, 1);
+      if (si === d.si && idx > d.ei) idx--;
+      ex.superset_groupe = null;   // un exercice déplacé sort de son superset
+      this.seances[si].exercices.splice(idx, 0, ex);
+      this._normalizeSupersets(this.seances[d.si].exercices);
+      this._normalizeSupersets(this.seances[si].exercices);
+    }
+    this.renderContent();
   },
 
   _ytId(url) {
