@@ -109,7 +109,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation', 'messages'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive', 'coach-suivi'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash) && hash !== 'set-password') {
         window.location.hash = '#coach-accueil';
@@ -131,10 +131,11 @@ const Router = {
     if (typeof Chat !== 'undefined' && Chat.opts) Chat.fermer();
 
     // Menu de gauche de l'espace coach
-    afficherMenuCoach(this.userProfile?.role === 'coach' && coachRoutes.includes(hash) ? hash : null);
+    const ecranMenu = hash === 'coach-journal-suivi' && this.getParams().depuisSuivi ? 'coach-suivi' : hash;
+    afficherMenuCoach(this.userProfile?.role === 'coach' && coachRoutes.includes(hash) ? ecranMenu : null);
     // Écrans qui utilisent toute la largeur (les formulaires gardent une largeur limitée)
     document.body.classList.toggle('coach-plein', ['coach-agenda', 'coach-accueil', 'coach-messagerie',
-      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients'].includes(hash));
+      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi'].includes(hash));
 
     // Charger la page avec transition
     this.currentPage = hash;
@@ -178,6 +179,7 @@ const Router = {
         case 'coach-equipe':          app.innerHTML = CoachEquipePage.render();        CoachEquipePage.init();        break;
         case 'coach-agenda':          app.innerHTML = CoachAgendaPage.render();        CoachAgendaPage.init();        break;
         case 'coach-seance-studio':   app.innerHTML = CoachSeanceStudioPage.render();  CoachSeanceStudioPage.init();  break;
+        case 'coach-suivi':           app.innerHTML = CoachSuiviPage.render();         CoachSuiviPage.init();         break;
         case 'coach-programme-archive': app.innerHTML = CoachProgrammeArchivePage.render(); CoachProgrammeArchivePage.init(); break;
         case 'coach-accueil':         app.innerHTML = CoachAccueilPage.render();       CoachAccueilPage.init();       break;
         case 'coach-calcul-nutrition': app.innerHTML = CoachCalculNutritionPage.render(); CoachCalculNutritionPage.init(); break;
@@ -326,6 +328,7 @@ const MENU_COACH = [
   { route: 'coach-clients',         icone: '👥', label: 'Clients',         ecrans: ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal',
       'coach-journal-view', 'coach-habits-edit', 'coach-bilan-client', 'coach-mesure-client', 'coach-client-programme',
       'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-client-messages', 'coach-programme-archive'] },
+  { route: 'coach-suivi',           icone: '📋', label: 'Suivi',           ecrans: ['coach-suivi'], compteurSuivi: true },
   { route: 'coach-messagerie',      icone: '💬', label: 'Messagerie',      ecrans: ['coach-messagerie'], compteur: true },
   { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
       'coach-exercices', 'coach-bilan-templates', 'coach-formations'] },
@@ -348,7 +351,7 @@ function afficherMenuCoach(hash) {
   }
   document.body.classList.add('coach-layout');
   const lien = m => `<a href="#${m.route}" class="coach-menu-item ${m.ecrans.includes(hash) ? 'on' : ''}">
-      <span class="coach-menu-icone">${m.icone}</span>${m.label}${m.compteur ? '<span class="coach-menu-badge" data-compteur-messages hidden></span>' : ''}</a>`;
+      <span class="coach-menu-icone">${m.icone}</span>${m.label}${m.compteur ? '<span class="coach-menu-badge" data-compteur-messages hidden></span>' : ''}${m.compteurSuivi ? '<span class="coach-menu-badge" data-compteur-suivi hidden></span>' : ''}</a>`;
   const coachs = MENU_COACH.filter(m => !m.gerant);
   const gerants = MENU_COACH.filter(m => m.gerant && me.is_gerant);
   nav.innerHTML = `
@@ -360,6 +363,7 @@ function afficherMenuCoach(hash) {
       <button class="coach-menu-item" onclick="Router.confirmLogout()"><span class="coach-menu-icone">⏻</span>Déconnexion</button>
     </div>`;
   if (typeof rafraichirCompteurMessages === 'function') rafraichirCompteurMessages();
+  if (typeof rafraichirCompteurSuivi === 'function') rafraichirCompteurSuivi();
 }
 
 // Onglets de la bibliothèque (programmes, exercices, modèles de bilans, formations)

@@ -93,6 +93,12 @@ const CoachJournalSuiviPage = {
     }
   },
 
+  // Ouvert depuis l'onglet Suivi : barre « ‹ Suivi · Suivant › »
+  _barreSuivi() {
+    return Router.getParams().depuisSuivi && typeof barreSuiviSuivant === 'function'
+      ? barreSuiviSuivant(this.client.id) : '';
+  },
+
   _peutEcrire() { return this.client?.coach_referent_id === Router.userProfile?.id; },
 
   _nb() { return this.entete?.nb_semaines || 26; },
@@ -109,7 +115,7 @@ const CoachJournalSuiviPage = {
 
     if (!c.date_debut) {
       document.getElementById('jsContent').innerHTML = `
-        ${coachClientNav(c.id, 'coach-journal-suivi')}
+        ${this._barreSuivi()}${coachClientNav(c.id, 'coach-journal-suivi')}
         <div class="card"><div style="font-size:14px;">Ce client n'a pas de date de début de suivi.
           Renseigne la « semaine courante » dans <a href="#" onclick="Router.navigate('coach-calcul-nutrition',{clientId:'${c.id}'});return false;">Plan alimentaire › Calcul</a>.</div></div>`;
       return;
@@ -181,7 +187,7 @@ const CoachJournalSuiviPage = {
     }).join('');
 
     document.getElementById('jsContent').innerHTML = `
-      ${coachClientNav(c.id, 'coach-journal-suivi')}
+      ${this._barreSuivi()}${coachClientNav(c.id, 'coach-journal-suivi')}
       ${entete}
       <div class="js-scroll">
         <table class="js-table">
