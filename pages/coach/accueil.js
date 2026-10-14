@@ -20,13 +20,7 @@ const CoachAccueilPage = {
           <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Bonjour ${escHtml(prenom)}</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input class="input" id="acRecherche" type="search" placeholder="Chercher un client…" autocomplete="off"
-            style="height:36px;width:220px;font-size:13px;" oninput="CoachAccueilPage.chercher(this.value)">
-          <button class="btn btn-primary btn-small" onclick="window.location.hash='#coach-agenda'">+ Rendez-vous</button>
-        </div>
       </div>
-      <div id="acResultats" class="ag-results" style="margin:-0.5rem 0 1rem;"></div>
       <div id="acContent"><div class="spinner" style="margin-top:2rem;"></div></div>`;
   },
 
@@ -34,7 +28,6 @@ const CoachAccueilPage = {
     const me = Router.userProfile;
     if (!me || me.role !== 'coach') { window.location.hash = '#login'; return; }
     this._relances = new Set();
-    this._clients = null;
     try {
       let suivis;
       [this.coachings, this.aTraiter, this.enAttente, this.cycles, suivis] = await Promise.all([
@@ -56,18 +49,6 @@ const CoachAccueilPage = {
     } catch (e) {
       document.getElementById('acContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
-  },
-
-  // ── Recherche rapide d'un client ──────────────────────────────────────────
-  async chercher(q) {
-    const box = document.getElementById('acResultats');
-    const s = q.trim().toLowerCase();
-    if (!s) { box.innerHTML = ''; return; }
-    if (!this._clients) this._clients = await db.getClientsAgenda().catch(() => []);
-    const res = this._clients.filter(c => `${c.prenom || ''} ${c.nom || ''}`.toLowerCase().includes(s)).slice(0, 8);
-    box.innerHTML = res.length
-      ? res.map(c => `<div class="ag-result" onclick="Router.navigate('coach-client-edit',{clientId:'${c.id}'})">${escHtml(`${c.prenom || ''} ${c.nom || ''}`.trim())}</div>`).join('')
-      : '<div class="ag-result" style="color:var(--gray-light);cursor:default;">Aucun client trouvé</div>';
   },
 
   // ── Rendu ─────────────────────────────────────────────────────────────────
