@@ -62,6 +62,7 @@ Rien ne doit changer pour les clients pendant cette étape.
 
 - Décisions de Benjamin (12 octobre 2026) : phases enchaînées à la main comme avant ; à l'attribution d'une phase, le coach coche les séances du client puis choisit studio ou distance pour chacune ; le client voit sa grille du studio en lecture seule ; semaine en cours = première case « faite » non cochée.
 - `sql/2026-10-12_fiche_entrainement.sql` : `client_programmes.nb_semaines`, `client_prog_seances.lieu` (`distance` par défaut), tables `seances_studio_semaines`, `seances_studio_saisies` (tous les coachs, lecture client) et `fiche_coach` (profil coaching, coachs uniquement, écriture référent et gérants).
+- Éditeur de programmes (14 octobre 2026) : glisser-déposer des exercices (poignée ⠿, aussi vers une autre séance) et des séances. Un exercice déplacé sort de son superset. `saveClientProgrammeSeances` garde l'identifiant d'un exercice qui change de séance (lecture des exercices de tout le programme, suppressions à la fin).
 - Écran `pages/coach/seance-studio.js` (route `coach-seance-studio`) : grille, et modification des exercices sur place. `saveClientProgrammeSeances` met à jour les exercices sur place : ne jamais revenir à « supprimer puis recréer », les saisies du studio y sont rattachées.
 - Onglets de la fiche regroupés dans `coachClientNav` (`js/router.js`), masqués selon les droits ; onglet Infos : profil coaching et tableau des séances au studio (semaines 1 à 50).
 - Côté client : rubrique « Au studio » ; `seances_log` reçoit maintenant `programme_id` et `seance_id`.
