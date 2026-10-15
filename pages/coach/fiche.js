@@ -33,6 +33,7 @@ const FicheOnglets = {
   },
 
   nommer(clientId, nom) {
+    if (!nom) return;
     const liste = this.lire();
     const o = liste.find(x => x.id === clientId);
     if (o && o.nom !== nom) { o.nom = nom; this.ecrire(liste); this.afficher(clientId); }
@@ -99,29 +100,39 @@ const FicheOnglets = {
 };
 
 const FicheResume = {
-  _cache: new Map(),   // clientId → { le, html }
+  _cache: new Map(),   // clientId → { le, html, nom }
 
-  async afficher(clientId) {
+  // Affiche tout de suite la dernière version connue, puis la relit (au plus toutes les 10 s)
+  async afficher(clientId, forcer = false) {
     const el = document.getElementById('ficheResume');
     if (!el) return;
     const c = this._cache.get(clientId);
-    if (c) el.innerHTML = c.html;
+    if (c) { el.innerHTML = c.html; FicheOnglets.nommer(clientId, c.nom); }
     else el.innerHTML = '<div class="spinner" style="margin:2rem auto;"></div>';
-    if (c && Date.now() - c.le < 60000) return;
-    const html = await this._construire(clientId).catch(e => `<div class="fr-vide">${escHtml(e.message)}</div>`);
-    this._cache.set(clientId, { le: Date.now(), html });
+    if (c && !forcer && Date.now() - c.le < 10000) return;
+    let nom = c?.nom || '';
+    const html = await this._construire(clientId, n => { nom = n; })
+      .catch(e => `<div class="fr-vide">${escHtml(e.message)}</div>`);
+    this._cache.set(clientId, { le: Date.now(), html, nom });
     if (Router.getParams().clientId === clientId && document.getElementById('ficheResume')) {
       document.getElementById('ficheResume').innerHTML = html;
     }
   },
 
-  // Après un changement dans la fiche (programme, plan…), relire au prochain affichage
-  oublier(clientId) { this._cache.delete(clientId); },
+  // Après un enregistrement dans la fiche ouverte : relire le résumé
+  rafraichir() {
+    const id = Router.getParams().clientId;
+    if (!id || !document.getElementById('ficheResume')) return;
+    clearTimeout(this._minuteur);
+    this._minuteur = setTimeout(() => this.afficher(id, true), 400);
+  },
 
-  async _construire(clientId) {
+  async _construire(clientId, surNom) {
     const moi = Router.userProfile;
     const client = await db.getProfile(clientId);
-    FicheOnglets.nommer(clientId, `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Client');
+    const nomClient = `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Client';
+    surNom(nomClient);
+    FicheOnglets.nommer(clientId, nomClient);
     const studioSeul = client.type_client === 'studio';
     const suivi = !studioSeul && (moi.is_gerant || client.coach_referent_id === moi.id);
     const [prochain, progs, plan, bilans, journal, profil, coachs] = await Promise.all([
@@ -213,3 +224,16 @@ function afficherFiche(hash) {
   FicheOnglets.afficher(clientId);
   FicheResume.afficher(clientId);
 }
+
+// Le résumé suit les enregistrements faits dans la fiche (profil, type, plan, programme, journal…)
+['saveFicheCoach', 'updateProfile', 'upsertPlan', 'updateActivePlanMacros', 'assignProgrammeFromTemplate',
+ 'deactivateClientProgramme', 'reactiverClientProgramme', 'redemarrerProgramme', 'saveJournalLigne',
+ 'saveClientProgrammeSeances', 'saveClientProgrammeNom', 'markBilansAsRead'].forEach(nom => {
+  const origine = db[nom];
+  if (typeof origine !== 'function') return;
+  db[nom] = async function (...args) {
+    const r = await origine.apply(this, args);
+    FicheResume.rafraichir();
+    return r;
+  };
+});
