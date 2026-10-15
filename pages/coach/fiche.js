@@ -39,6 +39,17 @@ const FicheOnglets = {
     if (o && o.nom !== nom) { o.nom = nom; this.ecrire(liste); this.afficher(clientId); }
   },
 
+  // Ouvre plusieurs fiches d'un coup (coachings du jour) et affiche la première
+  ouvrirPlusieurs(clients) {
+    if (!clients.length) return;
+    const liste = this.lire();
+    for (const c of clients) {
+      if (!liste.some(x => x.id === c.id)) liste.push({ id: c.id, nom: c.nom || '', page: 'coach-client-edit', params: {} });
+    }
+    this.ecrire(liste);
+    this.aller(clients[0].id);
+  },
+
   aller(clientId) {
     if (this._glisse) return;   // fin d'un glisser-déposer, pas un clic
     const o = this.lire().find(x => x.id === clientId);

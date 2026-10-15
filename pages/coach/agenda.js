@@ -220,10 +220,26 @@ const CoachAgendaPage = {
             <button class="${this.vue === 'jour' ? 'on' : ''}" onclick="CoachAgendaPage.setVue('jour')">Jour</button>
             <button class="${this.vue === 'semaine' ? 'on' : ''}" onclick="CoachAgendaPage.setVue('semaine')">Semaine</button>
           </div>
+          <button class="btn btn-secondary btn-small" title="Ouvrir en onglets les fiches de mes clients encore à venir aujourd'hui"
+            onclick="CoachAgendaPage.fichesDuJour()">📂 Fiches du jour</button>
           <button class="btn btn-primary btn-small" onclick="CoachAgendaPage.nouveau()">+ Rendez-vous</button>
         </div>
       </div>
       <div class="ag-chips">${chips}</div>`;
+  },
+
+  // Ouvre en onglets les fiches des clients de mes coachings du jour pas encore terminés
+  async fichesDuJour() {
+    try {
+      const maintenant = Date.now();
+      const creneaux = (await db.getCoachingsDuJour(Router.userProfile.id))
+        .filter(c => c.type === 'coaching' && c.client_id && new Date(c.fin).getTime() > maintenant);
+      const vus = new Set();
+      const clients = creneaux.filter(c => !vus.has(c.client_id) && vus.add(c.client_id))
+        .map(c => ({ id: c.client_id, nom: `${c.client?.prenom || ''} ${c.client?.nom || ''}`.trim() }));
+      if (!clients.length) { toast('Aucun coaching à venir aujourd\'hui', 'info'); return; }
+      FicheOnglets.ouvrirPlusieurs(clients);
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   // ── Chargement et grille ─────────────────────────────────────────────────
