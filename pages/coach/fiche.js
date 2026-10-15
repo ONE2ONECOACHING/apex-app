@@ -40,6 +40,7 @@ const FicheOnglets = {
   },
 
   aller(clientId) {
+    if (this._glisse) return;   // fin d'un glisser-déposer, pas un clic
     const o = this.lire().find(x => x.id === clientId);
     if (o) Router.navigate(o.page, { ...(o.params || {}), clientId });
   },
@@ -62,7 +63,8 @@ const FicheOnglets = {
     const liste = this.lire();
     barre.innerHTML = `
       ${liste.map(o => `
-        <div class="fo-onglet ${o.id === actifId ? 'on' : ''}" onclick="FicheOnglets.aller('${o.id}')" title="${escHtml(o.nom)}">
+        <div class="fo-onglet ${o.id === actifId ? 'on' : ''}" data-onglet="${o.id}" title="${escHtml(o.nom)}"
+          onclick="FicheOnglets.aller('${o.id}')" onpointerdown="FicheOnglets._ddDebut(event,'${o.id}')">
           <span class="fo-nom">${escHtml(o.nom || '…')}</span>
           <button class="fo-fermer" aria-label="Fermer" onclick="event.stopPropagation();FicheOnglets.fermer('${o.id}', ${o.id === actifId})">×</button>
         </div>`).join('')}
@@ -74,6 +76,44 @@ const FicheOnglets = {
           <div id="foResultats"></div>
         </div>
       </div>`;
+  },
+
+  // Glisser un onglet pour changer l'ordre (au-delà de 5 px : sinon c'est un clic)
+  _ddDebut(e, id) {
+    if (e.button !== 0 || e.target.closest('.fo-fermer')) return;
+    const el = e.currentTarget;
+    const d = { id, el, x0: e.clientX, actif: false };
+    const bouge = ev => {
+      const dx = ev.clientX - d.x0;
+      if (!d.actif && Math.abs(dx) < 5) return;
+      d.actif = true;
+      el.classList.add('fo-glisse');
+      el.style.transform = `translateX(${dx}px)`;
+    };
+    const fin = ev => {
+      document.removeEventListener('pointermove', bouge);
+      document.removeEventListener('pointerup', fin);
+      document.removeEventListener('pointercancel', fin);
+      if (!d.actif) return;
+      // Nouvelle place : d'après le milieu des autres onglets
+      const autres = [...document.querySelectorAll('[data-onglet]')].filter(x => x !== el);
+      let idx = autres.length;
+      for (let i = 0; i < autres.length; i++) {
+        const r = autres[i].getBoundingClientRect();
+        if (ev.clientX < r.left + r.width / 2) { idx = i; break; }
+      }
+      const liste = this.lire();
+      const i = liste.findIndex(x => x.id === id);
+      const [o] = liste.splice(i, 1);
+      liste.splice(idx, 0, o);
+      this.ecrire(liste);
+      this._glisse = true;
+      setTimeout(() => { this._glisse = false; }, 0);
+      this.afficher(Router.getParams().clientId);
+    };
+    document.addEventListener('pointermove', bouge);
+    document.addEventListener('pointerup', fin);
+    document.addEventListener('pointercancel', fin);
   },
 
   async chercher(ouvrir = true) {

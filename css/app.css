@@ -1613,6 +1613,8 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
 .fo-onglet { display: flex; align-items: center; gap: 6px; max-width: 190px; min-width: 90px; height: 34px; padding: 0 6px 0 12px; border-radius: 9px 9px 0 0;
   font-size: 13px; font-weight: 600; color: var(--gray); background: rgba(255,255,255,.45); cursor: pointer; }
 .fo-onglet:hover { background: rgba(255,255,255,.75); }
+.fo-onglet { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.fo-onglet.fo-glisse { position: relative; z-index: 2; cursor: grabbing; box-shadow: 0 6px 18px rgba(0,0,0,.15); transition: none; }
 .fo-onglet.on { background: var(--bg); color: var(--black); box-shadow: 0 -1px 0 var(--border-solid), 1px 0 0 var(--border-solid), -1px 0 0 var(--border-solid); }
 .fo-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fo-fermer { flex-shrink: 0; width: 20px; height: 20px; border: none; border-radius: 5px; background: none; color: #A1A1AA; font-size: 15px; line-height: 1; cursor: pointer; padding: 0; }
