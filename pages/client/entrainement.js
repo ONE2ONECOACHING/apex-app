@@ -176,17 +176,17 @@ const EntrainementPage = {
     document.body.appendChild(modal);
 
     try {
-      const d = await db.getGrilleStudio(seanceId);
+      const d = await db.getGrilleStudio(seanceId, true);
       document.getElementById('studioTitre').textContent = d.seance.nom;
       const faites = new Map(d.semaines.map(s => [s.semaine, s]));
       const corps = d.exercices.map(e => {
         const lignes = d.saisies
-          .filter(x => x.exercice_id === e.id && (x.charge || x.reps || x.remarque))
+          .filter(x => x.exercice_id === e.id && (x.charge || x.reps))
           .sort((a, b) => a.semaine - b.semaine)
           .map(x => `
             <div style="display:flex;gap:10px;font-size:13px;padding:5px 0;border-top:1px solid var(--border-light);">
               <div style="min-width:74px;font-weight:600;color:var(--gray);">Semaine ${x.semaine}</div>
-              <div style="flex:1;white-space:pre-line;">${[x.charge, x.reps].filter(Boolean).map(escHtml).join(' · ')}${x.remarque ? `<div style="color:var(--gray-light);font-size:12px;">${escHtml(x.remarque)}</div>` : ''}</div>
+              <div style="flex:1;white-space:pre-line;">${[x.charge, x.reps].filter(Boolean).map(escHtml).join(' · ')}</div>
             </div>`).join('');
         return `
           <div style="margin-bottom:14px;">

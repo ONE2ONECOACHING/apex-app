@@ -1710,8 +1710,10 @@ const db = {
 
   // ── Grille de séance au studio ───────────────────────────────────────────
 
-  // Séance (avec son programme et ses exercices), semaines cochées et saisies
-  async getGrilleStudio(seanceId) {
+  // Séance (avec son programme et ses exercices), semaines cochées et saisies.
+  // client = true : charges et répétitions seulement, jamais la remarque du coach
+  // (fonction charges_studio_client ; repli tant qu'elle n'existe pas)
+  async getGrilleStudio(seanceId, client = false) {
     const sb = getSupabase();
     const { data: seance, error } = await sb
       .from('client_prog_seances')
@@ -1720,11 +1722,17 @@ const db = {
       .single();
     if (error) throw error;
     const exercices = (seance.client_prog_exercices || []).sort((a, b) => a.ordre - b.ordre);
+    const ids = exercices.map(e => e.id);
+    const lireSaisies = async () => {
+      if (!ids.length) return { data: [] };
+      if (!client) return sb.from('seances_studio_saisies').select('*').in('exercice_id', ids);
+      const r = await sb.rpc('charges_studio_client', { p_exercices: ids });
+      if (!r.error) return r;
+      return sb.from('seances_studio_saisies').select('exercice_id, semaine, charge, reps').in('exercice_id', ids);
+    };
     const [{ data: semaines, error: e1 }, { data: saisies, error: e2 }] = await Promise.all([
       sb.from('seances_studio_semaines').select('*').eq('seance_id', seanceId),
-      exercices.length
-        ? sb.from('seances_studio_saisies').select('*').in('exercice_id', exercices.map(e => e.id))
-        : Promise.resolve({ data: [] }),
+      lireSaisies(),
     ]);
     if (e1) throw e1;
     if (e2) throw e2;
