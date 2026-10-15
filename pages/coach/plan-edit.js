@@ -60,142 +60,101 @@ const CoachPlanEditPage = {
   },
 
   renderEditor() {
-    // Bug 26 — préserver les notes saisies avant chaque re-render
+    // Garder ce qui est en cours de saisie (notes, objectifs) à chaque nouvel affichage
     const notesEl = document.getElementById('peNotes');
     if (notesEl && this.currentPlan) this.currentPlan.notes = notesEl.value;
+    const saisie = id => document.getElementById(id)?.value;
+    const enCours = { kcal: saisie('peKcal'), prot: saisie('peProt'), gluc: saisie('peGluc'), lip: saisie('peLip') };
 
     const c = this.client;
     const p = this.currentPlan;
 
-    let html = '';
+    // Objectifs : saisie en cours, sinon plan actif, sinon estimation
+    const cal  = +(enCours.kcal ?? (p ? p.calories_cible : (c.tdee ? (c.objectif === 'perte' ? c.tdee - 350 : c.tdee) : 2000)));
+    const prot = +(enCours.prot ?? (p ? p.proteines_cible : Math.round((c.poids || 80) * 2)));
+    const lip  = +(enCours.lip  ?? (p ? p.lipides_cible : Math.round(cal * 0.25 / 9)));
+    const gluc = +(enCours.gluc ?? (p ? p.glucides_cible : Math.round((cal - prot * 4 - lip * 9) / 4)));
 
-    // Bouton générateur
-    html += `<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
-      <button class="btn" style="height:36px;padding:0 12px;font-size:13px;white-space:nowrap;" onclick="CoachPlanEditPage.showGeneratorModal()">⚡ Générer</button>
-    </div>`;
-
-    // Macros cibles
-    const cal = p ? p.calories_cible : (c.tdee ? (c.objectif === 'perte' ? c.tdee - 350 : c.tdee) : 2000);
-    const prot = p ? p.proteines_cible : Math.round((c.poids || 80) * 2);
-    const gluc = p ? p.glucides_cible : Math.round((cal - prot * 4 - Math.round(cal * 0.25 / 9) * 9) / 4);
-    const lip = p ? p.lipides_cible : Math.round(cal * 0.25 / 9);
-
-    html += `<div class="card">
-      <div class="card-title">Objectifs macros</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">
-        <div class="field"><label class="field-label">Kcal</label><input class="input" type="number" id="peKcal" value="${cal}" oninput="CoachPlanEditPage._onKcalInput()"></div>
-        <div class="field"><label class="field-label">Prot (g)</label><input class="input" type="number" id="peProt" value="${prot}" oninput="CoachPlanEditPage._onMacroInput()"></div>
-        <div class="field"><label class="field-label">Gluc (g)</label><input class="input" type="number" id="peGluc" value="${gluc}" oninput="CoachPlanEditPage._onMacroInput()"></div>
-        <div class="field"><label class="field-label">Lip (g)</label><input class="input" type="number" id="peLip" value="${lip}" oninput="CoachPlanEditPage._onMacroInput()"></div>
+    // Barre du haut : objectifs, total du plan, actions (reste visible en défilant)
+    let html = `
+      <div class="pe-barre">
+        <div class="pe-objectifs">
+          <div class="pe-obj"><label>Kcal</label><input class="input" type="number" id="peKcal" value="${cal}" oninput="CoachPlanEditPage._onKcalInput()"></div>
+          <div class="pe-obj"><label>Prot (g)</label><input class="input" type="number" id="peProt" value="${prot}" oninput="CoachPlanEditPage._onMacroInput()"></div>
+          <div class="pe-obj"><label>Gluc (g)</label><input class="input" type="number" id="peGluc" value="${gluc}" oninput="CoachPlanEditPage._onMacroInput()"></div>
+          <div class="pe-obj"><label>Lip (g)</label><input class="input" type="number" id="peLip" value="${lip}" oninput="CoachPlanEditPage._onMacroInput()"></div>
+        </div>
+        <div class="pe-totaux" id="peTotaux"></div>
+        <div class="pe-actions">
+          <button class="btn btn-secondary btn-small" onclick="CoachPlanEditPage.showGeneratorModal()">⚡ Générer</button>
+          <button class="btn btn-primary btn-small" onclick="CoachPlanEditPage.save()">💾 Enregistrer</button>
+        </div>
       </div>
-      <div class="field"><label class="field-label">Notes coach</label><textarea class="input" id="peNotes" rows="2">${p ? (p.notes || '') : ''}</textarea></div>
-    </div>`;
+      <div id="peSaveMsg"></div>
+      <div class="card pe-notes">
+        <label class="field-label">Notes coach</label>
+        <textarea class="input" id="peNotes" rows="2" placeholder="Visible par le client dans son plan">${escHtml(p ? (p.notes || '') : '')}</textarea>
+      </div>
+      <div class="pe-grille">`;
 
-    // Repas par créneau
+    // Repas par créneau, en colonnes (les deux petits-déjeuners sont au choix)
     this.creneaux.forEach(cr => {
       const items = this.repas.filter(r => r.creneau === cr);
-      const crKcal = Math.round(items.reduce((s, r) => s + parseFloat(r.calories), 0));
-
-      // Séparateur visuel "OU" entre les 2 options petit-déj
-      if (cr === 'petit_dejeuner_sucre') {
-        html += `<div style="text-align:center;font-size:12px;font-weight:700;color:var(--gray-muted);letter-spacing:0.1em;margin:4px 0;">— OU —</div>`;
-      }
-
-      const crProt = Math.round(items.reduce((s, r) => s + parseFloat(r.proteines), 0));
-      const crGluc = Math.round(items.reduce((s, r) => s + parseFloat(r.glucides), 0));
-      const crLip  = Math.round(items.reduce((s, r) => s + parseFloat(r.lipides), 0));
+      const somme = k => Math.round(items.reduce((t, r) => t + parseFloat(r[k] || 0), 0));
       const isAlt = cr === 'petit_dejeuner_sale' || cr === 'petit_dejeuner_sucre';
-      html += `<div class="card" ${isAlt ? 'style="border-style:dashed;"' : ''}>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-          <div class="card-title" style="margin:0;">${creneauLabel(cr)}${isAlt ? ' <span style="font-size:10px;color:var(--gray-muted);font-weight:400;">(option)</span>' : ''}</div>
-          <div style="text-align:right;">
-            <div style="font-size:13px;color:var(--gold);font-weight:600;">${crKcal} kcal</div>
-            ${items.length > 0 ? `<div style="font-size:11px;margin-top:2px;"><span style="color:#3B82F6;">P ${crProt}g</span> · <span style="color:#C4820A;">G ${crGluc}g</span> · <span style="color:#E05252;">L ${crLip}g</span></div>` : ''}
+      html += `
+        <div class="card pe-repas ${isAlt ? 'option' : ''}">
+          <div class="pe-repas-tete">
+            <div class="pe-repas-nom">${creneauLabel(cr)}${cr === 'petit_dejeuner_sucre' ? ' <span class="pe-ou">ou</span>' : ''}${isAlt ? ' <span class="pe-option">au choix</span>' : ''}</div>
+            <div class="pe-repas-kcal">${somme('calories')} kcal
+              ${items.length ? `<div class="pe-macros"><span class="p">P ${somme('proteines')}</span> · <span class="g">G ${somme('glucides')}</span> · <span class="l">L ${somme('lipides')}</span></div>` : ''}
+            </div>
+          </div>
+          ${items.map(r => {
+            const idx = this.repas.indexOf(r);
+            return `
+            <div class="pe-aliment">
+              <div class="pe-aliment-nom">${escHtml(r.aliment_nom)}
+                <div class="pe-macros">${Math.round(r.calories)} kcal · P ${Math.round(r.proteines)} · G ${Math.round(r.glucides)} · L ${Math.round(r.lipides)}</div>
+              </div>
+              <div class="pe-qte"><input class="input" type="number" value="${r.quantite}" onchange="CoachPlanEditPage.updateQty(${idx}, this.value)"><span>${r.unite === 'g' ? 'g' : 'u'}</span></div>
+              <button class="pe-retirer" aria-label="Retirer" onclick="CoachPlanEditPage.removeItem(${idx})">×</button>
+            </div>`;
+          }).join('')}
+          <div class="search-wrap pe-recherche">
+            <span class="search-icon">🔍</span>
+            <input class="input search-input" placeholder="Ajouter un aliment…" oninput="CoachPlanEditPage.search(this, '${cr}')" onfocus="CoachPlanEditPage.search(this, '${cr}')">
+            <div class="search-results" id="sr-${cr}"></div>
           </div>
         </div>`;
-
-      items.forEach((r, i) => {
-        const idx = this.repas.indexOf(r);
-        html += `<div style="display:grid;grid-template-columns:1fr 70px 36px;gap:6px;margin-bottom:6px;align-items:start;">
-          <div>
-            <div style="font-size:13px;font-weight:600;">${r.aliment_nom} <span style="font-size:11px;color:var(--gray-light);">${r.quantite}${r.unite === 'g' ? 'g' : 'u'} · ${Math.round(r.calories)} kcal</span></div>
-            <div style="font-size:11px;color:var(--gray-muted);margin-top:2px;">P ${Math.round(r.proteines)}g · G ${Math.round(r.glucides)}g · L ${Math.round(r.lipides)}g</div>
-          </div>
-          <input class="input" type="number" value="${r.quantite}" style="height:32px;font-size:12px;text-align:center;margin-top:2px;" onchange="CoachPlanEditPage.updateQty(${idx}, this.value)">
-          <button style="width:36px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;font-size:16px;color:var(--gray-muted);margin-top:2px;" onclick="CoachPlanEditPage.removeItem(${idx})">×</button>
-        </div>`;
-      });
-
-      // Recherche aliment
-      html += `<div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input class="input search-input" placeholder="Chercher un aliment…" oninput="CoachPlanEditPage.search(this, '${cr}')" onfocus="CoachPlanEditPage.search(this, '${cr}')">
-        <div class="search-results" id="sr-${cr}"></div>
-      </div>`;
-
-      html += `</div>`;
     });
-
-    // Totaux — petit-déj salé/sucré sont des alternatives : on compte seulement le max des deux
-    const altCreneaux = ['petit_dejeuner_sale', 'petit_dejeuner_sucre'];
-    const altTotals = altCreneaux.map(cr => ({
-      kcal: this.repas.filter(r => r.creneau === cr).reduce((s, r) => s + parseFloat(r.calories), 0),
-      prot: this.repas.filter(r => r.creneau === cr).reduce((s, r) => s + parseFloat(r.proteines), 0),
-      gluc: this.repas.filter(r => r.creneau === cr).reduce((s, r) => s + parseFloat(r.glucides), 0),
-      lip:  this.repas.filter(r => r.creneau === cr).reduce((s, r) => s + parseFloat(r.lipides), 0),
-    }));
-    const bestAlt = altTotals[0].kcal >= altTotals[1].kcal ? altTotals[0] : altTotals[1];
-    const autres = this.repas.filter(r => !altCreneaux.includes(r.creneau));
-    const totalKcal = Math.round(autres.reduce((s, r) => s + parseFloat(r.calories), 0) + bestAlt.kcal);
-    const totalProt = Math.round(autres.reduce((s, r) => s + parseFloat(r.proteines), 0) + bestAlt.prot);
-    const totalGluc = Math.round(autres.reduce((s, r) => s + parseFloat(r.glucides), 0) + bestAlt.gluc);
-    const totalLip  = Math.round(autres.reduce((s, r) => s + parseFloat(r.lipides), 0) + bestAlt.lip);
-
-    // Objectifs (depuis les inputs ou valeurs courantes)
-    const objKcal = +document.getElementById('peKcal')?.value || cal;
-    const objProt = +document.getElementById('peProt')?.value || prot;
-    const objGluc = +document.getElementById('peGluc')?.value || gluc;
-    const objLip  = +document.getElementById('peLip')?.value  || lip;
-
-    function diffTag(val, obj) {
-      if (obj === 0) return '';
-      const d = val - obj;
-      const pct = Math.abs(d) / obj;
-      const color = pct <= 0.05 ? '#639922' : pct <= 0.12 ? '#C4820A' : '#E05252';
-      const sign = d > 0 ? '+' : '';
-      return `<span style="font-size:11px;font-weight:600;color:${color};">${sign}${d}</span>`;
-    }
-
-    html += `<div class="card card-accent">
-      <div class="card-title">Total du plan</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;text-align:center;">
-        <div>
-          <div style="font-size:18px;font-weight:700;">${totalKcal}</div>
-          <div style="font-size:10px;color:var(--gray-light);">/ ${objKcal} kcal</div>
-          <div style="margin-top:2px;">${diffTag(totalKcal, objKcal)}</div>
-        </div>
-        <div>
-          <div style="font-size:18px;font-weight:700;color:#3B82F6;">${totalProt}g</div>
-          <div style="font-size:10px;color:var(--gray-light);">/ ${objProt}g Prot</div>
-          <div style="margin-top:2px;">${diffTag(totalProt, objProt)}</div>
-        </div>
-        <div>
-          <div style="font-size:18px;font-weight:700;color:#C4820A;">${totalGluc}g</div>
-          <div style="font-size:10px;color:var(--gray-light);">/ ${objGluc}g Gluc</div>
-          <div style="margin-top:2px;">${diffTag(totalGluc, objGluc)}</div>
-        </div>
-        <div>
-          <div style="font-size:18px;font-weight:700;color:#E05252;">${totalLip}g</div>
-          <div style="font-size:10px;color:var(--gray-light);">/ ${objLip}g Lip</div>
-          <div style="margin-top:2px;">${diffTag(totalLip, objLip)}</div>
-        </div>
-      </div>
-    </div>`;
-
-    html += `<button class="btn btn-primary" style="margin-top:0.5rem;" onclick="CoachPlanEditPage.save()">💾 Enregistrer le plan</button>
-    <div id="peSaveMsg" style="margin-top:0.75rem;"></div>`;
+    html += '</div>';
 
     document.getElementById('peContent').innerHTML = html;
+    this._majTotaux();
+  },
+
+  // Total du plan face aux objectifs (petit-déjeuner salé ou sucré : le plus élevé des deux)
+  _majTotaux() {
+    const el = document.getElementById('peTotaux');
+    if (!el) return;
+    const altCreneaux = ['petit_dejeuner_sale', 'petit_dejeuner_sucre'];
+    const somme = (liste, k) => liste.reduce((t, r) => t + parseFloat(r[k] || 0), 0);
+    const alts = altCreneaux.map(cr => this.repas.filter(r => r.creneau === cr));
+    const meilleur = somme(alts[0], 'calories') >= somme(alts[1], 'calories') ? alts[0] : alts[1];
+    const compte = this.repas.filter(r => !altCreneaux.includes(r.creneau)).concat(meilleur);
+    const val = { kcal: somme(compte, 'calories'), prot: somme(compte, 'proteines'), gluc: somme(compte, 'glucides'), lip: somme(compte, 'lipides') };
+    const obj = { kcal: +document.getElementById('peKcal')?.value || 0, prot: +document.getElementById('peProt')?.value || 0,
+                  gluc: +document.getElementById('peGluc')?.value || 0, lip: +document.getElementById('peLip')?.value || 0 };
+    const ecart = (v, o) => {
+      if (!o) return '';
+      const d = Math.round(v) - o, pct = Math.abs(d) / o;
+      const cls = pct <= 0.05 ? 'ok' : pct <= 0.12 ? 'moyen' : 'loin';
+      return `<span class="pe-ecart ${cls}">${d > 0 ? '+' : ''}${d}</span>`;
+    };
+    const case_ = (k, label, unite) => `<div class="pe-total ${k}"><b>${Math.round(val[k])}${unite}</b><span>/ ${obj[k]}${unite} ${label}</span>${ecart(val[k], obj[k])}</div>`;
+    el.innerHTML = `<div class="pe-total-titre">Total du plan</div>
+      ${case_('kcal', 'kcal', '')}${case_('prot', 'P', 'g')}${case_('gluc', 'G', 'g')}${case_('lip', 'L', 'g')}`;
   },
 
   async search(input, creneau) {
@@ -295,6 +254,7 @@ const CoachPlanEditPage = {
     const g = +document.getElementById('peGluc').value || 0;
     const l = +document.getElementById('peLip').value  || 0;
     document.getElementById('peKcal').value = Math.round(p * 4 + g * 4 + l * 9);
+    this._majTotaux();
   },
 
   _onKcalInput() {
@@ -303,11 +263,12 @@ const CoachPlanEditPage = {
     const g = +document.getElementById('peGluc').value || 0;
     const l = +document.getElementById('peLip').value  || 0;
     const curKcal = p * 4 + g * 4 + l * 9;
-    if (!curKcal || !newKcal) return;
+    if (!curKcal || !newKcal) { this._majTotaux(); return; }
     const ratio = newKcal / curKcal;
     document.getElementById('peProt').value = Math.round(p * ratio);
     document.getElementById('peGluc').value = Math.round(g * ratio);
     document.getElementById('peLip').value  = Math.round(l * ratio);
+    this._majTotaux();
   },
 
   showGeneratorModal() {
