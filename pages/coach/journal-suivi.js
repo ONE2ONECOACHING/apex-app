@@ -26,16 +26,24 @@ const JournalSuivi = {
     });
   },
 
-  // fait | en_cours | en_retard | planifie | a_venir | avant
+  // Le bilan part le samedi : le suivi d'une semaine se fait la semaine suivante.
+  // Semaine à traiter = la semaine dernière ; la semaine en cours n'est pas finie.
+  aTraiter() {
+    const d = this.lundi(new Date()); d.setDate(d.getDate() - 7);
+    return this.ymd(d);
+  },
+
+  // fait | a_faire | en_cours | en_retard | planifie | a_venir | avant
   statut(ligne, lundi) {
     const actuel = this.ymd(this.lundi(new Date()));
     if (ligne?.fait) return 'fait';
     if (lundi === actuel) return 'en_cours';
+    if (lundi === this.aTraiter()) return 'a_faire';
     if (lundi < actuel) return lundi < JOURNAL_DEPART ? 'avant' : 'en_retard';
     return (ligne?.nutrition_prevue || ligne?.entrainement_prevu) ? 'planifie' : 'a_venir';
   },
 
-  // Retard de suivi : les deux dernières semaines passées n'ont pas été faites
+  // Retard de suivi : les deux semaines d'avant la semaine à traiter n'ont pas été faites
   enRetard(dateDebut, nb, lignes) {
     const parSemaine = new Map((lignes || []).map(l => [l.semaine, l]));
     const passees = this.semaines(dateDebut, nb)
@@ -45,7 +53,7 @@ const JournalSuivi = {
   },
 
   LIBELLES: {
-    fait: 'Fait', en_cours: 'En cours', en_retard: 'En retard',
+    fait: 'Fait', a_faire: 'À faire', en_cours: 'En cours', en_retard: 'En retard',
     planifie: 'Planifié', a_venir: 'À venir', avant: 'Avant le journal',
   },
 };
@@ -87,7 +95,7 @@ const CoachJournalSuiviPage = {
       this.bilans = bilans;
       document.getElementById('jsTitre').textContent = 'Journal de suivi — ' + (client.prenom || 'Client');
       this._render();
-      document.querySelector('.js-ligne.en_cours')?.scrollIntoView({ block: 'center' });
+      (document.querySelector('.js-ligne.a_faire') || document.querySelector('.js-ligne.en_cours'))?.scrollIntoView({ block: 'center' });
     } catch (e) {
       document.getElementById('jsContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }

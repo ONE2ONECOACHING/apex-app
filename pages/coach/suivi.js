@@ -8,20 +8,21 @@
 const SuiviSemaine = {
   etat(c) {
     const nb = [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26;
-    const actuel = JournalSuivi.ymd(JournalSuivi.lundi(new Date()));
+    // Semaine à traiter : la semaine dernière (bilan envoyé le samedi)
+    const cible = JournalSuivi.aTraiter();
     const semaines = JournalSuivi.semaines(c.date_debut, nb);
     if (!semaines.length) return { cle: 'sans_date', k: 0, nb, retard: 0 };
     const parSemaine = new Map((c.journal_suivi || []).map(l => [l.semaine, l]));
-    const k = semaines.find(s => s.lundi === actuel)?.k ?? (actuel < semaines[0].lundi ? 0 : nb + 1);
+    const k = semaines.find(s => s.lundi === cible)?.k ?? (cible < semaines[0].lundi ? 0 : nb + 1);
     if (k === 0) return { cle: 'a_venir', k, nb, retard: 0 };
     if (k > nb) return { cle: 'termine', k: nb, nb, retard: 0 };
-    // Semaines passées non faites à la suite (depuis le lancement du journal)
+    // Semaines d'avant non faites à la suite (depuis le lancement du journal)
     let retard = 0;
-    for (const s of semaines.filter(s => s.lundi < actuel && s.lundi >= JOURNAL_DEPART).reverse()) {
+    for (const s of semaines.filter(s => s.lundi < cible && s.lundi >= JOURNAL_DEPART).reverse()) {
       if (parSemaine.get(s.lundi)?.fait) break;
       retard++;
     }
-    if (parSemaine.get(actuel)?.fait) return { cle: 'fait', k, nb, retard: 0 };
+    if (parSemaine.get(cible)?.fait) return { cle: 'fait', k, nb, retard: 0 };
     return { cle: retard ? 'retard' : 'a_faire', k, nb, retard };
   },
 
@@ -53,13 +54,13 @@ const CoachSuiviPage = {
 
   render() {
     document.body.classList.add('coach-wide');
-    const lundi = JournalSuivi.lundi(new Date()).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    const lundi = new Date(JournalSuivi.aTraiter() + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
     return `
       <div class="app-header">
         <div>
           <div class="app-logo">ONE2ONE · COACH</div>
           <div class="app-title">Suivi de la semaine</div>
-          <div class="su-sous">Semaine du ${lundi}</div>
+          <div class="su-sous">À traiter : semaine du ${lundi} (bilan du samedi)</div>
         </div>
         <div id="suCoach"></div>
       </div>
@@ -71,7 +72,8 @@ const CoachSuiviPage = {
     if (!moi || moi.role !== 'coach') { window.location.hash = '#login'; return; }
     this._coach = this._coach || moi.id;
     try {
-      const depuis = JournalSuivi.ymd(new Date(JournalSuivi.lundi(new Date()).getTime() - 14 * 864e5));
+      const cible = JournalSuivi.aTraiter();
+      const depuis = cible;
       const [suivis, bilans, resume, coachs] = await Promise.all([
         db.getSuivisPourRetards(),
         db.getBilansRecents(depuis).catch(() => []),
@@ -83,7 +85,7 @@ const CoachSuiviPage = {
       this.lignes = suivis.map(c => ({
         client: c,
         etat: SuiviSemaine.etat(c),
-        bilan: bilans.find(b => b.client_id === c.id) || null,   // le plus récent (trié par semaine)
+        bilan: bilans.find(b => b.client_id === c.id && b.semaine === cible) || null,   // bilan de la semaine à traiter
         nonLus: c.coach_referent_id === moi.id ? (nonLus.get(c.id) || 0) : 0,
       }));
       // Le compteur du menu suit ce qu'on vient de lire
@@ -147,7 +149,7 @@ const CoachSuiviPage = {
       <div class="su-cadre">
         <div class="su-ligne su-tete"><div>À faire</div><div>Journal de suivi</div><div>Bilan</div><div>Messages</div><span></span></div>
         ${aFaire.map(ligne).join('') || '<div class="su-bravo">Tous les suivis de la semaine sont faits.</div>'}
-        ${faits.length ? `<div class="su-ligne su-tete su-groupe"><div>Fait cette semaine</div><div></div><div></div><div></div><span></span></div>${faits.map(ligne).join('')}` : ''}
+        ${faits.length ? `<div class="su-ligne su-tete su-groupe"><div>Déjà faits</div><div></div><div></div><div></div><span></span></div>${faits.map(ligne).join('')}` : ''}
       </div>`
       : '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Aucun client suivi.</div></div>';
   },

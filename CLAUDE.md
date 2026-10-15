@@ -84,6 +84,7 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Écran `pages/coach/journal-suivi.js` (route `coach-journal-suivi`, Suivi › Journal de suivi ; l'ancien « Journal » alimentaire s'appelle « Logbook »). Statuts et retards calculés par `JournalSuivi` : retard = deux dernières semaines passées non faites, uniquement à partir du 12 octobre 2026 (`JOURNAL_DEPART`). Bloc « Retards de suivi » sur le tableau de bord, badge dans la liste.
 - Le journal part de `profiles.date_debut` (date de début du suivi, réglée dans Plan alimentaire › Calcul).
 
+- Décalage d'une semaine (15 octobre 2026, demande de Benjamin) : le bilan part le samedi, donc le suivi d'une semaine se fait la semaine suivante. Semaine « à traiter » = la semaine dernière (`JournalSuivi.aTraiter()`, statut `a_faire`) ; la semaine en cours est « En cours » ; « En retard » = plus ancienne que la semaine à traiter. Retard du tableau de bord : les deux semaines d'avant la semaine à traiter non faites.
 - Onglet « Suivi » (14 octobre 2026, `pages/coach/suivi.js`, route `coach-suivi`) : mes clients suivis de la semaine (journal de suivi fait / à faire / retard, dernier bilan, messages non lus), à faire en haut ; gérants : choix du coach. Compteur du menu = mes suivis à faire. Le journal de suivi ouvert depuis cet onglet (`depuisSuivi`) affiche « ‹ Suivi · Suivant › » (file dans `sessionStorage.suiviFile`).
 
 ## Étape 5 — Messageries (en production depuis le 13 octobre 2026)
