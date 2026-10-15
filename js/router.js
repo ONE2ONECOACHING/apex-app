@@ -133,9 +133,11 @@ const Router = {
     // Menu de gauche de l'espace coach
     const ecranMenu = hash === 'coach-journal-suivi' && this.getParams().depuisSuivi ? 'coach-suivi' : hash;
     afficherMenuCoach(this.userProfile?.role === 'coach' && coachRoutes.includes(hash) ? ecranMenu : null);
+    // Fiche client sur ordinateur : onglets des fiches ouvertes et colonne résumé
+    if (typeof afficherFiche === 'function') afficherFiche(hash);
     // Écrans qui utilisent toute la largeur (les formulaires gardent une largeur limitée)
     document.body.classList.toggle('coach-plein', ['coach-agenda', 'coach-accueil', 'coach-messagerie',
-      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi'].includes(hash));
+      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi', 'coach-client-messages'].includes(hash));
 
     // Charger la page avec transition
     this.currentPage = hash;

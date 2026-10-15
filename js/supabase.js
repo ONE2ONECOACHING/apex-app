@@ -379,6 +379,21 @@ const db = {
   },
 
   // Bilans d'un client (pour les afficher sur les lignes du journal)
+  // Prochain coaching d'un client (agenda), pour le résumé de la fiche
+  async getProchainCoaching(clientId) {
+    const { data, error } = await getSupabase()
+      .from('agenda_creneaux')
+      .select('debut, fin, coach_id')
+      .eq('client_id', clientId)
+      .eq('type', 'coaching')
+      .gte('fin', new Date().toISOString())
+      .order('debut')
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
   async getBilansDuClient(clientId) {
     const { data, error } = await getSupabase()
       .from('bilan_instances')
@@ -431,14 +446,17 @@ const db = {
   // Programmes actifs des clients du coach, avec les semaines cochées au studio
   // tous = true : programmes actifs de tous les clients visibles (page Clients),
   // phases « vues » comprises ; sinon ceux des clients dont je suis le référent
-  async getCyclesClients(coachId, tous = false) {
-    const { data, error } = await getSupabase()
+  // clientId : seulement les programmes de ce client (résumé de la fiche)
+  async getCyclesClients(coachId, tous = false, clientId = null) {
+    let requete = getSupabase()
       .from('client_programmes')
       .select('*, client:profiles!client_programmes_client_id_fkey(prenom, nom, coach_referent_id, actif), client_prog_seances(id, nom, lieu, cardio, seances_studio_semaines(semaine, faite_le))')
       .eq('actif', true);
+    if (clientId) requete = requete.eq('client_id', clientId);
+    const { data, error } = await requete;
     if (error) throw error;
-    const progs = (data || []).filter(p => p.client?.actif !== false
-      && (tous || (p.client?.coach_referent_id === coachId && !p.fin_vue)));
+    const progs = (data || []).filter(p => clientId || (p.client?.actif !== false
+      && (tous || (p.client?.coach_referent_id === coachId && !p.fin_vue))));
 
     // Séances faites à distance (journal d'entraînement des clients concernés)
     // et semaines cardio validées. Lecture par paquets : Supabase renvoie au

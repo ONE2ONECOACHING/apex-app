@@ -1599,3 +1599,44 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
   .su-tete:not(.su-groupe) { display: none; }
   .su-groupe > div:not(:first-child) { display: none; }
 }
+
+/* Fiches clients sur ordinateur : onglets de fiches ouvertes et colonne résumé */
+.fiche-onglets, .fiche-resume { display: none; }
+@media (min-width: 1100px) {
+  body.coach-layout.fiche-ouverte .fiche-onglets { display: flex; position: fixed; top: 0; left: 200px; right: 0; height: 44px; z-index: 40;
+    align-items: flex-end; gap: 2px; padding: 0 10px; background: #ECEAE4; border-bottom: 1px solid var(--border-solid); }
+  body.coach-layout.fiche-ouverte .fiche-resume { display: block; position: fixed; top: 44px; left: 200px; bottom: 0; width: 260px; z-index: 30;
+    overflow-y: auto; padding: 18px 16px 24px; background: var(--white); border-right: 1px solid var(--border-solid); }
+  body.coach-layout.fiche-ouverte #app { margin-left: 460px !important; padding-top: 44px; }
+  body.coach-layout.fiche-ouverte .fiche-entete { display: none; }
+}
+.fo-onglet { display: flex; align-items: center; gap: 6px; max-width: 190px; min-width: 90px; height: 34px; padding: 0 6px 0 12px; border-radius: 9px 9px 0 0;
+  font-size: 13px; font-weight: 600; color: var(--gray); background: rgba(255,255,255,.45); cursor: pointer; }
+.fo-onglet:hover { background: rgba(255,255,255,.75); }
+.fo-onglet.on { background: var(--bg); color: var(--black); box-shadow: 0 -1px 0 var(--border-solid), 1px 0 0 var(--border-solid), -1px 0 0 var(--border-solid); }
+.fo-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fo-fermer { flex-shrink: 0; width: 20px; height: 20px; border: none; border-radius: 5px; background: none; color: #A1A1AA; font-size: 15px; line-height: 1; cursor: pointer; padding: 0; }
+.fo-fermer:hover { background: rgba(0,0,0,.08); color: var(--black); }
+.fo-plus-zone { position: relative; align-self: center; margin-left: 4px; }
+.fo-plus { width: 28px; height: 28px; border: none; border-radius: 7px; background: none; font-size: 18px; color: var(--gray); cursor: pointer; }
+.fo-plus:hover { background: rgba(0,0,0,.06); }
+.fo-recherche { position: absolute; top: 34px; left: 0; width: 260px; background: var(--white); border: 1px solid var(--border-solid);
+  border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.12); padding: 8px; z-index: 60; }
+.fo-recherche .input { height: 34px; font-size: 13px; margin: 0; }
+.fo-resultat { padding: 7px 8px; border-radius: 7px; font-size: 13px; cursor: pointer; }
+.fo-resultat:hover { background: var(--bg); }
+.fr-entete { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--border-solid); }
+.fr-nom { font-size: 17px; font-weight: 800; color: var(--black); }
+.fr-sous { font-size: 12px; color: #8A8A93; margin-top: 2px; font-weight: 400; }
+.fr-bloc { padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+.fr-titre { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #A1A1AA; margin-bottom: 3px; }
+.fr-valeur { font-size: 13px; font-weight: 600; color: var(--black); }
+.fr-vide { color: #A1A1AA; font-weight: 400; }
+.fr-rouge { color: #B91C1C; }
+.fr-profil { display: flex; justify-content: space-between; font-size: 12px; font-weight: 400; color: var(--gray); }
+.fr-profil b { color: var(--gold); letter-spacing: 1px; }
+.fr-topo { margin-top: 6px; font-size: 12px; font-weight: 400; color: var(--gray); white-space: pre-line; }
+.fr-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+@media (min-width: 1100px) {
+  body.fiche-ouverte .msg-fiche { height: calc(100vh - 230px); }
+}
