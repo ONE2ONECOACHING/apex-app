@@ -65,7 +65,7 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Éditeur de programmes (14 octobre 2026) : glisser-déposer des exercices (poignée ⠿, aussi vers une autre séance) et des séances. Un exercice déplacé sort de son superset. `saveClientProgrammeSeances` garde l'identifiant d'un exercice qui change de séance (lecture des exercices de tout le programme, suppressions à la fin).
 - Écran `pages/coach/seance-studio.js` (route `coach-seance-studio`) : grille, et modification des exercices sur place. `saveClientProgrammeSeances` met à jour les exercices sur place : ne jamais revenir à « supprimer puis recréer », les saisies du studio y sont rattachées.
 - Onglets de la fiche regroupés dans `coachClientNav` (`js/router.js`), masqués selon les droits ; onglet Infos : profil coaching et tableau des séances au studio (semaines 1 à 50).
-- Remarques de la grille du studio réservées aux coachs (`sql/2026-10-15_remarques_studio_privees.sql`, exécuté le 15 octobre 2026) : le client lit ses charges et répétitions par `charges_studio_client()`, plus de lecture directe de `seances_studio_saisies`.
+- Remarques de la grille du studio réservées aux coachs (`sql/2026-10-15_remarques_studio_privees.sql`, exécuté le 15 octobre 2026) : le client lit ses charges et répétitions par `charges_studio_client()`, plus de lecture directe de `seances_studio_saisies`. Les « Notes coach » d'une séance (`client_prog_seances.notes_coach`, 📌) restent visibles du client : ce sont des consignes (choix de Benjamin).
 - Côté client : rubrique « Au studio » ; `seances_log` reçoit maintenant `programme_id` et `seance_id`.
 - Testé par Benjamin sur la preview le 12 octobre 2026.
 
