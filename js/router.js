@@ -8,6 +8,10 @@ const Router = {
     // Attacher le listener AVANT tout return anticipé : sinon après le flux
     // invite/recovery (set-password), les navigations suivantes restent bloquées. #45
     window.addEventListener('hashchange', () => this.route());
+    // Retour / Suivant entre deux clients du même écran : l'adresse ne change pas
+    window.addEventListener('popstate', () => {
+      if (window.location.hash === this._hashAffiche) this.route();
+    });
     // Detect Supabase password recovery redirect (retour Supabase avec access_token)
     // Ne pas confondre avec le lien d'invitation initial #invite?t=TOKEN&type=recovery
     if (window.location.hash.includes('access_token') && window.location.hash.includes('type=recovery')) {
@@ -44,6 +48,7 @@ const Router = {
     // Extraire la route sans les query params du hash (ex: #invite?t=xxx → 'invite')
     const fullHash = window.location.hash.slice(1) || 'login';
     const hash = fullHash.split('?')[0];
+    this._hashAffiche = window.location.hash;
 
     // Retirer coach-wide seulement si on quitte les pages coach (évite le flash de layout)
     const coachHashes = ['coach-clients','coach-client-edit','coach-plan-edit','coach-journal','coach-journal-view','coach-habits-edit','coach-bilan-templates','coach-bilan-client','coach-mesure-client','coach-exercices','coach-prog-templates','coach-prog-template-edit','coach-client-programme','coach-training-client'];
@@ -213,6 +218,13 @@ const Router = {
 
   navigate(page, params) {
     if (params) sessionStorage.setItem('routeParams', JSON.stringify(params));
+    // Même écran, autre client (onglets de fiches, « Suivant ») : l'adresse ne change
+    // pas, donc pas d'évènement hashchange → nouvelle entrée d'historique et affichage
+    if (window.location.hash.split('?')[0] === '#' + page) {
+      try { history.pushState({ routeParams: params || null }, '', '#' + page); } catch (_) {}
+      this.route();
+      return;
+    }
     window.location.hash = '#' + page;
     // Attacher les params à l'entrée d'historique courante : le bouton Retour
     // restaure alors le bon état (bon clientId) au lieu des derniers params écrits. #30
