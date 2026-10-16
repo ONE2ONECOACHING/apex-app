@@ -258,6 +258,7 @@ const CoachClientsPage = {
       await db.updateProfile(profileId, { coach_referent_id: Router.userProfile.id }).catch(() => {});
       const appUrl  = APP_CONFIG.APP_URL;
       const message = `Bonjour ${prenom} 👊\n\nTon espace ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 ${password}\n\nConnecte-toi avec ce mot de passe : l'app te demandera aussitôt d'en choisir un nouveau.`;
+      this._message = message;   // gardé ici : une apostrophe casserait un onclick
       document.getElementById('createForm').style.display = 'none';
       document.getElementById('inviteResult').style.display = 'block';
       document.getElementById('inviteResult').innerHTML = `
@@ -271,7 +272,7 @@ const CoachClientsPage = {
           <div>📧 <b>Email :</b> ${email}</div>
           <div>🔑 <b>Mot de passe :</b> ${escHtml(password)}</div>
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachClientsPage.copyCredentials('${encodeURIComponent(message)}')">📋 Copier le message WhatsApp</button>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachClientsPage.copyCredentials()">📋 Copier le message WhatsApp</button>
         <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('coachModal').innerHTML='';CoachClientsPage.init()">Fermer</button>
       `;
     } catch (e) {
@@ -281,8 +282,8 @@ const CoachClientsPage = {
     }
   },
 
-  copyCredentials(encodedMsg) {
-    const msg = decodeURIComponent(encodedMsg);
+  copyCredentials() {
+    const msg = this._message || '';
     navigator.clipboard.writeText(msg).then(() => {
       const btn = document.querySelector('#inviteResult .btn-primary');
       if (btn) {
