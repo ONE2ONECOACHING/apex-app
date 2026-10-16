@@ -87,7 +87,7 @@ const CoachClientEditPage = {
       </div>
 
       <div class="card" id="ceProfil">${this._profilCoachHtml()}</div>
-      ${this.notifs ? `<div class="card" id="ceNotifs">${this._notifsHtml()}</div>` : ''}
+      ${this.notifs && c.type_client !== 'studio' ? `<div class="card" id="ceNotifs">${this._notifsHtml()}</div>` : ''}
       ${this._studioHtml()}
 
 
@@ -185,15 +185,11 @@ const CoachClientEditPage = {
   _notifsHtml() {
     const n = this.notifs;
     const modif = this._peutModifierProfil();
-    const studio = this.client.type_client === 'studio';
-    const lignes = studio
-      ? [['programme', 'Programme', '« Notifier le client » depuis un programme']]
-      : [['bilan', 'Bilan de la semaine', 'Quand son bilan est disponible'],
+    const lignes = [['bilan', 'Bilan de la semaine', 'Quand son bilan est disponible'],
          ['rappel_bilan', 'Rappel du bilan', 'Dimanche 21 h, si le bilan n\'est pas rempli'],
          ['journal', 'Rappel du journal', 'Chaque jour à 20 h, moins de 3 repas notés'],
          ['habitudes', 'Rappel des habitudes', 'Chaque jour à 21 h, habitudes non cochées'],
-         ['plan', 'Nouveau plan alimentaire', 'Quand un plan est enregistré'],
-         ['programme', 'Programme', '« Notifier le client » depuis un programme']];
+         ['plan', 'Nouveau plan alimentaire', 'Quand un plan est enregistré']];
     return `
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
         <span>Notifications</span>

@@ -1831,7 +1831,7 @@ const db = {
     const { data, error } = await getSupabase()
       .from('notifications_client').select('*').eq('client_id', clientId).maybeSingle();
     if (error) throw error;
-    return { bilan: true, rappel_bilan: true, journal: true, habitudes: true, plan: true, programme: true, ...(data || {}) };
+    return { bilan: true, rappel_bilan: true, journal: true, habitudes: true, plan: true, ...(data || {}) };
   },
 
   async saveNotificationsClient(clientId, champs) {
@@ -1841,7 +1841,7 @@ const db = {
     if (error) throw error;
   },
 
-  // Une notification manuelle (plan, programme) est-elle autorisée pour ce client ?
+  // La notification d'un nouveau plan est-elle autorisée pour ce client ?
   async notificationActive(clientId, cle) {
     try { return (await this.getNotificationsClient(clientId))[cle] !== false; } catch (_) { return true; }
   },

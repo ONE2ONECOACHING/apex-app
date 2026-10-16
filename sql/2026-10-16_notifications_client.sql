@@ -9,7 +9,6 @@
 --   journal       rappel du journal alimentaire (20 h)
 --   habitudes     rappel des habitudes (21 h)
 --   plan          nouveau plan alimentaire
---   programme     « Notifier le client » d'un programme
 -- Les notifications de messages restent toujours actives (choix de Benjamin).
 --
 -- Droits : lecture par le client lui-même et par les coachs ; modification par
@@ -26,7 +25,6 @@ create table if not exists public.notifications_client (
   journal       boolean not null default true,
   habitudes     boolean not null default true,
   plan          boolean not null default true,
-  programme     boolean not null default true,
   maj_par       uuid references public.profiles(id) on delete set null default auth.uid(),
   maj_le        timestamptz not null default now()
 );
