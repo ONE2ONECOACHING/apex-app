@@ -379,6 +379,10 @@ const CoachClientProgrammePage = {
 
   async notifyClient() {
     if (!this.programmes.length || !this.client) return;
+    if (!(await db.notificationActive(this.client.id, 'programme'))) {
+      toast('Les notifications de programme sont coupées pour ce client (fiche › Infos).', 'info');
+      return;
+    }
     const btn = document.getElementById('cpNotifyBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
     try {

@@ -79,6 +79,11 @@ Deno.serve(async (req) => {
 
   const results = { bilan: 0, logbook: 0, habitudes: 0, bilan_rappel: 0 };
 
+  // Notifications coupées client par client (fiche › Infos ; sans ligne : tout est actif)
+  const { data: reglages } = await sb.from("notifications_client").select("*");
+  const parClient = new Map((reglages || []).map((r: any) => [r.client_id, r]));
+  const coupee = (clientId: string, cle: string) => parClient.get(clientId)?.[cle] === false;
+
   // ── 1. BILAN ─────────────────────────────────────────────────────────────
   const { data: assignations } = await sb
     .from("bilan_assignations")
@@ -132,20 +137,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    await sendPush(asgn.client_id, "📝 Ton bilan de la semaine", "Ton bilan est disponible — prends 2 min pour le remplir 💪", "#client-bilan");
+    // Le bilan est créé dans tous les cas ; seule la notification peut être coupée
+    if (!coupee(asgn.client_id, "bilan")) {
+      await sendPush(asgn.client_id, "📝 Ton bilan de la semaine", "Ton bilan est disponible — prends 2 min pour le remplir 💪", "#client-bilan");
+    }
     await logSent(sb, asgn.client_id, "bilan", semaineActuelle);
     results.bilan++;
   }
 
   // ── 2. LOGBOOK (20h locale) ───────────────────────────────────────────────
   if (localHour === 20) {
+    // Seulement les clients suivis : un client studio sans suivi n'a pas de journal
     const { data: clients } = await sb
       .from("profiles")
       .select("id")
       .eq("role", "client")
-      .neq("actif", false);
+      .neq("actif", false)
+      .in("type_client", ["suivi", "distance"]);
 
     for (const client of clients || []) {
+      if (coupee(client.id, "journal")) continue;
       // Moins de 3 repas enregistrés aujourd'hui ?
       const { data: entries } = await sb
         .from("journal_entries")
@@ -168,9 +179,11 @@ Deno.serve(async (req) => {
       .from("profiles")
       .select("id")
       .eq("role", "client")
-      .neq("actif", false);
+      .neq("actif", false)
+      .in("type_client", ["suivi", "distance"]);
 
     for (const client of clients || []) {
+      if (coupee(client.id, "habitudes")) continue;
       const { data: habitudes } = await sb
         .from("habitudes_config")
         .select("id")
@@ -213,6 +226,7 @@ Deno.serve(async (req) => {
       .eq("semaine", semaineStr);
 
     for (const inst of (pendingInstances || [])) {
+      if (coupee(inst.client_id, "rappel_bilan")) continue;
       if (await alreadySent(sb, inst.client_id, "bilan_rappel_dimanche", semaineStr)) continue;
 
       await sendPush(

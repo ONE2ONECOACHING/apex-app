@@ -1642,3 +1642,15 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
 @media (min-width: 1100px) {
   body.fiche-ouverte .msg-fiche { height: calc(100vh - 230px); }
 }
+
+/* Fiche › Infos : réglage des notifications du client */
+.nc-ligne { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border-light); cursor: pointer; }
+.nc-label { display: block; font-size: 14px; font-weight: 600; color: var(--black); }
+.nc-aide { display: block; font-size: 12px; color: #8A8A93; margin-top: 1px; }
+.nc-interrupteur { appearance: none; -webkit-appearance: none; flex-shrink: 0; width: 44px; height: 26px; border-radius: 13px; background: #D4D4D8;
+  position: relative; cursor: pointer; transition: background .15s; margin: 0; }
+.nc-interrupteur::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+.nc-interrupteur:checked { background: #34C759; }
+.nc-interrupteur:checked::after { transform: translateX(18px); }
+.nc-interrupteur:disabled { opacity: .5; cursor: default; }

@@ -1826,6 +1826,26 @@ const db = {
 
   // ── Profil coaching (réservé aux coachs) ─────────────────────────────────
 
+  // Réglages des notifications d'un client (sans ligne : tout est activé)
+  async getNotificationsClient(clientId) {
+    const { data, error } = await getSupabase()
+      .from('notifications_client').select('*').eq('client_id', clientId).maybeSingle();
+    if (error) throw error;
+    return { bilan: true, rappel_bilan: true, journal: true, habitudes: true, plan: true, programme: true, ...(data || {}) };
+  },
+
+  async saveNotificationsClient(clientId, champs) {
+    const { error } = await getSupabase().from('notifications_client')
+      .upsert({ client_id: clientId, ...champs, maj_par: Router.userProfile?.id || null, maj_le: new Date().toISOString() },
+              { onConflict: 'client_id' });
+    if (error) throw error;
+  },
+
+  // Une notification manuelle (plan, programme) est-elle autorisée pour ce client ?
+  async notificationActive(clientId, cle) {
+    try { return (await this.getNotificationsClient(clientId))[cle] !== false; } catch (_) { return true; }
+  },
+
   async getFicheCoach(clientId) {
     const { data, error } = await getSupabase()
       .from('fiche_coach').select('*').eq('client_id', clientId).maybeSingle();

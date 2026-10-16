@@ -441,8 +441,8 @@ const CoachPlanEditPage = {
       // Recharger les plans
       this.plans = await db.getPlansForClient(this.clientId);
 
-      // Notifier le client
-      db.sendPush(
+      // Notifier le client (sauf si cette notification est coupée dans sa fiche)
+      if (await db.notificationActive(this.clientId, 'plan')) db.sendPush(
         this.clientId,
         '📋 Nouveau plan disponible !',
         'Ton coach a publié ton plan nutritionnel. Consulte-le dès maintenant.',

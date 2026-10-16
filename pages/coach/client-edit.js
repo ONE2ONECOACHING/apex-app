@@ -28,6 +28,7 @@ const CoachClientEditPage = {
     this.fiche       = null;
     this.semainesStudio = [];
     this.programmes  = [];
+    this.notifs      = null;
 
     const params = Router.getParams();
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
@@ -36,10 +37,12 @@ const CoachClientEditPage = {
       this.client = await db.getProfile(params.clientId);
       // Le compte partagé n'est plus utilisé : il n'est pas proposé comme référent
       this.coachs = (await db.getCoachs().catch(() => [])).filter(co => co.id !== COMPTE_PARTAGE_ID);
-      [this.fiche, this.semainesStudio, this.programmes] = await Promise.all([
+      [this.fiche, this.semainesStudio, this.programmes, this.notifs] = await Promise.all([
         db.getFicheCoach(params.clientId).catch(() => null),
+        
         db.getSemainesStudioClient(params.clientId).catch(() => []),
         db.getClientProgrammesActifs(params.clientId).catch(() => []),
+        db.getNotificationsClient(params.clientId).catch(() => null),
       ]);
       document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
       this.renderForm();
@@ -84,6 +87,7 @@ const CoachClientEditPage = {
       </div>
 
       <div class="card" id="ceProfil">${this._profilCoachHtml()}</div>
+      ${this.notifs ? `<div class="card" id="ceNotifs">${this._notifsHtml()}</div>` : ''}
       ${this._studioHtml()}
 
 
@@ -173,6 +177,47 @@ const CoachClientEditPage = {
     } catch (e) {
       this.fiche = avant;
       if (redessiner) document.getElementById('ceProfil').innerHTML = this._profilCoachHtml();
+      toast('Erreur : ' + e.message, 'error');
+    }
+  },
+
+  // ── Notifications envoyées au client (les messages restent toujours actifs) ──
+  _notifsHtml() {
+    const n = this.notifs;
+    const modif = this._peutModifierProfil();
+    const studio = this.client.type_client === 'studio';
+    const lignes = studio
+      ? [['programme', 'Programme', '« Notifier le client » depuis un programme']]
+      : [['bilan', 'Bilan de la semaine', 'Quand son bilan est disponible'],
+         ['rappel_bilan', 'Rappel du bilan', 'Dimanche 21 h, si le bilan n\'est pas rempli'],
+         ['journal', 'Rappel du journal', 'Chaque jour à 20 h, moins de 3 repas notés'],
+         ['habitudes', 'Rappel des habitudes', 'Chaque jour à 21 h, habitudes non cochées'],
+         ['plan', 'Nouveau plan alimentaire', 'Quand un plan est enregistré'],
+         ['programme', 'Programme', '« Notifier le client » depuis un programme']];
+    return `
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Notifications</span>
+        <span id="ceNotifsEtat" style="font-size:11px;font-weight:500;color:var(--gray-light);"></span>
+      </div>
+      ${lignes.map(([cle, label, aide]) => `
+        <label class="nc-ligne">
+          <span><span class="nc-label">${label}</span><span class="nc-aide">${aide}</span></span>
+          <input type="checkbox" class="nc-interrupteur" ${n[cle] !== false ? 'checked' : ''} ${modif ? '' : 'disabled'}
+            onchange="CoachClientEditPage.majNotif('${cle}', this.checked)">
+        </label>`).join('')}
+      <div class="nc-aide" style="margin-top:8px;">Les notifications de messages restent toujours actives.${modif ? '' : ' Seuls le coach référent et les gérants peuvent modifier ces réglages.'}</div>`;
+  },
+
+  async majNotif(cle, actif) {
+    const avant = this.notifs[cle];
+    this.notifs[cle] = actif;
+    const etat = document.getElementById('ceNotifsEtat');
+    try {
+      await db.saveNotificationsClient(this.client.id, { [cle]: actif });
+      if (etat) etat.textContent = '✓ Enregistré';
+    } catch (e) {
+      this.notifs[cle] = avant;
+      document.getElementById('ceNotifs').innerHTML = this._notifsHtml();
       toast('Erreur : ' + e.message, 'error');
     }
   },
