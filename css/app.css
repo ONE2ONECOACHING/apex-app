@@ -1651,6 +1651,6 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
   position: relative; cursor: pointer; transition: background .15s; margin: 0; }
 .nc-interrupteur::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
-.nc-interrupteur:checked { background: #34C759; }
+.nc-interrupteur:checked { background: #0A84FF; }
 .nc-interrupteur:checked::after { transform: translateX(18px); }
 .nc-interrupteur:disabled { opacity: .5; cursor: default; }
