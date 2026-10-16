@@ -12,8 +12,24 @@ const TDEE = {
     'Escalade': 8.0, 'Danse / Zumba': 6.5
   },
 
+  // Taille saisie en mètres (1,65) au lieu de centimètres (165) : on convertit
+  tailleCm(taille) {
+    const t = +taille || 0;
+    return t > 0 && t < 3 ? Math.round(t * 100) : t;
+  },
+
+  // Valeurs plausibles pour un adulte ; sinon le calcul n'a pas de sens
+  erreurProfil({ age, poids, taille }) {
+    if (!age || age < 12 || age > 100) return "L'âge doit être compris entre 12 et 100 ans.";
+    if (!poids || poids < 30 || poids > 250) return 'Le poids doit être en kilos (entre 30 et 250).';
+    const t = this.tailleCm(taille);
+    if (!t || t < 120 || t > 230) return 'La taille doit être en centimètres (par exemple 165).';
+    return null;
+  },
+
   calculate(profile, activites) {
-    const { sexe, age, poids, taille, type_metier, pas_par_jour, objectif } = profile;
+    const { sexe, age, poids, type_metier, pas_par_jour, objectif } = profile;
+    const taille = this.tailleCm(profile.taille);
 
     // BMR — Mifflin-St Jeor
     const bmr = sexe === 'homme'

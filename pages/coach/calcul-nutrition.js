@@ -133,18 +133,31 @@ const CoachCalculNutritionPage = {
       sexe: v('cnSexe'),
       age: +v('cnAge') || null,
       poids: +v('cnPoids') || null,
-      taille: +v('cnTaille') || null,
+      taille: TDEE.tailleCm(+v('cnTaille')) || null,
       type_metier: v('cnMetier'),
       pas_par_jour: +v('cnPas') || 5000,
       objectif: v('cnObjectif'),
     };
   },
 
+  // Taille en mètres → centimètres, affichée corrigée dans le champ
+  _corrigerTaille() {
+    const champ = document.getElementById('cnTaille');
+    const t = +champ.value;
+    if (t > 0 && t < 3) {
+      champ.value = TDEE.tailleCm(t);
+      toast(`Taille convertie en centimètres : ${champ.value} cm`, 'info');
+    }
+  },
+
   calcTDEE() {
+    this._corrigerTaille();
     const profile = this._profilSaisi();
     if (!profile.age || !profile.poids || !profile.taille) {
       toast('Remplis au minimum l\'âge, le poids et la taille.', 'error'); return;
     }
+    const erreur = TDEE.erreurProfil(profile);
+    if (erreur) { toast(erreur, 'error'); return; }
     const result = TDEE.calculate(profile, this.activites);
     document.getElementById('cnTDEEResult').innerHTML = `
       <div class="card-title">TDEE calculé</div>
@@ -165,6 +178,7 @@ const CoachCalculNutritionPage = {
   },
 
   async save() {
+    this._corrigerTaille();
     const id = this.client.id;
     // Champ « Semaine courante » vide → conserver la valeur existante (#44)
     const semRaw = document.getElementById('cnSemaine').value.trim();
@@ -189,6 +203,8 @@ const CoachCalculNutritionPage = {
 
     let tdeeResult = null;
     if (updates.age && updates.poids && updates.taille) {
+      const erreur = TDEE.erreurProfil(updates);
+      if (erreur) { toast(erreur, 'error'); return; }
       tdeeResult = TDEE.calculate(updates, this.activites);
       updates.bmr  = tdeeResult.bmr;
       updates.neat = tdeeResult.neat;

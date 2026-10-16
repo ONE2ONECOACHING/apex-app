@@ -223,7 +223,7 @@ const OutilsPage = {
       sexe:        v('tdSexe'),
       age:         parseInt(v('tdAge')) || 0,
       poids:       parseFloat(v('tdPoids')) || 0,
-      taille:      parseInt(v('tdTaille')) || 0,
+      taille:      parseFloat(v('tdTaille')) || 0,
       type_metier: v('tdJob'),
       pas_par_jour:parseInt(v('tdPas')) || 8000,
       objectif:    v('tdObj'),
