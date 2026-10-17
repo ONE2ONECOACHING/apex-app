@@ -75,11 +75,13 @@ const CoachAccueilPage = {
     // Une séance reconnue par son nom ne compte que si elle a été faite après
     // l'attribution de la phase : chaque nouvelle phase repart à zéro, même si
     // ses séances portent les mêmes noms que celles de la phase précédente.
-    const attribuee = (p.created_at || '').slice(0, 10);
+    // Dates en heure française (une attribution à 0 h 30 ne doit pas compter la veille)
+    const jourLocal = iso => iso ? formatDate(new Date(iso)) : '';
+    const attribuee = jourLocal(p.created_at);
     const depuis = [p.date_debut, attribuee].filter(Boolean).sort().pop() || '';
     // Tout ce qui précède « depuis » (attribution ou « Repartir de zéro ») est ignoré
     const fois = s => {
-      if (s.cardio) return (p._cardio || []).filter(v => v.seance_id === s.id && (v.completed_at || '').slice(0, 10) >= depuis).length;
+      if (s.cardio) return (p._cardio || []).filter(v => v.seance_id === s.id && jourLocal(v.completed_at) >= depuis).length;
       if (s.lieu === 'studio') return (s.seances_studio_semaines || []).filter(w => (w.faite_le || '') >= depuis).length;
       return logs.filter(l => l.date_seance >= depuis && (l.seance_id === s.id || (!l.seance_id
         && (!l.programme_id || l.programme_id === p.id)

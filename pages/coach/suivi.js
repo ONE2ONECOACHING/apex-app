@@ -16,14 +16,10 @@ const SuiviSemaine = {
     const k = semaines.find(s => s.lundi === cible)?.k ?? (cible < semaines[0].lundi ? 0 : nb + 1);
     if (k === 0) return { cle: 'a_venir', k, nb, retard: 0 };
     if (k > nb) return { cle: 'termine', k: nb, nb, retard: 0 };
-    // Semaines d'avant non faites à la suite (depuis le lancement du journal)
-    let retard = 0;
-    for (const s of semaines.filter(s => s.lundi < cible && s.lundi >= JOURNAL_DEPART).reverse()) {
-      if (parSemaine.get(s.lundi)?.fait) break;
-      retard++;
-    }
+    // Retard : même règle que le tableau de bord et la page Clients (2 semaines)
+    const retard = JournalSuivi.semainesEnRetard(c.date_debut, nb, c.journal_suivi);
     if (parSemaine.get(cible)?.fait) return { cle: 'fait', k, nb, retard: 0 };
-    return { cle: retard ? 'retard' : 'a_faire', k, nb, retard };
+    return { cle: retard >= 2 ? 'retard' : 'a_faire', k, nb, retard };
   },
 
   aFaire(e) { return ['retard', 'a_faire', 'sans_date'].includes(e.cle); },

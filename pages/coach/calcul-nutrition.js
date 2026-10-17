@@ -196,7 +196,9 @@ const CoachCalculNutritionPage = {
         const monday = new Date(today);
         monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
         monday.setHours(0, 0, 0, 0);
-        return formatDate(new Date(monday.getTime() - (semaine - 1) * 7 * 24 * 3600 * 1000));
+        // En jours de calendrier (pas en millisecondes : faux au passage à l'heure d'été)
+        monday.setDate(monday.getDate() - 7 * (semaine - 1));
+        return formatDate(monday);
       })(),
       masse_grasse_pct: +document.getElementById('cnFat').value || null,
     };

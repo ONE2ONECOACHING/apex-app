@@ -473,17 +473,18 @@ const db = {
     const clientIds = [...new Set(progs.map(p => p.client_id))];
     const cardioIds = progs.flatMap(p => (p.client_prog_seances || []).filter(s => s.cardio).map(s => s.id));
     if (clientIds.length) {
-      const debut = progs.map(p => p.date_debut).filter(Boolean).sort()[0];
+      // Plus ancienne date utile : début du programme, ou attribution s'il n'a pas de date
+      const debut = progs.map(p => p.date_debut || (p.created_at || '').slice(0, 10)).filter(Boolean).sort()[0];
       const [logs, cardio] = await Promise.all([
         toutLire(() => {
           let q = getSupabase().from('seances_log')
             .select('client_id, programme_id, seance_id, nom_seance, date_seance')
             .in('client_id', clientIds)
-            .order('date_seance');
+            .order('date_seance').order('id');
           return debut ? q.gte('date_seance', debut) : q;
         }),
         cardioIds.length
-          ? toutLire(() => getSupabase().from('cardio_validations').select('seance_id, semaine, completed_at').in('seance_id', cardioIds).order('seance_id'))
+          ? toutLire(() => getSupabase().from('cardio_validations').select('seance_id, semaine, completed_at').in('seance_id', cardioIds).order('seance_id').order('semaine'))
           : Promise.resolve([]),
       ]);
       for (const p of progs) {

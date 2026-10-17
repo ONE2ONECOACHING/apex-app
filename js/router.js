@@ -243,7 +243,10 @@ const Router = {
     if (modal) modal.remove();
     await db.signOut();
     this.userProfile = null;
-    window.location.hash = '#login';
+    // Recharger la page : rien de ce qui était en mémoire (résumés, compteurs, listes
+    // lues avec les droits du compte précédent) ne passe au compte suivant
+    window.location.replace(window.location.pathname + '#login');
+    window.location.reload();
   },
 
   confirmLogout() {

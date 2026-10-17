@@ -43,13 +43,25 @@ const JournalSuivi = {
     return (ligne?.nutrition_prevue || ligne?.entrainement_prevu) ? 'planifie' : 'a_venir';
   },
 
-  // Retard de suivi : les deux semaines d'avant la semaine à traiter n'ont pas été faites
-  enRetard(dateDebut, nb, lignes) {
+  // Semaines d'avant la semaine à traiter non faites à la suite (depuis le lancement
+  // du journal) ; 0 si le suivi n'a pas commencé ou est terminé
+  semainesEnRetard(dateDebut, nb, lignes) {
+    const semaines = this.semaines(dateDebut, nb);
+    const cible = this.aTraiter();
+    if (!semaines.length || cible < semaines[0].lundi || cible > semaines[semaines.length - 1].lundi) return 0;
     const parSemaine = new Map((lignes || []).map(l => [l.semaine, l]));
-    const passees = this.semaines(dateDebut, nb)
-      .filter(s => ['en_retard', 'fait'].includes(this.statut(parSemaine.get(s.lundi), s.lundi)));
-    const deux = passees.slice(-2);
-    return deux.length === 2 && deux.every(s => !parSemaine.get(s.lundi)?.fait);
+    let n = 0;
+    for (const s of semaines.filter(s => s.lundi < cible && s.lundi >= JOURNAL_DEPART).reverse()) {
+      if (parSemaine.get(s.lundi)?.fait) break;
+      n++;
+    }
+    return n;
+  },
+
+  // Retard de suivi (même règle partout, validée par Benjamin) : les deux semaines
+  // d'avant la semaine à traiter ne sont pas faites
+  enRetard(dateDebut, nb, lignes) {
+    return this.semainesEnRetard(dateDebut, nb, lignes) >= 2;
   },
 
   LIBELLES: {
@@ -79,8 +91,11 @@ const CoachJournalSuiviPage = {
   },
 
   async init() {
+    // Saisies en attente sur le journal précédent (« Suivant » juste après avoir tapé) :
+    // enregistrées tout de suite, pour le bon client
+    await this._viderAttente();
     this.client = null; this.lignes = []; this.entete = null; this.bilans = [];
-    this._ouverts = new Set(); this._timers = {};
+    this._ouverts = new Set(); this._timers = {}; this._attente = {};
     const params = Router.getParams();
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
     try {
@@ -152,7 +167,7 @@ const CoachJournalSuiviPage = {
             <button onclick="CoachJournalSuiviPage.changerDuree(1)" title="Une semaine de plus">+</button>
           </div>` : ''}
         </div>
-        ${retard ? '<div class="js-alerte">⚠️ Retard de suivi : les deux dernières semaines n\'ont pas été faites.</div>' : ''}
+        ${retard ? '<div class="js-alerte">⚠️ Retard de suivi : les deux semaines avant la semaine à traiter n\'ont pas été faites.</div>' : ''}
         <div class="js-entete-grille">
           <div class="field" style="margin:0;">
             <label class="field-label">Leviers prioritaires</label>
@@ -214,9 +229,10 @@ const CoachJournalSuiviPage = {
 
   // Enregistre tout de suite les saisies en attente (avant de redessiner l'écran)
   async _viderAttente() {
-    for (const [cle, t] of Object.entries(this._timers)) {
+    for (const [cle, t] of Object.entries(this._timers || {})) {
       clearTimeout(t);
-      if (cle !== '_leviers') await this._enregistrer(cle);
+      if (cle === '_leviers') await this._enregistrerLeviers();
+      else await this._enregistrer(cle);
     }
     this._timers = {};
   },
@@ -234,16 +250,30 @@ const CoachJournalSuiviPage = {
 
   saisir(lundi) {
     this._etat('Enregistrement…');
+    // Les valeurs sont relevées à la frappe : l'enregistrement différé ne dépend
+    // plus de l'écran (qui peut avoir changé de client entre-temps)
+    const champs = {};
+    document.querySelectorAll(`[data-semaine="${lundi}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+    this._attente = this._attente || {};
+    this._attente[lundi] = { clientId: this.client.id, champs };
     clearTimeout(this._timers[lundi]);
     this._timers[lundi] = setTimeout(() => this._enregistrer(lundi), 700);
   },
 
   async _enregistrer(lundi, extra = {}) {
     delete this._timers[lundi];
-    const champs = {};
-    document.querySelectorAll(`[data-semaine="${lundi}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+    const attente = this._attente?.[lundi];
+    if (this._attente) delete this._attente[lundi];
+    let champs = attente?.champs;
+    if (!champs) {
+      champs = {};
+      document.querySelectorAll(`[data-semaine="${lundi}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+    }
+    const clientId = attente?.clientId || this.client?.id;
+    if (!clientId) return null;
     try {
-      const ligne = await db.saveJournalLigne(this.client.id, lundi, { ...champs, ...extra });
+      const ligne = await db.saveJournalLigne(clientId, lundi, { ...champs, ...extra });
+      if (clientId !== this.client?.id) return ligne;   // journal d'un client déjà quitté
       this.lignes = this.lignes.filter(l => l.semaine !== lundi).concat(ligne);
       this._etat('✓ Enregistré');
       return ligne;
@@ -258,20 +288,30 @@ const CoachJournalSuiviPage = {
     delete this._timers[lundi];
     await this._viderAttente();
     const ok = await this._enregistrer(lundi, { fait, fait_le: fait ? new Date().toISOString() : null });
-    if (ok) { this._render(); this._etat(fait ? '✓ Semaine faite' : 'Semaine décochée'); }
+    if (ok) {
+      this._render(); this._etat(fait ? '✓ Semaine faite' : 'Semaine décochée');
+      if (typeof _compteurSuivi !== 'undefined') { _compteurSuivi.le = 0; rafraichirCompteurSuivi(); }
+    }
   },
 
   saisirLeviers() {
     this._etat('Enregistrement…');
+    this._attenteLeviers = { clientId: this.client.id, nb: this._nb(), leviers: document.getElementById('jsLeviers').value.trim() || null };
+    // Déjà connus pour un nouvel affichage (« + / − », case cochée) avant l'enregistrement
+    this.entete = { ...(this.entete || {}), leviers: this._attenteLeviers.leviers };
     clearTimeout(this._timers._leviers);
-    this._timers._leviers = setTimeout(async () => {
-      try {
-        const leviers = document.getElementById('jsLeviers').value.trim() || null;
-        await db.saveJournalEntete(this.client.id, { nb_semaines: this._nb(), leviers });
-        this.entete = { ...(this.entete || {}), leviers, nb_semaines: this._nb() };
-        this._etat('✓ Enregistré');
-      } catch (e) { this._etat('Erreur : ' + e.message, true); }
-    }, 700);
+    this._timers._leviers = setTimeout(() => this._enregistrerLeviers(), 700);
+  },
+
+  async _enregistrerLeviers() {
+    delete this._timers._leviers;
+    const a = this._attenteLeviers;
+    if (!a) return;
+    this._attenteLeviers = null;
+    try {
+      await db.saveJournalEntete(a.clientId, { nb_semaines: a.nb, leviers: a.leviers });
+      if (a.clientId === this.client?.id) this._etat('✓ Enregistré');
+    } catch (e) { this._etat('Erreur : ' + e.message, true); }
   },
 
   async changerDuree(delta) {

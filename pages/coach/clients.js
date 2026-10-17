@@ -56,7 +56,10 @@ const CoachClientsPage = {
   _construire(clients, inactifs = false) {
     const { plans, programmes, bilans, suivis } = this._donnees;
     const avecPlan = new Set(plans.map(p => p.profile_id));
-    const retards = new Set(suivis.filter(c => JournalSuivi.enRetard(
+    // Retard : seulement pour les clients dont je peux lire le journal (référent,
+    // gérants) ; sinon le journal arrive vide et tout paraîtrait en retard
+    const moi = Router.userProfile;
+    const retards = new Set(suivis.filter(c => (moi.is_gerant || c.coach_referent_id === moi.id) && JournalSuivi.enRetard(
       c.date_debut, [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26, c.journal_suivi)).map(c => c.id));
     return clients.map(c => {
       const suivi = c.type_client !== 'studio';
@@ -66,7 +69,8 @@ const CoachClientsPage = {
         .sort((x, y) => x.a.restantes - y.a.restantes);
       const prog = progs[0] || null;
       const bilan = bilans.find(b => b.client_id === c.id) || null;
-      const aLire = bilan && bilan.statut === 'complete' && bilan.coach_lu === false;
+      // À lire : n'importe quel bilan rempli et pas lu (le samedi, le dernier envoyé est en attente)
+      const aLire = bilans.some(b => b.client_id === c.id && b.statut === 'complete' && b.coach_lu === false);
       const alertes = [];
       if (!inactifs) {
         if (retards.has(c.id)) alertes.push(['retard', 'Retard de suivi']);
