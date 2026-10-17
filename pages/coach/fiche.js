@@ -56,6 +56,11 @@ const FicheOnglets = {
     if (o) Router.navigate(o.page, { ...(o.params || {}), clientId });
   },
 
+  // Client supprimé : son onglet disparaît sans rien ouvrir
+  retirer(clientId) {
+    this.ecrire(this.lire().filter(x => x.id !== clientId));
+  },
+
   fermer(clientId, actif) {
     const liste = this.lire();
     const i = liste.findIndex(x => x.id === clientId);
@@ -162,8 +167,18 @@ const FicheResume = {
     else el.innerHTML = '<div class="spinner" style="margin:2rem auto;"></div>';
     if (c && !forcer && Date.now() - c.le < 10000) return;
     let nom = c?.nom || '';
+    let introuvable = false;
     const html = await this._construire(clientId, n => { nom = n; })
-      .catch(e => `<div class="fr-vide">${escHtml(e.message)}</div>`);
+      .catch(e => {
+        introuvable = e?.code === 'PGRST116';   // aucune fiche : client supprimé
+        return `<div class="fr-vide">${escHtml(e.message)}</div>`;
+      });
+    if (introuvable) {
+      this._cache.delete(clientId);
+      toast("Cette fiche n'existe plus : son onglet est fermé.", 'info');
+      FicheOnglets.fermer(clientId, Router.getParams().clientId === clientId);
+      return;
+    }
     this._cache.set(clientId, { le: Date.now(), html, nom });
     if (Router.getParams().clientId === clientId && document.getElementById('ficheResume')) {
       document.getElementById('ficheResume').innerHTML = html;

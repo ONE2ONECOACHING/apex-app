@@ -351,6 +351,7 @@ const CoachClientEditPage = {
     if (!confirm(`Supprimer ${prenom} ? Cette action est irréversible.`)) return;
     try {
       await db.deleteClient(this.client.id);
+      if (typeof FicheOnglets !== 'undefined') FicheOnglets.retirer(this.client.id);
       window.location.hash = '#coach-clients';
     } catch (e) {
       toast('Erreur : ' + e.message, 'error');
