@@ -36,7 +36,7 @@ const FicheOnglets = {
     if (!nom) return;
     const liste = this.lire();
     const o = liste.find(x => x.id === clientId);
-    if (o && o.nom !== nom) { o.nom = nom; this.ecrire(liste); this.afficher(clientId); }
+    if (o && o.nom !== nom) { o.nom = nom; this.ecrire(liste); this.afficher(Router.getParams().clientId); }
   },
 
   // Ouvre plusieurs fiches d'un coup (coachings du jour) et affiche la première
@@ -285,7 +285,8 @@ function afficherFiche(hash) {
   if (!barre) { barre = document.createElement('div'); barre.id = 'ficheOnglets'; barre.className = 'fiche-onglets'; document.body.insertBefore(barre, app); }
   if (!resume) { resume = document.createElement('aside'); resume.id = 'ficheResume'; resume.className = 'fiche-resume'; document.body.insertBefore(resume, app); }
   document.body.classList.add('fiche-ouverte');
-  const { clientId: _, ...params } = Router.getParams();
+  // depuisSuivi n'est pas gardé : rouvrir l'onglet plus tard ne doit pas remettre la barre « Suivant »
+  const { clientId: _, depuisSuivi: __, ...params } = Router.getParams();
   FicheOnglets.noter(clientId, hash, params);
   FicheOnglets.afficher(clientId);
   FicheResume.afficher(clientId);

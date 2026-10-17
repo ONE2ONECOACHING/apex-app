@@ -16,6 +16,9 @@ const Chat = {
 
   async ouvrir(conteneur, opts) {
     this.fermer();
+    // Numéro de cette ouverture : si une autre conversation est ouverte pendant le
+    // chargement (clic rapide), le résultat de celle-ci est ignoré
+    const gen = this._gen;
     this.opts = opts;
     this.el = conteneur;
     this.messages = [];
@@ -41,6 +44,7 @@ const Chat = {
         db.getPrenomsCoachs().catch(() => []),
         opts.clientNom ? Promise.resolve(null) : db.getProfile(opts.clientId).catch(() => null),
       ]);
+      if (gen !== this._gen || !this.opts) return;
       this.messages = messages;
       this.lectures = lectures;
       for (const c of coachs) this.noms[c.id] = c.prenom || 'Coach';
@@ -50,11 +54,14 @@ const Chat = {
       this._ecouter();
       this._minuteur = setInterval(() => this._rafraichirLectures(), 20000);
     } catch (e) {
-      document.getElementById('chatFil').innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+      if (gen !== this._gen) return;
+      const fil = document.getElementById('chatFil');
+      if (fil) fil.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
     }
   },
 
   fermer() {
+    this._gen = (this._gen || 0) + 1;
     if (this._canal) { try { getSupabase().removeChannel(this._canal); } catch (_) {} }
     this._canal = null;
     clearInterval(this._minuteur);
@@ -86,13 +93,15 @@ const Chat = {
         const l = p.new;
         if (!l || l.canal !== canal || !this.opts) return;
         this.lectures = this.lectures.filter(x => x.lecteur_id !== l.lecteur_id).concat(l);
-        this._render(false);
+        this._majVu();
       })
       .subscribe();
   },
 
   async _marquerLu() {
-    if (!this.opts || document.hidden) return;
+    // En lecture seule (gérant qui consulte), on ne marque rien : sinon le client
+    // verrait « Vu » alors que son coach n'a pas lu
+    if (!this.opts || document.hidden || !this.opts.peutEcrire) return;
     try { await db.marquerConversationLue(this.opts.clientId, this.opts.canal); } catch (_) {}
     if (typeof rafraichirCompteurMessages === 'function') rafraichirCompteurMessages();
   },
@@ -101,7 +110,7 @@ const Chat = {
     if (!this.opts) return;
     try {
       this.lectures = await db.getLecturesConversation(this.opts.clientId, this.opts.canal);
-      this._render(false);
+      this._majVu();
     } catch (_) {}
   },
 
@@ -122,10 +131,7 @@ const Chat = {
     const moi = this._moi();
     const basAvant = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80;
 
-    // « Vu » : mon dernier message a-t-il été lu par quelqu'un d'autre ?
-    const mesMessages = this.messages.filter(m => m.auteur_id === moi && !m.supprime);
-    const dernierAMoi = mesMessages[mesMessages.length - 1];
-    const vu = dernierAMoi && this.lectures.some(l => l.lecteur_id !== moi && new Date(l.lu_jusqu_a) >= new Date(dernierAMoi.cree_le));
+    const { dernierAMoi, vu } = this._etatVu();
 
     let html = '';
     let jourPrec = null, auteurPrec = null;
@@ -146,7 +152,7 @@ const Chat = {
       else contenu = escHtml(m.texte || '').replace(/\n/g, '<br>');
       const peutSupprimer = aMoi && !m.supprime && this.opts.peutEcrire;
       html += `
-        <div class="chat-ligne ${aMoi ? 'moi' : ''}">
+        <div class="chat-ligne ${aMoi ? 'moi' : ''}" data-msg="${m.id}">
           ${nom}
           <div class="chat-bulle ${m.piece_type ? 'piece' : ''}" ${peutSupprimer ? `onclick="Chat._selectionner('${m.id}')"` : ''}>
             ${contenu}<span class="chat-heure">${heure}</span>
@@ -161,12 +167,37 @@ const Chat = {
     if (enBas || basAvant) fil.scrollTop = fil.scrollHeight;
   },
 
+  // « Vu » : mon dernier message a-t-il été lu par la bonne personne ?
+  // Coach : par le client. Client : par un coach (pas par lui-même).
+  _etatVu() {
+    const moi = this._moi();
+    const mesMessages = this.messages.filter(m => m.auteur_id === moi && !m.supprime);
+    const dernierAMoi = mesMessages[mesMessages.length - 1];
+    const coach = Router.userProfile?.role === 'coach';
+    const vu = !!dernierAMoi && this.lectures.some(l =>
+      (coach ? l.lecteur_id === this.opts.clientId : l.lecteur_id !== moi)
+      && new Date(l.lu_jusqu_a) >= new Date(dernierAMoi.cree_le));
+    return { dernierAMoi, vu };
+  },
+
+  // Met à jour le seul « Vu » sans redessiner le fil (un vocal en cours continue)
+  _majVu() {
+    const fil = document.getElementById('chatFil');
+    if (!fil || !this.opts) return;
+    fil.querySelectorAll('.chat-vu').forEach(el => el.remove());
+    const { dernierAMoi, vu } = this._etatVu();
+    if (!vu) return;
+    const ligne = fil.querySelector(`[data-msg="${dernierAMoi.id}"]`);
+    if (ligne) ligne.insertAdjacentHTML('beforeend', '<div class="chat-vu">Vu</div>');
+  },
+
   async _chargerPieces(fil) {
     for (const el of fil.querySelectorAll('[data-path]')) {
       const path = el.dataset.path;
       try {
-        if (!this._urls[path]) this._urls[path] = await db.urlPieceMessage(path);
-        el.src = this._urls[path];
+        const c = this._urls[path];
+        if (!c || Date.now() - c.le > 50 * 60000) this._urls[path] = { url: await db.urlPieceMessage(path), le: Date.now() };
+        el.src = this._urls[path].url;
         if (el.tagName === 'IMG') el.onload = () => { if (fil.scrollHeight - fil.scrollTop - fil.clientHeight < 400) fil.scrollTop = fil.scrollHeight; };
       } catch (_) {}
     }
@@ -312,17 +343,25 @@ const Chat = {
 // ── Compteur de messages non lus (menu coach, accueil client) ───────────────
 // Coach : seulement les conversations où il peut répondre (ses clients suivis,
 // les clients studio) ; les conversations qu'un gérant ne fait que lire ne comptent pas.
-let _clientsMessagerie = null;
+// Même règle que la liste de la messagerie : clients actifs, canal prévu pour leur
+// type (studio : equipe ; distance : suivi ; studio + suivi : les deux), suivi
+// seulement pour son référent. Liste des clients relue toutes les 5 minutes.
+let _clientsMessagerie = null, _clientsMessagerieLe = 0;
 async function compterMessagesNonLus() {
   const moi = Router.userProfile;
   if (!moi) return 0;
   const resume = await db.getConversationsResume().catch(() => []);
   if (moi.role !== 'coach') return resume.reduce((t, r) => t + Number(r.non_lus || 0), 0);
-  if (!_clientsMessagerie) _clientsMessagerie = await db.getClientsAgenda().catch(() => []);
-  const parId = new Map(_clientsMessagerie.map(c => [c.id, c]));
+  if (!_clientsMessagerie || Date.now() - _clientsMessagerieLe > 300000) {
+    const liste = await db.getClientsAgenda().catch(() => null);
+    if (liste) { _clientsMessagerie = liste; _clientsMessagerieLe = Date.now(); }
+  }
+  const parId = new Map((_clientsMessagerie || []).map(c => [c.id, c]));
   return resume.reduce((t, r) => {
     const c = parId.get(r.client_id);
-    const concerne = r.canal === 'equipe' || c?.coach_referent_id === moi.id;
+    if (!c) return t;
+    const canaux = c.type_client === 'studio' ? ['equipe'] : c.type_client === 'suivi' ? ['suivi', 'equipe'] : ['suivi'];
+    const concerne = canaux.includes(r.canal) && (r.canal === 'equipe' || c.coach_referent_id === moi.id);
     return t + (concerne ? Number(r.non_lus || 0) : 0);
   }, 0);
 }

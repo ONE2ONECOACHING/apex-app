@@ -20,8 +20,10 @@ const CoachClientMessagesPage = {
   async init() {
     const params = Router.getParams();
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
+    const jeton = this._jeton = {};
     try {
       const client = await db.getProfile(params.clientId);
+      if (jeton !== this._jeton) return;
       const moi = Router.userProfile;
       const referent = client.coach_referent_id === moi.id;
       this.client = client;

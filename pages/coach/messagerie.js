@@ -56,9 +56,10 @@ const CoachMessageriePage = {
       }, 30000);
 
       // Conversation demandée par une notification (#coach-messagerie?c=…&k=…)
+      // (pas les derniers paramètres mémorisés : sinon la messagerie ouvrirait
+      // d'elle-même le dernier client consulté ailleurs)
       const q = new URLSearchParams((window.location.hash.split('?')[1]) || '');
-      const params = Router.getParams();
-      const cible = q.get('c') || params.clientId;
+      const cible = q.get('c') || history.state?.routeParams?.clientId;
       if (cible) this.ouvrir(cible, q.get('k') || null);
     } catch (e) {
       document.getElementById('msgListe').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';

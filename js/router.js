@@ -434,9 +434,10 @@ async function ajusterFicheNav(navId, clientId) {
     if (!nav) return;
     nav.querySelector('[data-groupe="plan"]')?.classList.toggle('hidden', studio);
     nav.querySelector('[data-groupe="suivi"]')?.classList.toggle('hidden', !suivi);
-    // Messages : conversation de suivi (référent, gérants) ou Équipe ONE2ONE (tous les coachs)
+    // Messages : conversation de suivi (référent, gérants) ou Équipe ONE2ONE (tous les
+    // coachs) ; seul un client à distance n'a pas de conversation Équipe
     nav.querySelector('[data-groupe="messages"]')?.classList.toggle('hidden',
-      !studio && !(me?.is_gerant || client.coach_referent_id === me?.id));
+      client.type_client === 'distance' && !(me?.is_gerant || client.coach_referent_id === me?.id));
 
     const entete = nav.querySelector('[data-entete]');
     if (entete) {

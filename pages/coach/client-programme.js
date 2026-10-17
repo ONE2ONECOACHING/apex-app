@@ -28,6 +28,8 @@ const CoachClientProgrammePage = {
   },
 
   async init() {
+    // Jeton de ce chargement : si on change de fiche avant la fin, il est abandonné
+    const jeton = this._jeton = {};
     // Reset état pour éviter les fuites entre clients
     this.client     = null;
     this.programmes = [];
@@ -42,12 +44,14 @@ const CoachClientProgrammePage = {
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
 
     try {
-      [this.client, this.programmes, this.templates, this.archives] = await Promise.all([
+      const donnees = await Promise.all([
         db.getProfile(params.clientId),
         db.getClientProgrammesActifs(params.clientId),
         db.getProgTemplates(),
         db.getClientProgrammesArchives(params.clientId).catch(() => []),
       ]);
+      if (jeton !== this._jeton) return;
+      [this.client, this.programmes, this.templates, this.archives] = donnees;
 
       const prenom = this.client?.prenom || 'Client';
       document.getElementById('cpTitle').textContent = 'Programmes — ' + prenom;

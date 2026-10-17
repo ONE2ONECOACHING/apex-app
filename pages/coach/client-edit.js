@@ -22,6 +22,10 @@ const CoachClientEditPage = {
   },
 
   async init() {
+    // Topo en cours de saisie sur la fiche précédente : l'enregistrer tout de suite
+    this._envoyerTopo();
+    // Jeton de ce chargement : si on change de fiche avant la fin, il est abandonné
+    const jeton = this._jeton = {};
     // Reset état pour éviter les fuites entre clients
     this.client      = null;
     this.coachs      = [];
@@ -34,20 +38,25 @@ const CoachClientEditPage = {
     if (!params.clientId) { window.location.hash = '#coach-clients'; return; }
 
     try {
-      this.client = await db.getProfile(params.clientId);
+      const client = await db.getProfile(params.clientId);
       // Le compte partagé n'est plus utilisé : il n'est pas proposé comme référent
-      this.coachs = (await db.getCoachs().catch(() => [])).filter(co => co.id !== COMPTE_PARTAGE_ID);
-      [this.fiche, this.semainesStudio, this.programmes, this.notifs] = await Promise.all([
+      const coachs = (await db.getCoachs().catch(() => [])).filter(co => co.id !== COMPTE_PARTAGE_ID);
+      const donnees = await Promise.all([
         db.getFicheCoach(params.clientId).catch(() => null),
         
         db.getSemainesStudioClient(params.clientId).catch(() => []),
         db.getClientProgrammesActifs(params.clientId).catch(() => []),
         db.getNotificationsClient(params.clientId).catch(() => null),
       ]);
+      if (jeton !== this._jeton) return;
+      this.client = client;
+      this.coachs = coachs;
+      [this.fiche, this.semainesStudio, this.programmes, this.notifs] = donnees;
       document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
       this.renderForm();
     } catch (e) {
-      document.getElementById('ceContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      if (jeton !== this._jeton) return;
+      document.getElementById('ceContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
@@ -61,7 +70,7 @@ const CoachClientEditPage = {
         <div class="card-title">Informations</div>
         <div class="field">
           <label class="field-label">Coach référent</label>
-          <select class="input" id="ceReferent">
+          <select class="input" id="ceReferent" data-initial="${escHtml(c.coach_referent_id || '')}">
             <option value="">— Aucun —</option>
             ${this.coachs.map(co => `<option value="${co.id}" ${c.coach_referent_id === co.id ? 'selected' : ''}>${escHtml(this._coachLabel(co))}</option>`).join('')}
           </select>
@@ -77,7 +86,7 @@ const CoachClientEditPage = {
           <div class="field"><label class="field-label">Téléphone</label><input class="input" type="tel" id="ceTelephone" value="${escHtml(c.telephone || '')}"></div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px;">
-          <input type="checkbox" id="ceFactMixte" ${c.facturation_mixte ? 'checked' : ''}> Abonnement + séances à la consommation
+          <input type="checkbox" id="ceFactMixte" ${c.facturation_mixte ? 'checked' : ''} ${Router.userProfile?.is_gerant ? '' : 'disabled title="Réservé aux gérants"'}> Abonnement + séances à la consommation
         </label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-primary btn-small" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
@@ -152,11 +161,23 @@ const CoachClientEditPage = {
     this.majProfil({ [cle]: actuel === n ? 0 : n });
   },
 
+  // Le topo est enregistré 0,7 s après la dernière frappe, pour le client saisi
+  // (même si l'on a changé de fiche entre-temps)
   saisirTopo() {
     clearTimeout(this._topoTimer);
     const etat = document.getElementById('ceProfilEtat');
     if (etat) etat.textContent = 'Enregistrement…';
-    this._topoTimer = setTimeout(() => this.majProfil({ topo: document.getElementById('ceTopo').value.trim() || null }, false), 700);
+    this._topoAttente = { clientId: this.client.id, valeur: document.getElementById('ceTopo').value.trim() || null };
+    this._topoTimer = setTimeout(() => this._envoyerTopo(), 700);
+  },
+
+  _envoyerTopo() {
+    clearTimeout(this._topoTimer);
+    const a = this._topoAttente;
+    if (!a) return;
+    this._topoAttente = null;
+    if (this.client?.id === a.clientId) this.majProfil({ topo: a.valeur }, false);
+    else db.saveFicheCoach(a.clientId, { topo: a.valeur }).catch(e => toast('Topo non enregistré : ' + e.message, 'error'));
   },
 
   async majProfil(champs, redessiner = true) {
@@ -352,6 +373,8 @@ const CoachClientEditPage = {
     try {
       await db.deleteClient(this.client.id);
       if (typeof FicheOnglets !== 'undefined') FicheOnglets.retirer(this.client.id);
+      if (typeof FicheResume !== 'undefined') FicheResume._cache.delete(this.client.id);
+      _ficheClients.delete(this.client.id);
       window.location.hash = '#coach-clients';
     } catch (e) {
       toast('Erreur : ' + e.message, 'error');
@@ -363,18 +386,26 @@ const CoachClientEditPage = {
     const updates = {
       type_client: document.getElementById('ceTypeClient').value,
       telephone: document.getElementById('ceTelephone').value.trim() || null,
-      facturation_mixte: document.getElementById('ceFactMixte').checked
     };
-    // Liste des coachs non chargée → ne pas toucher au référent
-    if (this.coachs.length) {
-      updates.coach_referent_id = document.getElementById('ceReferent').value || null;
+    // Facturation : réservée aux gérants (la base le vérifie aussi)
+    if (Router.userProfile?.is_gerant) updates.facturation_mixte = document.getElementById('ceFactMixte').checked;
+    // Référent : seulement s'il a été changé (un référent absent de la liste,
+    // ex. coach supprimé, n'est pas effacé par un simple « Enregistrer »)
+    const ref = document.getElementById('ceReferent');
+    if (this.coachs.length && ref.value !== ref.dataset.initial) {
+      updates.coach_referent_id = ref.value || null;
     }
     try {
       await db.updateProfile(id, updates);
       Object.assign(this.client, updates);
       _ficheClients.delete(id);   // les onglets relisent le référent et le type
-      document.getElementById('ceSaveMsg').innerHTML = '<div class="alert alert-success">✅ Infos enregistrées</div>';
-      setTimeout(() => { document.getElementById('ceSaveMsg').innerHTML = ''; }, 4000);
+      // Redessiner : boutons, encarts et onglets dépendent du type et du référent
+      this.renderForm();
+      const msg = document.getElementById('ceSaveMsg');
+      if (msg) {
+        msg.innerHTML = '<div class="alert alert-success">✅ Infos enregistrées</div>';
+        setTimeout(() => { msg.innerHTML = ''; }, 4000);
+      }
     } catch (e) {
       document.getElementById('ceSaveMsg').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
