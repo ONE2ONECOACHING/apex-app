@@ -79,7 +79,7 @@ const CoachTrainingClientPage = {
                 <span style="font-size:18px;">${emojis[v.note_ressenti] || ''}</span>
                 <span style="font-size:11px;color:var(--gray-muted);margin-left:auto;">${date}</span>
               </div>
-              ${v.note_client ? `<div style="font-size:13px;color:var(--black);margin-top:5px;line-height:1.5;">💬 ${v.note_client}</div>` : ''}
+              ${v.note_client ? `<div style="font-size:13px;color:var(--black);margin-top:5px;line-height:1.5;">💬 ${escHtml(v.note_client)}</div>` : ''}
             </div>`;
           }).join('')}
         </div>
@@ -113,7 +113,7 @@ const CoachTrainingClientPage = {
     if (!this._logs.length) {
       return `<div class="empty-state" style="margin-top:2rem;">
         <div class="empty-icon">📭</div>
-        <div class="empty-text">${this.client.prenom || 'Ce client'} n'a pas encore enregistré de séance.</div>
+        <div class="empty-text">${escHtml(this.client.prenom || 'Ce client')} n'a pas encore enregistré de séance.</div>
       </div>`;
     }
     return `<div style="padding-bottom:2rem;">${this._logs.map(log => this._logCard(log)).join('')}</div>`;
@@ -134,7 +134,7 @@ const CoachTrainingClientPage = {
         <div onclick="CoachTrainingClientPage._toggleExpand('${log.id}')"
           style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer;">
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:15px;color:var(--black);">${log.nom_seance}</div>
+            <div style="font-weight:700;font-size:15px;color:var(--black);">${escHtml(log.nom_seance)}</div>
             <div style="font-size:12px;color:var(--gray-muted);margin-top:3px;text-transform:capitalize;">${dateStr}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
@@ -194,7 +194,7 @@ const CoachTrainingClientPage = {
         <div style="margin-top:8px;font-size:12px;padding:6px 10px;border-radius:8px;
             background:var(--gold-light);border:1px solid var(--gold-border);
             color:var(--black);line-height:1.5;">
-          💬 <span style="color:var(--gold);font-weight:600;">Note client :</span> ${s.note_client}
+          💬 <span style="color:var(--gold);font-weight:600;">Note client :</span> ${escHtml(s.note_client)}
         </div>` : ''}
       </div>`;
   },

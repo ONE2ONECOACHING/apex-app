@@ -88,7 +88,7 @@ const CoachPlanEditPage = {
         <div class="field"><label class="field-label">Gluc (g)</label><input class="input" type="number" id="peGluc" value="${gluc}" oninput="CoachPlanEditPage._onMacroInput()"></div>
         <div class="field"><label class="field-label">Lip (g)</label><input class="input" type="number" id="peLip" value="${lip}" oninput="CoachPlanEditPage._onMacroInput()"></div>
       </div>
-      <div class="field"><label class="field-label">Notes coach</label><textarea class="input" id="peNotes" rows="2">${p ? (p.notes || '') : ''}</textarea></div>
+      <div class="field"><label class="field-label">Notes coach</label><textarea class="input" id="peNotes" rows="2">${escHtml(p ? (p.notes || '') : '')}</textarea></div>
     </div>`;
 
     // Repas par créneau
@@ -118,7 +118,7 @@ const CoachPlanEditPage = {
         const idx = this.repas.indexOf(r);
         html += `<div style="display:grid;grid-template-columns:1fr 70px 36px;gap:6px;margin-bottom:6px;align-items:start;">
           <div>
-            <div style="font-size:13px;font-weight:600;">${r.aliment_nom} <span style="font-size:11px;color:var(--gray-light);">${r.quantite}${r.unite === 'g' ? 'g' : 'u'} · ${Math.round(r.calories)} kcal</span></div>
+            <div style="font-size:13px;font-weight:600;">${escHtml(r.aliment_nom)} <span style="font-size:11px;color:var(--gray-light);">${r.quantite}${r.unite === 'g' ? 'g' : 'u'} · ${Math.round(r.calories)} kcal</span></div>
             <div style="font-size:11px;color:var(--gray-muted);margin-top:2px;">P ${Math.round(r.proteines)}g · G ${Math.round(r.glucides)}g · L ${Math.round(r.lipides)}g</div>
           </div>
           <input class="input" type="number" value="${r.quantite}" style="height:32px;font-size:12px;text-align:center;margin-top:2px;" onchange="CoachPlanEditPage.updateQty(${idx}, this.value)">
@@ -210,7 +210,7 @@ const CoachPlanEditPage = {
     resultsEl.innerHTML = aliments.map((a, i) => {
       const per = a.mode === 'unit' ? '/unité' : '/100g';
       return `<div class="search-item" onclick="CoachPlanEditPage.pickFromCache('${creneau}', ${i})">
-        <div class="search-item-name">${a.nom}</div>
+        <div class="search-item-name">${escHtml(a.nom)}</div>
         <div class="search-item-macros">${a.calories} kcal ${per} · P:${a.proteines}g G:${a.glucides}g L:${a.lipides}g</div>
       </div>`;
     }).join('');

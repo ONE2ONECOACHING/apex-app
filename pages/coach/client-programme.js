@@ -108,7 +108,7 @@ const CoachClientProgrammePage = {
       if (s.cardio) {
         return `
         <div style="padding:10px 0;border-bottom:1px solid var(--border);">
-          <div style="font-weight:600;font-size:13px;color:#EF4444;">🏃 ${s.nom}
+          <div style="font-weight:600;font-size:13px;color:#EF4444;">🏃 ${escHtml(s.nom)}
             <span style="font-size:11px;font-weight:400;color:var(--gray-muted);">· cardio (progression par semaine)</span>
           </div>
         </div>`;
@@ -136,7 +136,7 @@ const CoachClientProgrammePage = {
                       : te === 'distance' ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)
                       : `${e.series}×${reps}`;
             return `<div style="font-size:12px;color:var(--gray-muted);padding:1px 0;">
-              · ${e.exercices_bdd?.nom || '—'} — ${qty}
+              · ${escHtml(e.exercices_bdd?.nom || '—')} — ${qty}
             </div>`;
           }).join('')}
           ${exos.length > 4
@@ -149,7 +149,7 @@ const CoachClientProgrammePage = {
       <div class="card" style="margin-bottom:0.75rem;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;">
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:16px;">${p.nom}</div>
+            <div style="font-weight:700;font-size:16px;">${escHtml(p.nom)}</div>
             <div style="font-size:12px;color:var(--gray-muted);margin-top:3px;">
               Démarré le ${dateDebut} · ${(p.seances || []).length} séance${(p.seances || []).length > 1 ? 's' : ''}
             </div>
@@ -307,7 +307,7 @@ const CoachClientProgrammePage = {
             <label class="field-label">Template</label>
             <select class="input" id="cpTplSelect" onchange="CoachClientProgrammePage.choisirModele()">
               ${this.templates.map(t =>
-                `<option value="${t.id}">${t.nom} (${t.nb_semaines} sem.)</option>`
+                `<option value="${t.id}">${escHtml(t.nom)} (${t.nb_semaines} sem.)</option>`
               ).join('')}
             </select>
           </div>

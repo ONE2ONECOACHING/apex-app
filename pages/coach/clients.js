@@ -95,7 +95,7 @@ const CoachClientsPage = {
     const p = this._perimetre;
     const seg = (v, l) => `<button class="${p === v ? 'on' : ''}" onclick="CoachClientsPage.perimetre('${v}')">${l}</button>`;
     const sel = (id, val, options) => `<select class="input cl-select" onchange="CoachClientsPage.${id}=this.value;CoachClientsPage._renderTableau()">
-      ${options.map(([v, l]) => `<option value="${v}" ${val === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+      ${options.map(([v, l]) => `<option value="${v}" ${val === v ? 'selected' : ''}>${escHtml(l)}</option>`).join('')}</select>`;
     document.getElementById('clFiltres').innerHTML = `
       <div class="cl-filtres">
         <input class="input cl-recherche" id="clRecherche" type="search" placeholder="🔍 Chercher un client…" value="${escHtml(this._recherche)}"
@@ -264,7 +264,7 @@ const CoachClientsPage = {
       document.getElementById('inviteResult').innerHTML = `
         <div style="text-align:center;margin-bottom:1.25rem;">
           <div style="font-size:1.5rem;margin-bottom:0.5rem;">✅</div>
-          <div style="font-weight:700;margin-bottom:0.25rem;">Compte créé pour ${prenom} ${nom || ''}</div>
+          <div style="font-weight:700;margin-bottom:0.25rem;">Compte créé pour ${escHtml(prenom)} ${escHtml(nom || '')}</div>
           <div style="font-size:13px;color:var(--gray);">Envoie ces identifiants au client via WhatsApp.</div>
         </div>
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;font-size:13px;margin-bottom:1rem;line-height:1.8;">

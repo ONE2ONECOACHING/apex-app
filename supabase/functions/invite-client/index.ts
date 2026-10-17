@@ -11,6 +11,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, content-type',
 };
 
+// Recherche d'email insensible à la casse, sans jokers (% et _ pris tels quels)
+const emailExact = (e: string) => e.replace(/[\\%_]/g, c => '\\' + c);
+
 // Mot de passe provisoire aléatoire, propre à chaque client (sans 0/O, 1/l/I)
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
 function randomPassword(length = 10): string {
@@ -43,7 +46,7 @@ serve(async (req) => {
 
     const { data: callerProfile } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, is_gerant')
       .eq('id', caller.id)
       .single();
     if (!callerProfile || callerProfile.role !== 'coach') throw new Error('Accès refusé');
@@ -53,16 +56,23 @@ serve(async (req) => {
     // ── Ouvrir l'accès à l'app d'un client du studio ───────────────────────
     if (body.action === 'ouvrir_acces') {
       const { data: cible } = await supabaseAdmin.from('profiles')
-        .select('id, email, prenom, role, type_client').eq('id', body.clientId).single();
+        .select('id, email, prenom, role, type_client, coach_referent_id').eq('id', body.clientId).single();
       if (!cible || cible.role !== 'client' || cible.type_client !== 'studio') {
         throw new Error('Réservé aux clients du studio sans suivi.');
+      }
+      // Accès déjà ouvert : seuls son référent et les gérants peuvent le refaire
+      // (nouveau mot de passe), sinon n'importe quel coach prendrait le compte
+      const { data: compte } = await supabaseAdmin.auth.admin.getUserById(cible.id);
+      const bloque = !!compte?.user?.banned_until && new Date(compte.user.banned_until) > new Date();
+      if (!bloque && !callerProfile.is_gerant && cible.coach_referent_id !== caller.id) {
+        throw new Error("L'accès de ce client est déjà ouvert : seuls son coach référent et les gérants peuvent le réinitialiser.");
       }
       const emailInterne = /@clients\.one2onecoaching\.fr$/.test(cible.email || '');
       const nouvelEmail = String(body.email || '').trim().toLowerCase();
       if (emailInterne && !nouvelEmail) throw new Error('Indique l\'email du client.');
       if (nouvelEmail && nouvelEmail !== cible.email) {
         const { data: pris } = await supabaseAdmin.from('profiles')
-          .select('id').ilike('email', nouvelEmail).neq('id', cible.id).maybeSingle();
+          .select('id').ilike('email', emailExact(nouvelEmail)).neq('id', cible.id).maybeSingle();
         if (pris) throw new Error('Un compte existe déjà avec cet email.');
       }
       const email = nouvelEmail || cible.email;
@@ -91,7 +101,7 @@ serve(async (req) => {
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id')
-      .ilike('email', email)
+      .ilike('email', emailExact(email))
       .maybeSingle();
     if (existingProfile) throw new Error('Un compte existe déjà avec cet email.');
 
@@ -119,10 +129,9 @@ serve(async (req) => {
       role: 'client',
       onboarding_done: studio,
       type_client: studio ? 'studio' : typeSuivi,
-      ...(studio ? {
-        telephone: telephone || null,
-        coach_referent_id: caller.id,
-      } : {}),
+      // Le coach qui crée le client en devient le référent (tous les types de client)
+      coach_referent_id: caller.id,
+      ...(studio ? { telephone: telephone || null } : {}),
     }, { onConflict: 'id' });
     if (profileErr) {
       if (studio) await supabaseAdmin.auth.admin.deleteUser(userId);

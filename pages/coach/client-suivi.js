@@ -178,13 +178,13 @@ const CoachClientSuiviPage = {
                      background:${w.s === this._semaine ? 'var(--gold-light)' : 'var(--card-bg)'};
                      color:${w.s === this._semaine ? 'var(--gold)' : 'var(--gray)'};
                      font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);white-space:nowrap;">
-              ${w.label}${w.hasNote ? ' ✓' : ''}
+              ${escHtml(w.label)}${w.hasNote ? ' ✓' : ''}
             </button>`).join('')}
         </div>
         <textarea id="suiviNoteText" class="input" rows="4"
           placeholder="Observations, points d'attention, progression…"
           style="resize:none;font-size:14px;line-height:1.6;"
-          oninput="CoachClientSuiviPage._noteDirty=true">${note?.note || ''}</textarea>
+          oninput="CoachClientSuiviPage._noteDirty=true">${escHtml(note?.note || '')}</textarea>
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
           <button class="btn btn-primary" style="height:40px;font-size:13px;flex:1;"
             onclick="CoachClientSuiviPage.saveNote()">💾 Enregistrer la note</button>
@@ -198,7 +198,7 @@ const CoachClientSuiviPage = {
           <div style="font-size:11px;font-weight:700;color:var(--gold);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">
             Semaine du ${new Date(n.semaine + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
           </div>
-          <div style="font-size:13px;color:var(--black);line-height:1.6;white-space:pre-wrap;">${n.note}</div>
+          <div style="font-size:13px;color:var(--black);line-height:1.6;white-space:pre-wrap;">${escHtml(n.note)}</div>
         </div>`).join('')}`;
   },
 
@@ -247,7 +247,7 @@ const CoachClientSuiviPage = {
                   const barColor   = val >= 7 ? '#10B981' : val >= 5 ? '#C4820A' : '#EF4444';
                   return `<div>
                     <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">
-                      <span style="color:var(--gray-muted);">${r.label}</span>
+                      <span style="color:var(--gray-muted);">${escHtml(r.label)}</span>
                       <span style="font-weight:700;color:${barColor};">${val}/10 <span style="color:${trendColor};font-size:10px;">${trendIcon}</span></span>
                     </div>
                     <div style="height:4px;background:var(--border-solid);border-radius:2px;overflow:hidden;">
@@ -257,8 +257,8 @@ const CoachClientSuiviPage = {
                 }).join('')}
                 ${inst.reponses.filter(r => r.type === 'text' && r.reponse).map(r => `
                   <div style="margin-top:4px;border-top:1px solid var(--border);padding-top:6px;">
-                    <div style="font-size:11px;font-weight:600;color:var(--gray);margin-bottom:2px;">${r.label}</div>
-                    <div style="font-size:13px;color:var(--black);line-height:1.5;">"${r.reponse}"</div>
+                    <div style="font-size:11px;font-weight:600;color:var(--gray);margin-bottom:2px;">${escHtml(r.label)}</div>
+                    <div style="font-size:13px;color:var(--black);line-height:1.5;">"${escHtml(r.reponse)}"</div>
                   </div>`).join('')}
               </div>
             </div>`;

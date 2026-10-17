@@ -1,0 +1,86 @@
+﻿priorite;type;aliment;source;valeur_actuelle;reference_ou_probleme;correction_proposee
+1;valeur fausse;Moutarde;aliments.sql:247;66 kcal P4.4 G5.7 L3.7 F2.0 /100g;"valeurs de la moutarde jaune américaine ; moutarde de Dijon Ciqual ≈ 160 kcal P7 G4 L12 F3";160 kcal P7 G4 L12 F3, renommer « Moutarde de Dijon »
+1;valeur fausse;Tofu ferme;aliments.sql:215;76 kcal P8.0 G0.7 L4.8 F0.3 /100g;"valeurs du tofu « regular » USDA ; tofu ferme du commerce FR ≈ 125 kcal P13 G1.5 L7.5 F1";125 kcal P13 G1.5 L7.5 F1
+1;valeur fausse;Sauce pesto rouge;aliments_merge.sql:49;635 kcal P10.0 G7.0 L63.0 F0.0 /100g;"mêmes valeurs que le pesto vert (copie) ; pesto rosso commerce ≈ 330 kcal P5 G9 L30 F3";≈ 330 kcal P5 G9 L30 F3
+1;valeur fausse (glucides);Graines de chia;aliments.sql:226;486 kcal P17.0 G42.0 L31.0 F34.4 /100g;"Ciqual ≈ G 8 g, ~490 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 8
+1;valeur fausse (glucides);Graines de lin;aliments.sql:227;534 kcal P18.0 G29.0 L42.0 F27.3 /100g;"Ciqual ≈ G 2 g, ~530 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 2
+1;valeur fausse (glucides);Noix de pécan;aliments.sql:234;691 kcal P9.0 G14.0 L72.0 F9.6 /100g;"Ciqual ≈ G 4 g, ~710 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 4
+1;valeur fausse (glucides);Noix du Brésil;aliments.sql:235;656 kcal P14.0 G12.0 L66.0 F7.5 /100g;"Ciqual ≈ G 4 g, ~680 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 4
+1;valeur fausse (glucides);Noix;aliments.sql:221;654 kcal P15.0 G14.0 L65.0 F6.7 /100g;"Ciqual ≈ G 7 g, ~700 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 7
+1;valeur fausse (glucides);Noisettes;aliments.sql:223;628 kcal P15.0 G15.0 L61.0 F9.7 /100g;"Ciqual ≈ G 7 g, ~650 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 7
+1;valeur fausse (glucides);Amandes;aliments.sql:220;575 kcal P21.0 G17.0 L50.0 F12.5 /100g;"Ciqual ≈ G 8 g, ~600 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 8
+1;valeur fausse (glucides);Cacahuètes;aliments.sql:224;567 kcal P26.0 G16.0 L46.0 F8.5 /100g;"Ciqual ≈ G 8 g, ~590 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 8
+1;valeur fausse (glucides);Graines de courge;aliments.sql:229;559 kcal P30.0 G11.0 L49.0 F6.0 /100g;"Ciqual ≈ G 5 g, ~570 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 5
+1;valeur fausse / doublon;Sauce pesto vert;aliments_merge.sql:50;635 kcal P10.0 G7.0 L63.0 F0.0 /100g;"635 kcal irréaliste (copie d'une huile) ; pesto vert commerce ≈ 480 kcal P5 G6 L48 F2 ; doublon de « Pesto basilic »";désactiver ou corriger à ≈ 480 kcal P5 G6 L48 F2
+2;cru/cuit incohérent;Porc (rôti);aliments.sql:282;215 kcal P21.0 G0.0 L14.0 F0.0 /100g;rôti de porc cuit Ciqual ≈ 185 kcal P28 L8 (P21 = valeur crue);185 kcal P28 G0 L8, nom « Rôti de porc cuit »
+2;cru/cuit non précisé;Steak haché 5% MG;aliments.sql:38;135 kcal P20.0 G0.0 L6.0 F0.0 /100g;"cru ? 6 g de lipides pour un 5 % MG ; Ciqual cru ≈ 125 kcal P21 L5 ; cuit ≈ 150 kcal P26 L5.5";"renommer « … cru », 125 kcal P21 L5 ; ajouter la version cuite"
+2;cru/cuit non précisé;Steak haché 10% MG;aliments_merge.sql:56;175 kcal P19.0 G0.0 L11.0 F0.0 /100g;cru ou cuit non précisé (valeurs crues);renommer « Steak haché 10% MG cru »
+2;cru/cuit non précisé;Steak haché 15% MG;aliments.sql:40;200 kcal P17.0 G0.0 L14.0 F0.0 /100g;cru ou cuit non précisé (valeurs crues);renommer « Steak haché 15% MG cru »
+2;doublon;Steak haché 10% MG;aliments_merge.sql:56;2 lignes identiques;"présent dans aliments.sql et aliments_merge.sql (le merge l'ignore grâce au NOT EXISTS) ; commentaire « pesée crue »";supprimer la ligne du merge
+2;nom ambigu;Galettes de sarrasin (farine);aliments.sql:265;345 kcal P13.0 G70.0 L3.5 F10.0 /100g;"nom laisse croire à la galette (crêpe) préparée ≈ 150-200 kcal ; valeurs = farine";renommer « Farine de sarrasin »
+2;quasi-doublon;Fromage blanc 3%;aliments_merge.sql:14;65 kcal P7.0 G4.0 L3.0 F0.0 /100g;« Fromage blanc 20% » (20 % MG/extrait sec ≈ 3 % MG) et « 3% » sont le même produit avec 2 valeurs différentes;"garder « Fromage blanc 3% MG » (≈ 75 kcal P7 G4 L3.2), désactiver « 20% » ; renommer « 40% » en « 8% MG »"
+2;valeur fausse;Pesto basilic;aliments.sql:253;370 kcal P5.0 G5.0 L38.0 F1.5 /100g;pesto alla genovese commerce ≈ 480 kcal L48 (370 = sous-estimé);≈ 480 kcal P5 G6 L48 F2 (garder une seule ligne pesto vert)
+2;valeur fausse (glucides);Pistaches;aliments.sql:225;562 kcal P20.0 G28.0 L45.0 F10.3 /100g;"Ciqual ≈ G 17 g, ~590 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 17
+2;valeur fausse (glucides);Graines de sésame;aliments.sql:230;573 kcal P18.0 G23.0 L50.0 F11.8 /100g;"Ciqual ≈ G 12 g, ~600 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 12
+2;valeur fausse (glucides);Graines de tournesol;aliments.sql:228;584 kcal P21.0 G20.0 L51.0 F8.6 /100g;"Ciqual ≈ G 11 g, ~600 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 11
+2;valeur fausse (glucides);Beurre d'amande;aliments.sql:232;614 kcal P21.0 G19.0 L56.0 F10.0 /100g;"Ciqual ≈ G 9 g, ~630 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 9
+2;valeur fausse (glucides);Tahini (sésame);aliments.sql:233;595 kcal P17.0 G21.0 L54.0 F9.3 /100g;"Ciqual ≈ G 12 g, ~620 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 12
+2;valeur fausse (glucides);Beurre de cacahuète;aliments.sql:231;588 kcal P25.0 G20.0 L50.0 F6.0 /100g;"Ciqual ≈ G 14 g, ~610 kcal ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 14
+2;valeur fausse (glucides);Chocolat noir 70%;aliments.sql:258;598 kcal P8.0 G48.0 L43.0 F7.0 /100g;"Ciqual ≈ 575 kcal P8 G33 L42 F11 ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 33, fibres = 11
+2;valeur fausse (glucides);Chocolat noir 85%;aliments.sql:259;628 kcal P9.5 G32.0 L49.0 F10.9 /100g;"Ciqual ≈ 600 kcal P10 G18 L48 F13 ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 18, fibres = 13
+2;valeur fausse (glucides);Pois chiches pesé cru;aliments_merge.sql:35;364 kcal P19.0 G61.0 L6.0 F17.0 /100g;"Ciqual ≈ 340 kcal P20 G46 L5 F15 ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 46, kcal = 340
+2;valeur à vérifier;Houmous;aliments.sql:251;166 kcal P7.9 G14.0 L9.6 F6.0 /100g;"valeurs USDA ; houmous du commerce FR (Ciqual) ≈ 270 kcal P7 G12 L21 F5";≈ 270 kcal P7 G12 L21 F5
+2;valeur à vérifier;Olives noires;aliments.sql:272;115 kcal P0.8 G1.0 L11.5 F3.0 /100g;"valeurs d'olives noires « californiennes » ; olives noires à la grecque/Nyons ≈ 250-300 kcal L25-30";"≈ 180 kcal L18 (en saumure) ; préciser le type"
+2;valeur à vérifier;Truite cuite;aliments.sql:74;190 kcal P22.0 G0.0 L11.0 F0.0 /100g;truite d'élevage cuite Ciqual ≈ 155 kcal P24 L6.5;155 kcal P24 L6.5
+2;valeur à vérifier;Saumon fumé;aliments.sql:73;142 kcal P22.5 G0.0 L5.9 F0.0 /100g;Ciqual ≈ 175 kcal P22 L10;175 kcal P22 L9.5
+3;catégorie;Maïs en conserve;aliments.sql:170;86 kcal P3.0 G17.0 L1.2 F2.4 /100g;"classé legume ; nutritionnellement un féculent (plan.js le classe en féculent par ses macros)";categorie = feculent
+3;catégorie;Lait de coco;aliments.sql:105;197 kcal P2.0 G6.0 L19.0 F0.0 /100g;classé autre;categorie = condiment ou huile
+3;cru/cuit non précisé;Bœuf, filet;aliments.sql:41;158 kcal P22.0 G0.0 L7.5 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Bœuf, entrecôte;aliments.sql:42;217 kcal P20.0 G0.0 L14.5 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Bœuf, rumsteak;aliments.sql:43;153 kcal P23.0 G0.0 L6.5 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Veau, escalope;aliments.sql:44;120 kcal P22.0 G0.0 L3.2 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Porc, filet;aliments.sql:45;143 kcal P22.0 G0.0 L5.8 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Porc, côtelette;aliments.sql:46;225 kcal P17.0 G0.0 L17.0 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Agneau, gigot;aliments.sql:47;190 kcal P20.0 G0.0 L12.0 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Canard (aiguillettes);aliments.sql:277;135 kcal P23.0 G0.0 L5.0 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Canard (magret, sans peau);aliments.sql:278;158 kcal P27.0 G0.0 L4.5 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Canard (cuisse);aliments.sql:279;265 kcal P20.0 G0.0 L20.0 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Steak de dinde haché;aliments.sql:51;140 kcal P20.0 G1.0 L6.0 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Merguez;aliments.sql:52;290 kcal P13.0 G2.0 L25.0 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Chipolata;aliments.sql:54;260 kcal P13.0 G2.0 L22.0 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;cru/cuit non précisé;Thon frais;aliments_merge.sql:41;130 kcal P28.0 G0.0 L1.3 F0.0 /100g;valeurs de produit cru, non indiqué dans le nom (risque d'erreur ~25 % si pesé cuit);ajouter « cru » au nom
+3;kcal ≠ macros;Mâche;aliments.sql:160;21 kcal P2.0 G0.4 L0.4 F2.0 /100g;"21 kcal vs 13 calculés (P2 G0.4 L0.4) ; Ciqual ≈ 20 kcal P2 G1.5 L0.4 F1.5";glucides = 1.5
+3;kcal ≠ macros;Vinaigre balsamique;aliments.sql:250;88 kcal P0.5 G18.0 L0.0 F0.0 /100g;88 vs 74 calculés (acides organiques) : acceptable;—
+3;kcal ≠ macros;Sauce soja;aliments.sql:249;60 kcal P5.8 G6.7 L0.1 F0.2 /100g;60 vs 51 calculés : acceptable (Ciqual ≈ 55);—
+3;nom ambigu;Blanc d'oeuf liquide ml;aliments_merge.sql:44;52 kcal P11.0 G0.7 L0.2 F0.0 /100g;« ml » dans le nom mais saisie en grammes (1 ml ≈ 1 g, OK);renommer « Blanc d'œuf liquide (brique) »
+3;nom ambigu;Tomate séchée;aliments.sql:270;258 kcal P5.0 G44.0 L3.0 F9.9 /100g;sèche ou à l'huile ? (à l'huile ≈ 210 kcal L14);"renommer « Tomate séchée (sans huile) » ; catégorie legume"
+3;nom ambigu;Farine d'avoine Good Morning;aliments_merge.sql:19;356 kcal P12.0 G57.4 L6.1 F13.5 /100g;nom de marque;« Farine d'avoine »
+3;nom ambigu;Céréales Coco Pops;aliments_merge.sql:17;387 kcal P5.0 G85.0 L2.5 F2.0 /100g;nom de marque;« Céréales chocolatées (type Coco Pops) »
+3;nom ambigu;Carré frais 0%;aliments_merge.sql:12;44 kcal P8.0 G3.0 L0.1 F0.0 /100g;nom de marque;« Fromage frais 0% (type Carré frais) »
+3;nom mal écrit;Patate douce pesé cru;aliments_merge.sql:27;86 kcal P1.6 G20.0 L0.1 F3.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Patate douce crue »
+3;nom mal écrit;Patate pesée cru;aliments_merge.sql:28;77 kcal P2.0 G17.0 L0.1 F2.2 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Pomme de terre crue »
+3;nom mal écrit;Semoule pesé cru;aliments_merge.sql:24;360 kcal P12.0 G73.0 L1.5 F3.5 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Semoule crue »
+3;nom mal écrit;Semoule pesé cuit;aliments_merge.sql:25;120 kcal P4.0 G25.0 L0.5 F1.2 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Semoule cuite »
+3;nom mal écrit;Sarrasin pesé cru;aliments_merge.sql:22;343 kcal P13.0 G72.0 L3.4 F10.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Sarrasin cru »
+3;nom mal écrit;Sarrasin pesé cuit;aliments_merge.sql:23;92 kcal P3.4 G20.0 L0.6 F2.7 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Sarrasin cuit »
+3;nom mal écrit;Boulgour pesé cru;aliments_merge.sql:26;342 kcal P12.0 G68.0 L1.3 F18.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Boulgour cru »
+3;nom mal écrit;Lentilles corail pesé cru;aliments_merge.sql:33;330 kcal P23.0 G55.0 L1.5 F6.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Lentilles corail crues »
+3;nom mal écrit;Lentilles vertes pesé cru;aliments_merge.sql:34;320 kcal P24.0 G50.0 L1.5 F11.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Lentilles vertes crues »
+3;nom mal écrit;Haricots blancs pesé cru;aliments_merge.sql:31;330 kcal P21.0 G55.0 L1.5 F16.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Haricots blancs secs crus »
+3;nom mal écrit;Haricots rouges pesé cru;aliments_merge.sql:32;333 kcal P22.0 G56.0 L1.5 F15.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Haricots rouges secs crus »
+3;nom mal écrit;Pois chiches pesé cru;aliments_merge.sql:35;364 kcal P19.0 G61.0 L6.0 F17.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Pois chiches secs crus »
+3;nom mal écrit;Riz basmati pesé cru;aliments_merge.sql:20;348 kcal P8.0 G77.0 L0.5 F1.0 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Riz basmati cru »
+3;nom mal écrit;Riz complet pesé cru;aliments_merge.sql:21;355 kcal P7.5 G74.0 L2.7 F3.5 /100g;accord (« pesé » / « pesée ») et convention différente du reste de la base;renommer « Riz complet cru »
+3;quasi-doublon;Pomme de terre vapeur;aliments.sql:128;90 kcal P2.1 G20.0 L0.1 F1.8 /100g;« Pomme de terre vapeur » (90) et « Pomme de terre cuite » (86) : même aliment;n'en garder qu'un : « Pomme de terre cuite (vapeur/eau) » ≈ 80 kcal P2 G17 L0.1 F2
+3;quasi-doublon;Couscous cuit;aliments.sql:125;112 kcal P3.8 G22.0 L0.6 F1.4 /100g;« Couscous cuit » (112) et « Semoule pesé cuit » (120) = même aliment;harmoniser, garder « Semoule (couscous) cuite »
+3;quasi-doublon;Riz blanc cru;aliments.sql:119;350 kcal P7.0 G77.0 L1.0 F1.0 /100g;« Riz blanc cru » et « Riz basmati pesé cru » : OK mais conventions de nom différentes;harmoniser « … cru »
+3;quasi-doublon;Oeuf entier /100g;aliments.sql:80;143 kcal P12.6 G1.0 L9.9 F0.0 /100g;paires « X » /100g et « X 1 pièce » : normal, mais suffixe « /100g » seulement sur les œufs;harmoniser : « Œuf entier (100 g) » / « Œuf entier 1 pièce »
+3;unité irréaliste;Orange 1 moyenne;aliments_merge.sql:68;94 kcal P1.8 G18.8 L0.2 F4.8 /unité;"94 kcal = 200 g de pulpe ; orange moyenne ≈ 140 g comestibles ≈ 65 kcal";65 kcal P1.3 G13 L0.2 F3
+3;unité irréaliste;Pomme 1 moyenne;aliments_merge.sql:70;94 kcal P0.5 G21.6 L0.4 F4.3 /unité;"94 kcal = 180 g ; pomme moyenne ≈ 150 g ≈ 78 kcal";78 kcal P0.4 G17 L0.3 F3.5
+3;valeur fausse (glucides);Framboises;aliments.sql:199;52 kcal P1.2 G10.0 L0.7 F6.5 /100g;"Ciqual ≈ 45 kcal P1.2 G4.5 L0.6 F6.5 ; glucides incluant les fibres (convention USA) : fibres comptées deux fois";glucides = 4.5, kcal = 45
+3;valeur fausse (glucides);Boulgour pesé cru;aliments_merge.sql:26;342 kcal P12.0 G68.0 L1.3 F18.0 /100g;fibres ≈ 12 (Ciqual/USDA), pas 18;fibres = 12, glucides = 64
+3;valeur à vérifier;Haricots rouges cuits;aliments.sql:211;127 kcal P8.5 G20.0 L0.5 F7.4 /100g;"Ciqual ≈ 115 kcal P8.5 G13 L0.5 F8 ; glucides US";glucides = 14, kcal = 115
+3;valeur à vérifier;Lardons nature;aliments.sql:50;338 kcal P13.0 G1.0 L31.0 F0.0 /100g;lardons crus Ciqual ≈ 290 kcal P15 L25;≈ 290 kcal P15 G0.5 L25
+3;valeur à vérifier;Oeuf entier;aliments.sql:78;85 kcal P6.7 G0.6 L5.7 F0.0 /unité;"85 kcal par œuf = œuf de ~60 g sans coquille (calibre gros) ; œuf moyen (50 g comestibles) ≈ 72 kcal P6.3 L5";"garder ou passer à 75 kcal P6.5 G0.3 L5.2 ; nom « Œuf entier 1 pièce »"
+3;valeur à vérifier;Maïs en conserve;aliments.sql:170;86 kcal P3.0 G17.0 L1.2 F2.4 /100g;Ciqual maïs doux égoutté ≈ 100 kcal G17 F3;100 kcal
+3;valeur à vérifier;Chèvre frais;aliments.sql:100;230 kcal P14.0 G2.0 L19.0 F0.0 /100g;Ciqual chèvre frais ≈ 200 kcal P11 G3 L16;200 kcal P11 G3 L16

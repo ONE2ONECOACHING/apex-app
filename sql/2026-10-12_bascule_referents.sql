@@ -18,7 +18,11 @@
 -- ni les mesures des clients répartis. Chacun doit utiliser son compte.
 --
 -- Le script s'arrête sans rien changer si un des trois comptes est absent
--- ou en double. Tout est dans une transaction. Relançable sans risque.
+-- ou en double. Tout est dans une transaction.
+--
+-- ⚠️ EXÉCUTÉ LE 12 OCTOBRE 2026 — À NE PLUS JAMAIS RELANCER : il remettrait
+-- chaque client chez le coach de son étiquette et annulerait toutes les
+-- réattributions faites depuis (audit du 17 octobre 2026).
 -- ============================================================================
 
 begin;

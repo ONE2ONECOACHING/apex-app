@@ -1,0 +1,78 @@
+﻿priorite;nom;mode;poids_unite_g;kcal_100g;proteines;glucides;lipides;fibres;categorie;remarque;valeurs_par_unite (à saisir en base si mode unit)
+1;Blanc de poulet cru;100g;;115;24;0;2;0;viande;;
+1;Escalope de dinde crue;100g;;105;23.5;0;1.2;0;viande;;
+1;Steak haché 5% MG cuit;100g;;150;26;0;5;0;viande;;
+1;Blanc de dinde (tranches);100g;;105;20;1.5;2;0;viande;;
+1;Blanc de poulet (tranches);100g;;105;21;1;2;0;viande;;
+1;Jambon blanc découenné dégraissé;100g;;105;20.5;0.8;2.5;0;viande;;
+1;Œuf dur 1 pièce;unite;50;145;12.5;0.5;10;0;oeuf;;kcal 72.5 P6.2 G0.2 L5.0 F0.0
+1;Yaourt protéiné nature (type HiPRO);unite;160;55;10;4;0.2;0;laitier;;kcal 88.0 P16.0 G6.4 L0.3 F0.0
+1;Skyr aromatisé;100g;;75;9;8.5;0.2;0;laitier;;
+1;Pâtes complètes crues;100g;;350;13;63;2.5;8;feculent;;
+1;Pain de mie complet;100g;;250;9.5;41;4.5;6.5;feculent;;
+1;Pain de mie complet 1 tranche;unite;25;250;9.5;41;4.5;6.5;feculent;;kcal 62.5 P2.4 G10.2 L1.1 F1.6
+1;Galette de maïs soufflé;100g;;385;8;80;3;4;feculent;;
+1;Wrap / tortilla de blé;unite;60;310;8.5;50;7.5;3;feculent;;kcal 186.0 P5.1 G30.0 L4.5 F1.8
+1;Bagel nature;unite;85;260;10;50;1.5;2.5;feculent;;kcal 221.0 P8.5 G42.5 L1.3 F2.1
+1;English muffin;unite;60;230;8.5;43;2;2.5;feculent;;kcal 138.0 P5.1 G25.8 L1.2 F1.5
+1;Barre protéinée (moyenne);unite;60;360;30;35;12;5;complement;;kcal 216.0 P18.0 G21.0 L7.2 F3.0
+1;Boisson soja nature;100g;;40;3.5;1.5;2;0.5;laitier;;
+1;Boisson amande sans sucre;100g;;15;0.5;0.3;1.2;0.3;laitier;;
+1;Compote de pomme sans sucre ajouté;100g;;55;0.3;12;0.2;1.8;fruit;;
+1;Purée de pommes de terre (lait);100g;;85;2;13;3;1.3;feculent;;
+1;Pomme de terre crue;100g;;80;2;17;0.1;1.8;feculent;;
+1;Riz complet cru;100g;;355;7.5;72;2.7;3.5;feculent;;
+1;Gnocchi de pomme de terre;100g;;155;3.5;32;0.6;2;feculent;;
+1;Lentilles en conserve égouttées;100g;;100;7.5;13;0.5;5;legumineuse;;
+1;Pois chiches en conserve égouttés;100g;;125;7;16;2.5;5.5;legumineuse;;
+1;Vinaigrette classique;100g;;450;0.5;4;47;0;condiment;alcool non compté dans les macros (7 kcal/g) : la base n'a pas de colonne alcool;
+1;Sardine fraîche grillée;100g;;190;25;0;10;0;poisson;;
+1;Surimi;100g;;110;8;15;2;0.5;poisson;;
+1;Calamar / encornet cuit;100g;;105;19;2.5;1.8;0;poisson;;
+2;Poulpe cuit;100g;;150;27;3;2;0;poisson;;
+2;Anchois à l'huile égouttés (Collioure);100g;;200;28;0;10;0;poisson;;
+2;Bavette de bœuf crue;100g;;135;21;0;5.5;0;viande;;
+2;Lapin cuit;100g;;190;29;0;8;0;viande;;
+2;Bûche de chèvre;100g;;300;19;1;25;0;laitier;;
+2;Fromage de brebis (type Ossau-Iraty);100g;;400;25;0.5;33;0;laitier;;
+2;Mozzarella allégée;100g;;165;19;1.5;9;0;laitier;;
+2;Mini fromage light 1 pièce (type Babybel light);unite;20;210;25;0.5;12;0;laitier;;kcal 42.0 P5.0 G0.1 L2.4 F0.0
+2;Petit-suisse nature 2% 1 pot;unite;60;85;8;4;3.5;0;laitier;;kcal 51.0 P4.8 G2.4 L2.1 F0.0
+2;Pain aux céréales;100g;;260;10;43;5;6;feculent;;
+2;Pain pita;100g;;270;9;54;1.5;2.5;feculent;;
+2;Biscottes;100g;;410;11;72;7;4.5;feculent;;
+2;Granola;100g;;450;9;62;17;6;feculent;;
+2;Vermicelles de riz crus;100g;;360;6;80;0.6;1;feculent;;
+2;Polenta crue (semoule de maïs);100g;;360;8;75;1.5;4;feculent;;
+2;Pâtes fraîches crues;100g;;280;11;50;3;2;feculent;;
+2;Dattes séchées;100g;;290;2.5;66;0.4;7;fruit;;
+2;Raisins secs;100g;;305;3;67;0.5;4.5;fruit;;
+2;Abricots secs;100g;;250;3.5;55;0.5;7;fruit;;
+2;Pruneaux;100g;;235;2.5;55;0.4;7;fruit;;
+2;Nectarine / brugnon;100g;;48;1;10;0.3;1.7;fruit;;
+2;Jus d'orange 100 % pur jus;100g;;45;0.7;10;0.1;0.3;fruit;;
+2;Chou rouge cru;100g;;30;1.4;5;0.2;2.5;legume;;
+2;Pousses d'épinards crues;100g;;25;2.9;1.5;0.4;2.2;legume;;
+2;Tomates pelées en conserve;100g;;22;1.1;3.5;0.2;1.1;legume;;
+2;Poêlée de légumes surgelés nature;100g;;45;1.8;6;1;2.5;legume;;
+2;Soupe de légumes;100g;;30;0.9;4;1;1.2;legume;;
+2;Ratatouille;100g;;60;1.2;5;4;1.8;legume;;
+2;Gaspacho;100g;;40;0.8;4;2.3;0.8;legume;;
+2;Escalivada (légumes grillés à l'huile);100g;;80;1.2;5;6;2;legume;;
+2;Cacao en poudre non sucré;100g;;370;22;13;20;32;sucre;;
+2;Chocolat en poudre sucré;100g;;385;5;80;3.5;6;sucre;;
+2;Pâte à tartiner cacao-noisette;100g;;540;6;57;31;3.5;sucre;;
+2;Tapenade;100g;;290;2;4;29;3;condiment;;
+3;Fuet;100g;;450;28;2;37;0;viande;;
+3;Chorizo;100g;;450;24;2;39;0;viande;;
+3;Saucisse catalane (botifarra);100g;;260;16;1;22;0;viande;;
+3;Paella (plat préparé);100g;;160;9;18;5.5;1;autre;;
+3;Taboulé du commerce;100g;;160;3.5;22;6;2.5;autre;;
+3;Pizza margherita;100g;;240;10;29;9;2;autre;;
+3;Croissant;unite;45;410;8;45;21;2;autre;;kcal 184.5 P3.6 G20.2 L9.5 F0.9
+3;Pain au chocolat;unite;60;420;7.5;46;22;2.5;autre;;kcal 252.0 P4.5 G27.6 L13.2 F1.5
+3;Barre de céréales;unite;25;400;6;68;11;4;autre;;kcal 100.0 P1.5 G17.0 L2.8 F1.0
+3;Biscuits petit-beurre;100g;;440;7.5;75;12;2.5;autre;;
+3;Sauce barbecue;100g;;150;1;35;0.5;0.5;condiment;;
+3;Bière blonde 5° (100 ml);100g;;42;0.4;3.5;0;0;autre;alcool non compté dans les macros (7 kcal/g) : la base n'a pas de colonne alcool;
+3;Vin rouge 12° (100 ml);100g;;82;0.1;0.5;0;0;autre;alcool non compté dans les macros (7 kcal/g) : la base n'a pas de colonne alcool;
