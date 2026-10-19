@@ -440,8 +440,9 @@ const CoachAgendaPage = {
     const col = this._colonnes()[iCol];
     const rect = event.currentTarget.getBoundingClientRect();
     const y = event.clientY - rect.top;
-    const pas = Math.floor(y / this._px());
-    const minutes = AGENDA_HEURE_DEBUT * 60 + pas * AGENDA_PAS_MIN;
+    // Heure pile ou demi-heure selon la moitié de l'heure cliquée (plus simple à viser)
+    const minutesClic = y / this._px() * AGENDA_PAS_MIN;
+    const minutes = AGENDA_HEURE_DEBUT * 60 + Math.floor(minutesClic / 30) * 30;
     this.nouveau(this._ymd(col.date), minutes, col.coachId);
   },
 
@@ -661,7 +662,7 @@ const CoachAgendaPage = {
     const maintenant = new Date();
     let m = minutes;
     if (m == null) {
-      m = Math.ceil((maintenant.getHours() * 60 + maintenant.getMinutes()) / AGENDA_PAS_MIN) * AGENDA_PAS_MIN;
+      m = Math.ceil((maintenant.getHours() * 60 + maintenant.getMinutes()) / 30) * 30;
       m = Math.min(Math.max(m, AGENDA_HEURE_DEBUT * 60), AGENDA_HEURE_FIN * 60 - 60);
     }
     const jour = ymd || this._ymd(this.vue === 'jour' ? this.date : maintenant);
