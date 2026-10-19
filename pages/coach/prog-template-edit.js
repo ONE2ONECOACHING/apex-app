@@ -893,10 +893,24 @@ const CoachProgTemplateEditPage = {
       if (si === d.si && (idx === d.ei || idx === d.ei + 1)) return;
       const [ex] = this.seances[d.si].exercices.splice(d.ei, 1);
       if (si === d.si && idx > d.ei) idx--;
-      ex.superset_groupe = null;   // un exercice déplacé sort de son superset
-      this.seances[si].exercices.splice(idx, 0, ex);
+      const ancien = ex.superset_groupe;
+      const liste = this.seances[si].exercices;
+      liste.splice(idx, 0, ex);
+      // Superset : posé entre deux exercices d'un même superset, il le rejoint ;
+      // resté collé à son propre superset (même séance), il le garde ; sinon il en sort
+      const avant = liste[idx - 1], apres = liste[idx + 1];
+      if (avant?.superset_groupe && avant.superset_groupe === apres?.superset_groupe && avant.superset_groupe !== ancien) {
+        ex.superset_groupe = avant.superset_groupe;
+      } else if (si === d.si && ancien && (avant?.superset_groupe === ancien || apres?.superset_groupe === ancien)) {
+        ex.superset_groupe = ancien;
+      } else if (avant?.superset_groupe && avant.superset_groupe === apres?.superset_groupe) {
+        ex.superset_groupe = avant.superset_groupe;
+      } else {
+        // Dans une autre séance, la lettre de son ancien superset n'a pas de sens
+        ex.superset_groupe = null;
+      }
       this._normalizeSupersets(this.seances[d.si].exercices);
-      this._normalizeSupersets(this.seances[si].exercices);
+      this._normalizeSupersets(liste);
     }
     this.renderContent();
   },

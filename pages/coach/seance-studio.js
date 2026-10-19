@@ -84,6 +84,7 @@ const CoachSeanceStudioPage = {
   },
 
   _render() {
+    this._envoyerAttente();
     const d = this.data;
     const nb = this._nbSemaines();
     const enCours = this._semaineEnCours();
@@ -185,17 +186,39 @@ const CoachSeanceStudioPage = {
   saisir(exerciceId, semaine) {
     const cle = `${exerciceId}_${semaine}`;
     this._etat('Enregistrement…');
+    // Valeurs relevées à la frappe et gardées en mémoire tout de suite : un nouvel
+    // affichage (↑ ↓, ajout d'exercice) ne les efface plus avant l'enregistrement
+    const champs = {};
+    document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+    this._attente = this._attente || {};
+    this._attente[cle] = champs;
+    const d = this.data;
+    const i = d.saisies.findIndex(x => x.exercice_id === exerciceId && x.semaine === semaine);
+    if (i >= 0) Object.assign(d.saisies[i], champs);
+    else d.saisies.push({ exercice_id: exerciceId, semaine, ...champs });
     clearTimeout(this._timers[cle]);
     this._timers[cle] = setTimeout(() => this._enregistrer(exerciceId, semaine), 600);
+  },
+
+  // Envoie tout de suite les saisies en attente (avant de redessiner la grille)
+  _envoyerAttente() {
+    for (const [cle, t] of Object.entries(this._timers || {})) {
+      clearTimeout(t);
+      const i = cle.lastIndexOf('_');
+      this._enregistrer(cle.slice(0, i), +cle.slice(i + 1));
+    }
+    this._timers = {};
   },
 
   async _enregistrer(exerciceId, semaine) {
     const cle = `${exerciceId}_${semaine}`;
     delete this._timers[cle];
-    const champs = {};
-    document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => {
-      champs[el.dataset.champ] = el.value.trim() || null;
-    });
+    let champs = this._attente?.[cle];
+    if (this._attente) delete this._attente[cle];
+    if (!champs) {
+      champs = {};
+      document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+    }
     try {
       await db.saveSaisieStudio(exerciceId, semaine, champs);
       const d = this.data;
@@ -213,13 +236,6 @@ const CoachSeanceStudioPage = {
       const ligne = await db.setSemaineStudio(this.data.seance.id, semaine, faite);
       this.data.semaines = this.data.semaines.filter(s => s.semaine !== semaine);
       if (ligne) this.data.semaines.push(ligne);
-      // Les saisies en attente sont envoyées avant de redessiner
-      for (const [cle, t] of Object.entries(this._timers)) {
-        clearTimeout(t);
-        const [exId, k] = cle.split('_');
-        await this._enregistrer(exId, +k);
-      }
-      this._timers = {};
       this._render();
       this._etat(faite ? `✓ Semaine ${semaine} faite` : `Semaine ${semaine} décochée`);
     } catch (e) {
@@ -385,12 +401,10 @@ const CoachSeanceStudioPage = {
     if (i < 0 || j < 0 || j >= ex.length) return;
     [ex[i], ex[j]] = [ex[j], ex[i]];
     try {
-      // Réécrit l'ordre des deux exercices échangés (0, 1, 2… selon la liste)
-      await Promise.all([
-        db.updateClientExercice(ex[i].id, { ordre: i }),
-        db.updateClientExercice(ex[j].id, { ordre: j }),
-      ]);
-      ex[i].ordre = i; ex[j].ordre = j;
+      // Réécrit l'ordre de TOUS les exercices de la séance (0, 1, 2…) : les numéros
+      // en base ne suivent pas toujours la liste (modèles numérotés à partir de 1, trous)
+      await Promise.all(ex.map((e, k) => e.ordre === k ? null : db.updateClientExercice(e.id, { ordre: k })));
+      ex.forEach((e, k) => { e.ordre = k; });
       this._render();
       this._etat('✓ Ordre modifié');
     } catch (err) {

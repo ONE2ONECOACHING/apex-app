@@ -410,7 +410,8 @@ const CoachAgendaPage = {
     let x0 = null, y0 = null;
     zone.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
     zone.addEventListener('touchend', e => {
-      if (x0 === null || this._drag) return;
+      // Juste après un déplacement de créneau, le doigt levé n'est pas un balayage
+      if (x0 === null || this._drag || Date.now() - (this._finDrag || 0) < 400) { x0 = null; return; }
       const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
       x0 = null;
       if (Math.abs(dx) > 60 && Math.abs(dy) < 40) this.decaler(dx < 0 ? 1 : -1);
@@ -624,6 +625,16 @@ const CoachAgendaPage = {
     if (evenement?.type === 'pointercancel' && !g.actif) { this._drag = null; return; }
     clearTimeout(g.timer);
     this._drag = null;
+    if (g.actif) this._finDrag = Date.now();
+    // Geste interrompu par le système (appel, notification) : on annule, rien n'est déplacé
+    if (evenement?.type === 'pointercancel' && g.actif) {
+      document.body.classList.remove('ag-dragging');
+      this._marquerBord(0);
+      this._fantome?.remove();
+      this._fantome = null;
+      this._renderGrille();
+      return;
+    }
     document.body.classList.remove('ag-dragging');
     this._marquerBord(0);
 

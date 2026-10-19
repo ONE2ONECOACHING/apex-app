@@ -1428,8 +1428,10 @@ const db = {
 
   async saveTemplateSeances(templateId, seances) {
     const sb = getSupabase();
-    // Supprimer toutes les séances existantes (cascade sur exercices)
-    await sb.from('prog_template_seances').delete().eq('template_id', templateId);
+    // Supprimer toutes les séances existantes (cascade sur exercices) ; en cas d'échec
+    // on s'arrête, sinon les séances seraient réinsérées en double
+    const { error: ed } = await sb.from('prog_template_seances').delete().eq('template_id', templateId);
+    if (ed) throw ed;
     if (!seances || !seances.length) return [];
 
     const result = [];
@@ -1661,15 +1663,20 @@ const db = {
   // Préserve les IDs des séances existantes pour ne pas casser l'historique (seances_log)
   async saveClientProgrammeSeances(programmeId, seances) {
     const sb = getSupabase();
-    const { data: existing } = await sb
+    // Une lecture ratée (réseau) ne doit jamais conduire à tout recréer en double
+    const { data: existing, error: le } = await sb
       .from('client_prog_seances').select('id').eq('programme_id', programmeId);
+    if (le) throw le;
     const existingIds = new Set((existing || []).map(s => s.id));
     const keepIds     = new Set();
     // Exercices du programme, toutes séances confondues : un exercice déplacé vers
     // une autre séance garde son identifiant (saisies de la grille, historique)
-    const { data: exProg } = existingIds.size
+    const { data: exProg, error: lxe } = existingIds.size
       ? await sb.from('client_prog_exercices').select('id').in('seance_id', [...existingIds])
       : { data: [] };
+    if (lxe) throw lxe;
+    // Colonne cardio absente (base ancienne) : seul cas où l'on réessaie sans elle
+    const sansCardio = err => /cardio/i.test(err?.message || '');
     const exIds    = new Set((exProg || []).map(e => e.id));
     const exGardes = new Set();
 
@@ -1685,14 +1692,17 @@ const db = {
         const { error: ue } = await sb.from('client_prog_seances')
           .update(seanceFields).eq('id', s.id);
         // Compat avant migration : retry sans les champs cardio si colonne absente
-        if (ue) { delete seanceFields.cardio; delete seanceFields.cardio_weeks;
-          await sb.from('client_prog_seances').update(seanceFields).eq('id', s.id); }
+        if (ue && sansCardio(ue)) {
+          delete seanceFields.cardio; delete seanceFields.cardio_weeks;
+          const { error: ue2 } = await sb.from('client_prog_seances').update(seanceFields).eq('id', s.id);
+          if (ue2) throw ue2;
+        } else if (ue) throw ue;
         seanceId = s.id;
       } else {
         let ns, error;
         ({ data: ns, error } = await sb.from('client_prog_seances')
           .insert({ programme_id: programmeId, ...seanceFields }).select().single());
-        if (error) { delete seanceFields.cardio; delete seanceFields.cardio_weeks;
+        if (error && sansCardio(error)) { delete seanceFields.cardio; delete seanceFields.cardio_weeks;
           ({ data: ns, error } = await sb.from('client_prog_seances')
             .insert({ programme_id: programmeId, ...seanceFields }).select().single()); }
         if (error) throw error;
@@ -1737,7 +1747,8 @@ const db = {
     // Supprimer les séances retirées
     for (const id of existingIds) {
       if (!keepIds.has(id)) {
-        await sb.from('client_prog_seances').delete().eq('id', id);
+        const { error: dse } = await sb.from('client_prog_seances').delete().eq('id', id);
+        if (dse) throw dse;
       }
     }
   },
