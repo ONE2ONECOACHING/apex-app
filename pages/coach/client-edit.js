@@ -68,6 +68,10 @@ const CoachClientEditPage = {
 
       <div class="card">
         <div class="card-title">Informations</div>
+        <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field"><label class="field-label">Prénom</label><input class="input" id="cePrenom" value="${escHtml(c.prenom || '')}" autocomplete="off"></div>
+          <div class="field"><label class="field-label">Nom</label><input class="input" id="ceNom" value="${escHtml(c.nom || '')}" autocomplete="off"></div>
+        </div>
         <div class="field">
           <label class="field-label">Coach référent</label>
           <select class="input" id="ceReferent" data-initial="${escHtml(c.coach_referent_id || '')}">
@@ -383,7 +387,14 @@ const CoachClientEditPage = {
 
   async save() {
     const id = this.client.id;
+    const prenom = document.getElementById('cePrenom').value.trim();
+    if (!prenom) {
+      document.getElementById('ceSaveMsg').innerHTML = '<div class="alert alert-error">Le prénom est obligatoire.</div>';
+      return;
+    }
     const updates = {
+      prenom,
+      nom: document.getElementById('ceNom').value.trim() || null,
       type_client: document.getElementById('ceTypeClient').value,
       telephone: document.getElementById('ceTelephone').value.trim() || null,
     };
@@ -399,6 +410,8 @@ const CoachClientEditPage = {
       await db.updateProfile(id, updates);
       Object.assign(this.client, updates);
       _ficheClients.delete(id);   // les onglets relisent le référent et le type
+      document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
+      if (typeof FicheOnglets !== 'undefined') FicheOnglets.nommer(id, `${this.client.prenom || ''} ${this.client.nom || ''}`.trim());
       // Redessiner : boutons, encarts et onglets dépendent du type et du référent
       this.renderForm();
       const msg = document.getElementById('ceSaveMsg');
