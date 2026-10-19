@@ -41,18 +41,35 @@ const PlanPage = {
     { nom: 'Frites airfryer',      kcal: 160, p: 3,   g: 27,  l: 4   },
   ],
   _feculentMode: 'cru',   // 'cru' | 'cuit' — mode d'affichage des équivalences féculents
+  // Protéines : valeurs pour 100 g, d'après Ciqual. Poids CRU (viandes, poissons
+  // pesés avant cuisson) ou CUIT ; « unite » = poids d'une pièce, pour afficher
+  // aussi un nombre de steaks, d'œufs ou de tranches.
+  _proteineMode: 'cru',
   _proteines: [
-    { nom: 'Blanc de poulet',      kcal: 110, p: 23, g: 0,   l: 1.5 },
-    { nom: 'Bœuf haché (5%)',     kcal: 121, p: 21, g: 0,   l: 4   },
-    { nom: 'Steak haché 10%',     kcal: 175, p: 19, g: 0,   l: 11  },
-    { nom: 'Saumon',               kcal: 208, p: 20, g: 0,   l: 13  },
-    { nom: 'Thon (boîte nature)',  kcal: 116, p: 26, g: 0,   l: 1   },
-    { nom: 'Cabillaud',            kcal: 82,  p: 18, g: 0,   l: 0.7 },
-    { nom: 'Dinde',                kcal: 107, p: 24, g: 0,   l: 1   },
-    { nom: 'Œufs',                 kcal: 155, p: 13, g: 1.1, l: 11  },
-    { nom: 'Crevettes',            kcal: 99,  p: 21, g: 0,   l: 1   },
-    { nom: 'Jambon blanc',         kcal: 105, p: 18, g: 0.8, l: 3   },
-    { nom: 'Tofu ferme',           kcal: 76,  p: 8,  g: 1.9, l: 4.8 },
+    { nom: 'Blanc de poulet cru',       kcal: 115, p: 24,   g: 0,   l: 2 },
+    { nom: 'Escalope de dinde crue',    kcal: 105, p: 23.5, g: 0,   l: 1.2 },
+    { nom: 'Bœuf haché 5 % cru',        kcal: 125, p: 21,   g: 0,   l: 5,   unite: { g: 100, un: 'steak', plur: 'steaks' } },
+    { nom: 'Steak haché 10 % cru',      kcal: 175, p: 19,   g: 0,   l: 11,  unite: { g: 100, un: 'steak', plur: 'steaks' } },
+    { nom: 'Saumon cru',                kcal: 200, p: 20,   g: 0,   l: 13 },
+    { nom: 'Cabillaud cru',             kcal: 82,  p: 18,   g: 0,   l: 0.7 },
+    { nom: 'Thon au naturel égoutté',   kcal: 116, p: 26,   g: 0,   l: 1 },
+    { nom: 'Crevettes cuites',          kcal: 99,  p: 21,   g: 0,   l: 1 },
+    { nom: 'Œufs',                      kcal: 145, p: 12.5, g: 0.7, l: 10,  unite: { g: 55, un: 'œuf', plur: 'œufs' } },
+    { nom: 'Jambon blanc dégraissé',    kcal: 110, p: 21,   g: 1,   l: 2.5, unite: { g: 45, un: 'tranche', plur: 'tranches' } },
+    { nom: 'Tofu ferme',                kcal: 125, p: 13,   g: 1.5, l: 7.5 },
+  ],
+  _proteinesCuites: [
+    { nom: 'Blanc de poulet cuit',      kcal: 165, p: 31,   g: 0,   l: 3.6 },
+    { nom: 'Escalope de dinde cuite',   kcal: 150, p: 29,   g: 0,   l: 3 },
+    { nom: 'Bœuf haché 5 % cuit',       kcal: 150, p: 26,   g: 0,   l: 5,   unite: { g: 75, un: 'steak', plur: 'steaks' } },
+    { nom: 'Steak haché 10 % cuit',     kcal: 215, p: 26,   g: 0,   l: 12,  unite: { g: 75, un: 'steak', plur: 'steaks' } },
+    { nom: 'Saumon cuit',               kcal: 205, p: 25,   g: 0,   l: 11.5 },
+    { nom: 'Cabillaud cuit',            kcal: 105, p: 23,   g: 0,   l: 1 },
+    { nom: 'Thon au naturel égoutté',   kcal: 116, p: 26,   g: 0,   l: 1 },
+    { nom: 'Crevettes cuites',          kcal: 99,  p: 21,   g: 0,   l: 1 },
+    { nom: 'Œufs',                      kcal: 145, p: 12.5, g: 0.7, l: 10,  unite: { g: 55, un: 'œuf', plur: 'œufs' } },
+    { nom: 'Jambon blanc dégraissé',    kcal: 110, p: 21,   g: 1,   l: 2.5, unite: { g: 45, un: 'tranche', plur: 'tranches' } },
+    { nom: 'Tofu ferme',                kcal: 125, p: 13,   g: 1.5, l: 7.5 },
   ],
   _legumes: [
     { nom: 'Brocolis',       kcal: 34, p: 2.8, g: 7,   l: 0.4 },
@@ -290,6 +307,10 @@ const PlanPage = {
 
   openReplace(repasId, calories, nom, cat) {
     this._replaceTarget = { repasId, calories, nom, cat };
+    // Cru ou cuit selon l'aliment du plan (« Poulet blanc cuit » → équivalences en poids cuit)
+    const cuit = /(^|[\s,(])(cuit|cuite|cuits|cuites|rôti|rôtie|grillé|grillée|vapeur)(?=$|[\s,)])/i.test(nom || '');
+    if (cat === 'feculents') this._feculentMode = cuit ? 'cuit' : 'cru';
+    if (cat === 'proteines') this._proteineMode = cuit ? 'cuit' : 'cru';
     this._renderReplaceModal();
   },
 
@@ -299,7 +320,9 @@ const PlanPage = {
     const { repasId, calories, cat } = this._replaceTarget;
     const items = cat === 'feculents'
       ? (this._feculentMode === 'cuit' ? this._feculentsCuits : this._feculents)
-      : this._catMeta(cat).list;
+      : cat === 'proteines'
+        ? (this._proteineMode === 'cuit' ? this._proteinesCuites : this._proteines)
+        : this._catMeta(cat).list;
     const origKcal = Math.round(calories);
 
     return items.map(f => {
@@ -318,7 +341,7 @@ const PlanPage = {
         <div style="flex:1;min-width:0;">
           <div style="font-weight:600;font-size:14px;">${f.nom}</div>
           <div style="font-size:12px;color:var(--gray-muted);margin-top:2px;">
-            ${qty}g · P:${newP}g G:${newG}g L:${newL}g · ${newKcal} kcal ${deltaStr}
+            ${qty}g${this._enPieces(f, qty)} · P:${newP}g G:${newG}g L:${newL}g · ${newKcal} kcal ${deltaStr}
           </div>
         </div>
         <button class="btn btn-primary btn-small" style="flex-shrink:0;"
@@ -327,6 +350,14 @@ const PlanPage = {
         </button>
       </div>`;
     }).join('');
+  },
+
+  // « (≈ 3 steaks) », « (≈ 4 œufs) » : nombre de pièces arrondi à la demie
+  _enPieces(f, qty) {
+    if (!f.unite) return '';
+    const n = Math.round(qty / f.unite.g * 2) / 2;
+    if (!n) return '';
+    return ` (≈ ${String(n).replace('.', ',')} ${n > 1 ? f.unite.plur : f.unite.un})`;
   },
 
   _renderReplaceModal() {
@@ -341,18 +372,18 @@ const PlanPage = {
             ${meta.icon} Remplacer "${nom}"
             <button class="modal-close" onclick="document.getElementById('planReplaceModal').innerHTML=''">×</button>
           </div>
-          <div style="font-size:12px;color:var(--gray-muted);margin-top:-0.5rem;margin-bottom:${cat === 'feculents' ? '0.75rem' : '1rem'};">
+          <div style="font-size:12px;color:var(--gray-muted);margin-top:-0.5rem;margin-bottom:${cat === 'feculents' || cat === 'proteines' ? '0.75rem' : '1rem'};">
             Équivalences ${meta.label.toLowerCase()}s pour ~${origKcal} kcal
           </div>
-          ${cat === 'feculents' ? `
+          ${cat === 'feculents' || cat === 'proteines' ? `
           <div style="display:flex;gap:6px;background:var(--card-bg);border-radius:12px;padding:4px;margin-bottom:1rem;">
             ${['cru', 'cuit'].map(m => `
               <button id="planFecBtn_${m}" onclick="PlanPage._setFeculentMode('${m}')"
                 style="flex:1;height:34px;border:none;border-radius:9px;cursor:pointer;
                        font-family:var(--font);font-size:13px;font-weight:700;transition:background .15s,color .15s;
-                       background:${this._feculentMode === m ? 'var(--gold)' : 'transparent'};
-                       color:${this._feculentMode === m ? '#fff' : 'var(--gray-muted)'};">
-                ${m === 'cru' ? 'Pesé cru / sec' : 'Pesé cuit'}
+                       background:${this._modeCourant() === m ? 'var(--gold)' : 'transparent'};
+                       color:${this._modeCourant() === m ? '#fff' : 'var(--gray-muted)'};">
+                ${m === 'cru' ? (cat === 'feculents' ? 'Pesé cru / sec' : 'Pesé cru') : 'Pesé cuit'}
               </button>`).join('')}
           </div>` : ''}
           <div id="planReplaceRows" style="display:flex;flex-direction:column;gap:8px;">${this._buildReplaceRows()}</div>
@@ -360,9 +391,15 @@ const PlanPage = {
       </div>`;
   },
 
+  // Mode cru / cuit de la catégorie ouverte (féculents ou protéines)
+  _modeCourant() {
+    return this._replaceTarget?.cat === 'proteines' ? this._proteineMode : this._feculentMode;
+  },
+
   _setFeculentMode(mode) {
-    if (this._feculentMode === mode) return;
-    this._feculentMode = mode;
+    if (this._modeCourant() === mode) return;
+    if (this._replaceTarget?.cat === 'proteines') this._proteineMode = mode;
+    else this._feculentMode = mode;
     // Mettre à jour UNIQUEMENT la liste + l'état des boutons (pas toute la modale,
     // sinon l'animation d'ouverture se rejoue et l'écran "saute")
     const rowsEl = document.getElementById('planReplaceRows');
@@ -370,7 +407,7 @@ const PlanPage = {
     ['cru', 'cuit'].forEach(m => {
       const btn = document.getElementById('planFecBtn_' + m);
       if (!btn) return;
-      const active = this._feculentMode === m;
+      const active = this._modeCourant() === m;
       btn.style.background = active ? 'var(--gold)' : 'transparent';
       btn.style.color      = active ? '#fff' : 'var(--gray-muted)';
     });
