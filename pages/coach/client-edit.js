@@ -301,7 +301,7 @@ const CoachClientEditPage = {
     const fenetre = document.createElement('div');
     fenetre.id = 'ceAccesModal';
     fenetre.innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)this.parentElement.remove()">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">Accès à l'app — ${escHtml(c.prenom || '')}
             <button class="modal-close" onclick="document.getElementById('ceAccesModal').remove()">×</button>

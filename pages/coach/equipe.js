@@ -148,7 +148,7 @@ const CoachEquipePage = {
     const me = Router.userProfile.id;
 
     document.getElementById('eqModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('eqModal').innerHTML=''">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">Supprimer ${escHtml(this._label(co))}
             <button class="modal-close" onclick="document.getElementById('eqModal').innerHTML=''">×</button>

@@ -193,8 +193,7 @@ const CoachExercicesPage = {
   _renderModal() {
     const ex = this._editTarget || {};
     document.getElementById('exoModal').innerHTML = `
-      <div class="modal-overlay"
-        onclick="if(event.target===this)document.getElementById('exoModal').innerHTML=''">
+      <div class="modal-overlay">
         <div class="modal" style="max-width:500px;">
           <div class="modal-title">
             ${ex.id ? "Modifier l'exercice" : 'Nouvel exercice'}

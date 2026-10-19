@@ -236,7 +236,7 @@ const CoachSeanceStudioPage = {
     this._choix = { mode, exerciceId };
     const actuel = this.data.exercices.find(e => e.id === exerciceId);
     document.getElementById('ssModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)CoachSeanceStudioPage._fermerModal()">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">${mode === 'remplacer' ? `Remplacer « ${escHtml(actuel?.exercices_bdd?.nom || '')} »` : 'Ajouter un exercice'}
             <button class="modal-close" onclick="CoachSeanceStudioPage._fermerModal()">×</button>
@@ -304,7 +304,7 @@ const CoachSeanceStudioPage = {
     const reps = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : (e.reps_cible || '');
     const types = [['reps', 'Séries × reps'], ['amrap', 'Max de reps en un temps'], ['temps', 'Durée'], ['distance', 'Distance']];
     document.getElementById('ssModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)CoachSeanceStudioPage._fermerModal()">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">${escHtml(e.exercices_bdd?.nom || 'Exercice')}
             <button class="modal-close" onclick="CoachSeanceStudioPage._fermerModal()">×</button>

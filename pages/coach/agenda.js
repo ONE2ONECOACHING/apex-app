@@ -749,7 +749,7 @@ const CoachAgendaPage = {
     const prospect = e.type === 'prospect';
 
     document.getElementById('agModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)CoachAgendaPage.fermer()">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">${e.id ? 'Rendez-vous' : 'Nouveau rendez-vous'}
             <button class="modal-close" onclick="CoachAgendaPage.fermer()">×</button>
@@ -1022,7 +1022,7 @@ const CoachAgendaPage = {
     if (!c) return;
     const label = c.type === 'indispo' ? 'cette indisponibilité' : `le rendez-vous de ${escHtml(c.type === 'prospect' ? c.prospect_nom : this._nomClient(c.client_id))}`;
     document.getElementById('agModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)CoachAgendaPage.fermer()">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">Supprimer ${label} ?
             <button class="modal-close" onclick="CoachAgendaPage.fermer()">×</button>

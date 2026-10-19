@@ -216,7 +216,7 @@ const CoachClientsPage = {
 
   showCreateModal() {
     document.getElementById('coachModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('coachModal').innerHTML=''">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">Nouveau client
             <button class="modal-close" onclick="document.getElementById('coachModal').innerHTML=''">×</button>

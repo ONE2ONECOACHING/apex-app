@@ -317,7 +317,7 @@ const CoachPlanEditPage = {
     const modal = document.createElement('div');
     modal.id = 'pgModal';
     modal.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;display:flex;align-items:flex-end;" onclick="if(event.target===this)document.getElementById('pgModal').remove()">
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;display:flex;align-items:flex-end;">
         <div style="background:var(--white);border-radius:16px 16px 0 0;padding:1.5rem;width:100%;max-height:85vh;overflow-y:auto;">
           <div style="font-size:16px;font-weight:700;margin-bottom:1.25rem;">⚡ Générer un plan</div>
 

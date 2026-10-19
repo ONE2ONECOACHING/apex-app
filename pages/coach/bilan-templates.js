@@ -77,7 +77,7 @@ const CoachBilanTemplatesPage = {
   _renderEditorModal() {
     const t = this._tpl;
     document.getElementById('btModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this){document.getElementById('btModal').innerHTML=''}">
+      <div class="modal-overlay">
         <div class="modal" style="max-height:88vh;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,12px));">
           <div class="modal-title">
             ${t.id ? 'Modifier' : 'Nouveau'} template

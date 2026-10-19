@@ -118,7 +118,7 @@ const CoachHabitsEditPage = {
     const safeTips  = tips.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     document.getElementById('habModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('habModal').innerHTML=''">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">${h ? 'Modifier l\'habitude' : 'Nouvelle habitude'} <button class="modal-close" onclick="document.getElementById('habModal').innerHTML=''">×</button></div>
           <div class="field">

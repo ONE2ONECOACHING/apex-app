@@ -992,7 +992,7 @@ const CoachProgTemplateEditPage = {
     const closeJs = `document.getElementById('tplExoPicker').innerHTML='';CoachProgTemplateEditPage._picking=null;CoachProgTemplateEditPage._swapTarget=null;`;
 
     document.getElementById('tplExoPicker').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this){${closeJs}}">
+      <div class="modal-overlay">
         <div class="modal" style="max-width:560px;padding-bottom:1.5rem;">
           <div class="modal-title">
             ${title}

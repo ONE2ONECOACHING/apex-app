@@ -284,7 +284,7 @@ const CoachClientProgrammePage = {
   openAssignModal() {
     if (!this.templates.length) {
       document.getElementById('cpModal').innerHTML = `
-        <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('cpModal').innerHTML=''">
+        <div class="modal-overlay">
           <div class="modal">
             <div class="modal-title">Assigner un programme
               <button class="modal-close" onclick="document.getElementById('cpModal').innerHTML=''">×</button>
@@ -301,7 +301,7 @@ const CoachClientProgrammePage = {
     }
 
     document.getElementById('cpModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('cpModal').innerHTML=''">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">Assigner un programme
             <button class="modal-close" onclick="document.getElementById('cpModal').innerHTML=''">×</button>

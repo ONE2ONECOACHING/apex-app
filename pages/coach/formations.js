@@ -97,7 +97,7 @@ const CoachFormationsPage = {
   _openFormationModal(formationId) {
     const f = formationId ? this.formations.find(x => x.id === formationId) : null;
     document.getElementById('fModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('fModal').innerHTML=''">
+      <div class="modal-overlay">
         <div class="modal">
           <div class="modal-title">${f ? 'Modifier' : 'Nouvelle'} formation
             <button class="modal-close" onclick="document.getElementById('fModal').innerHTML=''">×</button>
@@ -160,7 +160,7 @@ const CoachFormationsPage = {
   _renderEditorModal(f) {
     const modules = f.formation_modules || [];
     document.getElementById('fModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('fModal').innerHTML=''">
+      <div class="modal-overlay">
         <div class="modal" style="max-height:88vh;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,12px));">
           <div class="modal-title">✏️ ${f.titre}
             <button class="modal-close" onclick="document.getElementById('fModal').innerHTML=''">×</button>
@@ -532,7 +532,7 @@ const CoachFormationsPage = {
     };
 
     document.getElementById('fModal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('fModal').innerHTML=''">
+      <div class="modal-overlay">
         <div class="modal" style="max-height:88vh;">
           <div class="modal-title">👥 Assigner — ${escHtml(f.titre)}
             <button class="modal-close" onclick="document.getElementById('fModal').innerHTML=''">×</button>
