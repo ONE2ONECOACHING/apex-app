@@ -89,9 +89,13 @@ const CoachClientEditPage = {
           </div>
           <div class="field"><label class="field-label">Téléphone</label><input class="input" type="tel" id="ceTelephone" value="${escHtml(c.telephone || '')}"></div>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px;">
-          <input type="checkbox" id="ceFactMixte" ${c.facturation_mixte ? 'checked' : ''} ${Router.userProfile?.is_gerant ? '' : 'disabled title="Réservé aux gérants"'}> Abonnement + séances à la consommation
-        </label>
+        <div class="field">
+          <label class="field-label">Facturation</label>
+          <select class="input" id="ceModeFact" ${Router.userProfile?.is_gerant ? '' : 'disabled title="Réservé aux gérants"'}>
+            ${[['', '— Pas encore défini —'], ['abonnement', 'Abonnement'], ['consommation', 'Séances à la consommation'], ['mixte', 'Abonnement + séances à la consommation']]
+              .map(([v, l]) => `<option value="${v}" ${(c.mode_facturation || (c.facturation_mixte ? 'mixte' : '')) === v ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-primary btn-small" onclick="CoachClientEditPage.save()">💾 Enregistrer</button>
           ${c.type_client === 'studio' ? `<button class="btn btn-secondary btn-small" onclick="CoachClientEditPage.ouvrirAcces()">📲 Ouvrir l'accès à l'app</button>` : ''}
@@ -399,7 +403,10 @@ const CoachClientEditPage = {
       telephone: document.getElementById('ceTelephone').value.trim() || null,
     };
     // Facturation : réservée aux gérants (la base le vérifie aussi)
-    if (Router.userProfile?.is_gerant) updates.facturation_mixte = document.getElementById('ceFactMixte').checked;
+    if (Router.userProfile?.is_gerant) {
+      updates.mode_facturation = document.getElementById('ceModeFact').value || null;
+      updates.facturation_mixte = updates.mode_facturation === 'mixte';
+    }
     // Référent : seulement s'il a été changé (un référent absent de la liste,
     // ex. coach supprimé, n'est pas effacé par un simple « Enregistrer »)
     const ref = document.getElementById('ceReferent');
