@@ -805,9 +805,16 @@ const CoachProgTemplateEditPage = {
     const ligne = document.createElement('div');
     ligne.className = 'dd-ligne' + (type === 'seance' ? ' verticale' : '');
     document.body.appendChild(ligne);
+    // Exercice d'un superset : c'est tout le superset qui se déplace
+    let bloc = null;
+    if (type === 'ex') {
+      bloc = this._blocSuperset(si, ei);
+      for (let k = bloc.debut; k <= bloc.fin; k++) document.querySelector(`[data-ex="${si},${k}"]`)?.classList.add('dd-source');
+      if (bloc.fin > bloc.debut) fantome.insertAdjacentHTML('beforeend', `<div class="dd-fantome-bloc">Superset · ${bloc.fin - bloc.debut + 1} exercices</div>`);
+    }
     src.classList.add('dd-source');
     document.body.classList.add('dd-actif');
-    this._dd = { type, si, ei, src, fantome, ligne, dx: e.clientX - r.left, dy: e.clientY - r.top, cible: null };
+    this._dd = { type, si, ei, bloc, src, fantome, ligne, dx: e.clientX - r.left, dy: e.clientY - r.top, cible: null };
     this._ddBouge = ev => this._ddDeplacer(ev);
     this._ddFin = ev => this._ddLacher(ev);
     document.addEventListener('pointermove', this._ddBouge);
@@ -861,6 +868,7 @@ const CoachProgTemplateEditPage = {
       const rl = lignes[i].getBoundingClientRect();
       if (e.clientY < rl.top + rl.height / 2) { idx = i; break; }
     }
+    idx = this._placeValide(si, idx);
     let y;
     if (!lignes.length) y = liste.getBoundingClientRect().top + 4;
     else if (idx < lignes.length) y = lignes[idx].getBoundingClientRect().top - 3;
@@ -890,29 +898,57 @@ const CoachProgTemplateEditPage = {
       this.seances.splice(idx, 0, s);
     } else {
       let { si, idx } = d.cible;
-      if (si === d.si && (idx === d.ei || idx === d.ei + 1)) return;
-      const [ex] = this.seances[d.si].exercices.splice(d.ei, 1);
-      if (si === d.si && idx > d.ei) idx--;
-      const ancien = ex.superset_groupe;
-      const liste = this.seances[si].exercices;
-      liste.splice(idx, 0, ex);
-      // Superset : posé entre deux exercices d'un même superset, il le rejoint ;
-      // resté collé à son propre superset (même séance), il le garde ; sinon il en sort
-      const avant = liste[idx - 1], apres = liste[idx + 1];
-      if (avant?.superset_groupe && avant.superset_groupe === apres?.superset_groupe && avant.superset_groupe !== ancien) {
-        ex.superset_groupe = avant.superset_groupe;
-      } else if (si === d.si && ancien && (avant?.superset_groupe === ancien || apres?.superset_groupe === ancien)) {
-        ex.superset_groupe = ancien;
-      } else if (avant?.superset_groupe && avant.superset_groupe === apres?.superset_groupe) {
-        ex.superset_groupe = avant.superset_groupe;
+      const src = this.seances[d.si].exercices;
+      const { debut, fin } = d.bloc || { debut: d.ei, fin: d.ei };
+      const lettre = src[d.ei].superset_groupe;
+      const dedans = lettre && fin > debut && si === d.si && idx >= debut && idx <= fin + 1;
+      if (dedans) {
+        // Réordonner à l'intérieur de son propre superset : seul l'exercice bouge
+        if (idx === d.ei || idx === d.ei + 1) return;
+        const [ex] = src.splice(d.ei, 1);
+        if (idx > d.ei) idx--;
+        src.splice(idx, 0, ex);
       } else {
-        // Dans une autre séance, la lettre de son ancien superset n'a pas de sens
-        ex.superset_groupe = null;
+        // Le superset entier (ou l'exercice seul) se déplace en bloc
+        if (si === d.si && idx >= debut && idx <= fin + 1) return;   // même place (exercice seul)
+        const bloc = src.splice(debut, fin - debut + 1);
+        if (si === d.si && idx > fin) idx -= bloc.length;
+        const liste = this.seances[si].exercices;
+        // Lettre déjà prise dans l'autre séance : le superset en reçoit une nouvelle
+        if (lettre && si !== d.si && liste.some(x => x.superset_groupe === lettre)) {
+          const nouvelle = this._nextGroupLetter(liste);
+          bloc.forEach(x => { if (x.superset_groupe === lettre) x.superset_groupe = nouvelle; });
+        }
+        liste.splice(this._placeValide(si, idx), 0, ...bloc);
+        this._normalizeSupersets(src);
+        this._normalizeSupersets(liste);
       }
-      this._normalizeSupersets(this.seances[d.si].exercices);
-      this._normalizeSupersets(liste);
     }
     this.renderContent();
+  },
+
+  // Superset (suite d'exercices de même lettre) qui contient l'exercice ei
+  _blocSuperset(si, ei) {
+    const exos = this.seances[si].exercices;
+    const g = exos[ei]?.superset_groupe;
+    let debut = ei, fin = ei;
+    if (g) {
+      while (debut > 0 && exos[debut - 1].superset_groupe === g) debut--;
+      while (fin < exos.length - 1 && exos[fin + 1].superset_groupe === g) fin++;
+    }
+    return { debut, fin };
+  },
+
+  // Place de dépôt valide : jamais entre deux exercices d'un même superset (sauf le
+  // sien, pour le réordonner) → on se place juste après ce superset
+  _placeValide(si, idx) {
+    const exos = this.seances[si].exercices;
+    const d = this._dd;
+    const propre = d && d.si === si && d.bloc && d.bloc.fin > d.bloc.debut ? exos[d.bloc.debut]?.superset_groupe : null;
+    while (idx > 0 && idx < exos.length && exos[idx - 1].superset_groupe
+           && exos[idx - 1].superset_groupe === exos[idx].superset_groupe
+           && exos[idx].superset_groupe !== propre) idx++;
+    return idx;
   },
 
   _ytId(url) {

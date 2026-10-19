@@ -1654,3 +1654,4 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
 .nc-interrupteur:checked { background: #0A84FF; }
 .nc-interrupteur:checked::after { transform: translateX(18px); }
 .nc-interrupteur:disabled { opacity: .5; cursor: default; }
+.dd-fantome-bloc { position: absolute; left: 8px; bottom: 6px; font-size: 11px; font-weight: 700; color: #fff; background: #0A84FF; border-radius: 999px; padding: 2px 9px; }
