@@ -101,6 +101,10 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Deux conversations pour les clients studio + suivi (13 octobre 2026, `sql/2026-10-13_messagerie_deux_canaux.sql` exécuté) : « Mon coach » (canal `suivi`, par défaut) et « Équipe ONE2ONE » (canal `equipe`, ex. prévenir d'un retard). Distance : `suivi` seulement ; studio sans suivi : `equipe` seulement.
 - Transparence sur la lecture des conversations par les gérants : gérée hors de l'app par Benjamin (validation juridique à sa charge).
 
+## Préparation de l'étape 6
+
+- Mode de facturation (19 octobre 2026, `sql/2026-10-19_mode_facturation.sql` exécuté) : `profiles.mode_facturation` (`abonnement`, `consommation`, `mixte`, vide = pas encore défini), menu dans fiche › Infos, réservé aux gérants (trigger `protect_profile_role`). `facturation_mixte` suit le mode (trigger `profiles_sync_facturation`) : l'agenda s'en sert pour « inclus / en plus ». Montants à venir avec l'étape 6.
+
 ## Prochaines étapes
 
 6. Formules, facturation, Stripe (retirer d'abord les suppressions de test « Test Studio » d'`agenda_suppressions`). 7. CRM. 8. Version mobile complète des coachs.
