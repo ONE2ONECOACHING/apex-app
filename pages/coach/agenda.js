@@ -63,6 +63,9 @@ const CoachAgendaPage = {
       this.coachs = this.coachs.filter(c => c.id !== COMPTE_PARTAGE_ID);
       this._chargerVisibles();
       this._renderToolbar();
+      // Séries sans fin : ajouter les séances qui manquent (6 mois d'avance)
+      await db.prolongerSeries().catch(() => 0);
+      this._seriesSansFin = new Set(await db.getSeriesActives().catch(() => []));
       await this._charger();
       this._allerHeureActuelle();
       if (!this._ecouteEcran) {
@@ -734,7 +737,6 @@ const CoachAgendaPage = {
     }
     if (v('agRecurrence')) {
       e.recurrence = v('agRecurrence').checked;
-      e.fin_serie = v('agFinSerie').value;
       e.intervalle = parseInt(v('agIntervalle').value) || 1;
     }
   },
@@ -815,13 +817,13 @@ const CoachAgendaPage = {
 
           ${!e.serie_id ? `
           <label class="ag-check"><input type="checkbox" id="agRecurrence" ${e.recurrence ? 'checked' : ''} onchange="CoachAgendaPage.changerChamp()"> Répéter</label>
-          <div class="field-row" style="display:${e.recurrence ? 'grid' : 'none'};grid-template-columns:1.2fr 1fr;gap:10px;">
-            <div class="field"><label class="field-label">Toutes les</label>
-              <select class="input" id="agIntervalle">
-                ${[1, 2, 3, 4].map(n => `<option value="${n}" ${e.intervalle === n ? 'selected' : ''}>${n === 1 ? 'semaines' : n === 2 ? '2 semaines (une sur deux)' : `${n} semaines`}</option>`).join('')}
-              </select></div>
-            <div class="field"><label class="field-label">Jusqu'au</label>
-              <input class="input" type="date" id="agFinSerie" value="${e.fin_serie || ''}"></div>
+          <div class="field" style="display:${e.recurrence ? 'block' : 'none'};">
+            <label class="field-label">Rythme</label>
+            <select class="input" id="agIntervalle">
+              ${[[1, 'Toutes les semaines'], [2, 'Toutes les 2 semaines'], [3, 'Toutes les 3 semaines'], [4, 'Tous les mois (toutes les 4 semaines)']]
+                .map(([n, l]) => `<option value="${n}" ${e.intervalle === n ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+            <div style="font-size:12px;color:var(--gray-light);margin-top:4px;">Sans date de fin. Pour arrêter : supprimer une séance › « Ce créneau et les suivants ».</div>
           </div>` : ''}
 
           <div class="field">
@@ -832,7 +834,7 @@ const CoachAgendaPage = {
           <div id="agError"></div>
           <button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem;" id="agSaveBtn" onclick="CoachAgendaPage.enregistrer()">Enregistrer</button>
           ${e.id ? `
-            ${e.serie_id ? `<button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachAgendaPage.prolonger()">Prolonger la série</button>` : ''}
+            ${e.serie_id && !this._seriesSansFin?.has(e.serie_id) ? `<button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachAgendaPage.prolonger()">Prolonger la série</button>` : ''}
             <button class="btn" style="background:var(--error-bg);color:var(--error);border:1.5px solid #FFCDD2;width:100%;" onclick="CoachAgendaPage.demanderSuppression()">Supprimer</button>` : ''}
         </div>
       </div>`;
@@ -946,9 +948,10 @@ const CoachAgendaPage = {
     if (e.type === 'coaching' && !e.client_id) { errEl.innerHTML = '<div class="alert alert-error">Choisis un client.</div>'; return; }
     if (e.type === 'prospect' && !(e.prospect_nom || '').trim()) { errEl.innerHTML = '<div class="alert alert-error">Indique le nom du prospect.</div>'; return; }
     if (!e.jour) { errEl.innerHTML = '<div class="alert alert-error">Choisis une date.</div>'; return; }
-    if (e.recurrence && (!e.fin_serie || e.fin_serie < e.jour)) {
-      errEl.innerHTML = '<div class="alert alert-error">La date de fin de la récurrence doit être après la date du rendez-vous.</div>';
-      return;
+    // Série sans fin : séances créées jusqu'à 6 mois d'avance, prolongées ensuite à chaque ouverture
+    if (e.recurrence) {
+      const base = e.jour > this._ymd(new Date()) ? e.jour : this._ymd(new Date());
+      e.fin_serie = this._ymd(this._ajouterJours(new Date(base + 'T12:00:00'), 182));
     }
 
     const btn = document.getElementById('agSaveBtn');
@@ -958,6 +961,7 @@ const CoachAgendaPage = {
       if (e.id && e.recurrence && !e.serie_id) {
         // Rendez-vous existant qui devient la première séance d'une série
         const serieId = crypto.randomUUID();
+        await db.creerSerie(serieId, e.intervalle);
         await db.updateCreneau(e.id, this._ligne(e, e.jour, serieId));
         const suivants = this._joursSerie(e.jour, e.fin_serie, e.intervalle).slice(1);
         if (suivants.length) await db.insertCreneaux(suivants.map(j => this._ligne(e, j, serieId)));
@@ -966,6 +970,7 @@ const CoachAgendaPage = {
         await db.updateCreneau(e.id, patch);
       } else if (e.recurrence) {
         const serieId = crypto.randomUUID();
+        await db.creerSerie(serieId, e.intervalle);
         await db.insertCreneaux(this._joursSerie(e.jour, e.fin_serie, e.intervalle).map(j => this._ligne(e, j, serieId)));
       } else {
         await db.insertCreneaux([this._ligne(e, e.jour, null)]);
@@ -1045,7 +1050,12 @@ const CoachAgendaPage = {
     const c = this.creneaux.find(x => x.id === this._edit?.id);
     if (!c) return;
     try {
-      if (suivants) await db.deleteSerieDepuis(c.serie_id, c.debut);
+      if (suivants) {
+        // Arrêter d'abord la série (sinon elle serait prolongée de nouveau)
+        await db.arreterSerie(c.serie_id).catch(() => {});
+        this._seriesSansFin?.delete(c.serie_id);
+        await db.deleteSerieDepuis(c.serie_id, c.debut);
+      }
       else await db.deleteCreneau(c.id);
       this.fermer();
       await this._charger();

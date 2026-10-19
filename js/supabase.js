@@ -246,6 +246,29 @@ const db = {
   },
 
   // Supprime le créneau et les suivants d'une même récurrence
+  // Séries sans fin (agenda_series) : création, arrêt, prolongation à 6 mois
+  async creerSerie(id, intervalle) {
+    const { error } = await getSupabase().from('agenda_series').insert({ id, intervalle });
+    if (error) throw error;
+  },
+
+  async arreterSerie(id) {
+    const { error } = await getSupabase().from('agenda_series').update({ active: false }).eq('id', id);
+    if (error) throw error;
+  },
+
+  async getSeriesActives() {
+    const { data, error } = await getSupabase().from('agenda_series').select('id').eq('active', true);
+    if (error) throw error;
+    return (data || []).map(s => s.id);
+  },
+
+  async prolongerSeries() {
+    const { data, error } = await getSupabase().rpc('prolonger_series');
+    if (error) throw error;
+    return data || 0;
+  },
+
   async deleteSerieDepuis(serieId, debut) {
     const { error } = await getSupabase()
       .from('agenda_creneaux')
