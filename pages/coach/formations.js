@@ -36,7 +36,7 @@ const CoachFormationsPage = {
       ]);
       this._renderList();
     } catch (e) {
-      document.getElementById('fContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('fContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
@@ -137,7 +137,7 @@ const CoachFormationsPage = {
       document.getElementById('fModal').innerHTML = '';
       this._renderList();
       toast('✓ Formation enregistrée', 'success');
-    } catch (e) { document.getElementById('fModalMsg').innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
+    } catch (e) { document.getElementById('fModalMsg').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>'; }
   },
 
   async _deleteFormation(id) {
@@ -484,7 +484,7 @@ const CoachFormationsPage = {
       }
       this._renderEditorModal(f);
       toast('✓ ' + (type === 'quizz' ? 'Quizz' : 'Leçon') + ' enregistré(e)', 'success');
-    } catch (e) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">' + e.message + '</div>'; }
+    } catch (e) { document.getElementById('lMsg').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>'; }
   },
 
   async _deleteLecon(formationId, moduleId, leconId) {

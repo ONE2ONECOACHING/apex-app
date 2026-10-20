@@ -28,6 +28,8 @@ const CoachProgrammeArchivePage = {
     try {
       const prog = await db.getClientProgrammeById(params.progId);
       if (!prog) throw new Error('Programme introuvable.');
+      // Programme réactivé entre-temps (bouton Retour) : retour aux programmes en cours
+      if (prog.actif) { Router.navigate('coach-client-programme', { clientId: params.clientId }); return; }
       this.prog = prog;
       // Séances comptées depuis la plus récente de la date de début et de l'attribution
       const depuis = [prog.date_debut, (prog.created_at || '').slice(0, 10)].filter(Boolean).sort().pop()
@@ -45,7 +47,9 @@ const CoachProgrammeArchivePage = {
     const fin = new Date(new Date(depuis).getTime() + ((this.prog.nb_semaines || 4) + 4) * 7 * 864e5)
       .toISOString().slice(0, 10);
     return logs.filter(l => l.seance_id === s.id
-      || (!l.seance_id && l.nom_seance === s.nom && l.date_seance <= fin));
+      || (!l.seance_id && (!l.programme_id || l.programme_id === this.prog.id)
+          && (l.nom_seance || '').trim().toLowerCase() === (s.nom || '').trim().toLowerCase()
+          && l.date_seance <= fin));
   },
 
   // Séries d'un exercice dans une séance faite : « 10×40 · 10×42,5 »

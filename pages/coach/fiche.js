@@ -20,7 +20,7 @@ const FicheOnglets = {
   },
 
   ecrire(liste) {
-    try { localStorage.setItem(this._cle(), JSON.stringify(liste.slice(-12))); } catch (_) {}
+    try { localStorage.setItem(this._cle(), JSON.stringify(liste.slice(-20))); } catch (_) {}
   },
 
   // Page de fiche affichée : l'onglet du client est créé ou mis à jour
@@ -140,7 +140,8 @@ const FicheOnglets = {
     const champ = document.getElementById('foChamp');
     champ.value = ''; champ.focus();
     document.getElementById('foResultats').innerHTML = '';
-    if (!this._clients) this._clients = await db.getClientsAgenda().catch(() => []);
+    // Liste relue à chaque ouverture (nouveaux clients, changements de nom)
+    this._clients = await db.getClientsAgenda().catch(() => this._clients || []);
     // Fermer en cliquant ailleurs
     setTimeout(() => document.addEventListener('click', this._dehors = e => {
       if (!e.target.closest('.fo-plus-zone')) { zone.hidden = true; document.removeEventListener('click', this._dehors); }
@@ -295,7 +296,8 @@ function afficherFiche(hash) {
 // Le résumé suit les enregistrements faits dans la fiche (profil, type, plan, programme, journal…)
 ['saveFicheCoach', 'updateProfile', 'upsertPlan', 'updateActivePlanMacros', 'assignProgrammeFromTemplate',
  'deactivateClientProgramme', 'reactiverClientProgramme', 'redemarrerProgramme', 'saveJournalLigne',
- 'saveClientProgrammeSeances', 'saveClientProgrammeNom', 'markBilansAsRead'].forEach(nom => {
+ 'saveClientProgrammeSeances', 'saveClientProgrammeNom', 'markBilansAsRead', 'saveJournalEntete',
+ 'setSeanceLieu', 'setSemaineStudio', 'setClientActif'].forEach(nom => {
   const origine = db[nom];
   if (typeof origine !== 'function') return;
   db[nom] = async function (...args) {

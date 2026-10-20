@@ -65,9 +65,16 @@ stable
 security definer
 set search_path = public
 as $$
-  select (auth.uid() = p_client and p_canal = (
-            select case when type_client = 'studio' then 'equipe' else 'suivi' end
-            from public.profiles where id = p_client))
+  -- Version à deux canaux (voir 2026-10-13_messagerie_deux_canaux.sql) : relancer
+  -- ce script ne doit pas retirer l'accès Équipe aux clients studio + suivi
+  select (auth.uid() = p_client and exists (
+            select 1 from public.profiles
+            where id = p_client
+              and case type_client
+                    when 'studio' then p_canal = 'equipe'
+                    when 'suivi'  then p_canal in ('suivi', 'equipe')
+                    else p_canal = 'suivi'
+                  end))
       or (p_canal = 'suivi'  and public.est_referent(p_client))
       or (p_canal = 'equipe' and public.is_coach());
 $$;

@@ -55,7 +55,7 @@ const CoachHabitsEditPage = {
       if (habNav) habNav.innerHTML = coachClientNav(this.clientId, 'coach-habits-edit');
       this.renderList();
     } catch (e) {
-      document.getElementById('habContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('habContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
@@ -167,7 +167,7 @@ const CoachHabitsEditPage = {
       document.getElementById('habModal').innerHTML = '';
       this.renderList();
     } catch (e) {
-      document.getElementById('habSaveMsg').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('habSaveMsg').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 

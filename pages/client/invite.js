@@ -54,7 +54,7 @@ const InvitePage = {
       document.getElementById('app').innerHTML = SetPasswordPage.render();
       SetPasswordPage.init();
     } catch (e) {
-      errEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      errEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
       btn.disabled = false;
       btn.textContent = 'Activer mon compte →';
     }

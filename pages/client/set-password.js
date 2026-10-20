@@ -93,7 +93,7 @@ const SetPasswordPage = {
       Router.userProfile = null;
       window.location.hash = coach ? '#coach-accueil' : '#onboarding';
     } catch (e) {
-      alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      alertEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
       btn.disabled = false;
       btn.textContent = 'Accéder à mon espace →';
     }

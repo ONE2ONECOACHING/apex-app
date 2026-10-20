@@ -290,6 +290,8 @@ const Chat = {
     let flux;
     try { flux = await navigator.mediaDevices.getUserMedia({ audio: true }); }
     catch (_) { toast('Autorise l\'accès au micro pour envoyer un vocal.', 'error'); return; }
+    // Page quittée pendant la demande d'autorisation : couper le micro tout de suite
+    if (!this.opts || !document.getElementById('chatSaisie')) { flux.getTracks().forEach(t => t.stop()); return; }
     const type = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(t => MediaRecorder.isTypeSupported?.(t)) || '';
     const rec = new MediaRecorder(flux, type ? { mimeType: type } : undefined);
     const morceaux = [];

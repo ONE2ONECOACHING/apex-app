@@ -24,7 +24,9 @@ const ClientMessagesPage = {
     if (!moi || moi.role !== 'client') { window.location.hash = '#login'; return; }
     this._nonLus = {};
     if (moiDeuxCanaux()) {
-      this.choisir('suivi');
+      // Notification d'un message de l'équipe (#messages?k=equipe) : ouvrir cet onglet
+      const k = new URLSearchParams(window.location.hash.split('?')[1] || '').get('k');
+      this.choisir(k === 'equipe' ? 'equipe' : 'suivi');
       db.getConversationsResume().then(r => {
         for (const x of r) if (x.canal !== this._canal) this._nonLus[x.canal] = Number(x.non_lus || 0);
         this._onglets();

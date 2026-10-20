@@ -52,7 +52,7 @@ const ClientBilanPage = {
       });
       this.renderForm();
     } catch (e) {
-      document.getElementById('bilanContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('bilanContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 

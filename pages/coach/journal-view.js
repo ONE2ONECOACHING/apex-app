@@ -47,7 +47,7 @@ const CoachJournalPage = {
       this.updateDateLabel();
       await this.loadData();
     } catch (e) {
-      document.getElementById('cjContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('cjContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
@@ -71,7 +71,7 @@ const CoachJournalPage = {
       this.renderContent();
     } catch (e) {
       const el = document.getElementById('cjContent');
-      if (el) el.innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      if (el) el.innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
