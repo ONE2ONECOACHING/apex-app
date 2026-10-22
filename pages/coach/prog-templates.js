@@ -95,6 +95,8 @@ const CoachProgTemplatesPage = {
           <div style="display:flex;gap:8px;flex-shrink:0;">
             <button class="btn btn-ghost btn-small"
               onclick="CoachProgTemplatesPage.editTemplate('${t.id}')">✎ Modifier</button>
+            <button class="btn btn-ghost btn-small" title="Créer une copie de ce modèle, à modifier ensuite"
+              onclick="CoachProgTemplatesPage.dupliquer('${t.id}', this)">⧉ Dupliquer</button>
             <button class="btn btn-ghost btn-small"
               onclick="CoachProgTemplatesPage.deleteTemplate('${t.id}','${escJs(t.nom)}')">× Supprimer</button>
           </div>
@@ -109,6 +111,30 @@ const CoachProgTemplatesPage = {
 
   editTemplate(id) {
     Router.navigate('coach-prog-template-edit', { templateId: id });
+  },
+
+  // Copie complète d'un modèle (séances, exercices, séries, supersets, cardio),
+  // ouverte ensuite dans l'éditeur pour la renommer ou l'adapter
+  async dupliquer(id, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Copie…'; }
+    try {
+      const tpl = await db.getProgTemplateWithSeances(id);
+      const copie = await db.upsertProgTemplate({
+        nom:         `${tpl.nom} (copie)`,
+        description: tpl.description || null,
+        nb_semaines: tpl.nb_semaines || 4,
+        tag:         tpl.tag || null,
+        consignes:   tpl.consignes || null,
+        coach_id:    Router.userProfile.id,
+        actif:       true,
+      });
+      await db.saveTemplateSeances(copie.id, tpl.seances || []);
+      toast('Modèle dupliqué', 'success');
+      Router.navigate('coach-prog-template-edit', { templateId: copie.id });
+    } catch (e) {
+      toast('Erreur : ' + e.message, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '⧉ Dupliquer'; }
+    }
   },
 
   async deleteTemplate(id, nom) {
