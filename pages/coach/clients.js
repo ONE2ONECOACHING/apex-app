@@ -226,12 +226,17 @@ const CoachClientsPage = {
               <div class="field"><label class="field-label">Nom</label><input class="input" id="newNom" placeholder="Dupont"></div>
               <div class="field"><label class="field-label">Prénom</label><input class="input" id="newPrenom" placeholder="Marc"></div>
             </div>
-            <div class="field"><label class="field-label">Email</label><input class="input" id="newEmail" type="email" placeholder="marc@email.com"></div>
             <div class="field"><label class="field-label">Type de client</label>
-              <select class="input" id="newType">
+              <select class="input" id="newType" onchange="CoachClientsPage._typeCreation()">
                 <option value="suivi">Studio + suivi</option>
                 <option value="distance">Suivi à distance</option>
+                <option value="studio">Studio sans suivi (sans accès à l'app)</option>
               </select>
+            </div>
+            <div class="field"><label class="field-label" id="newEmailLabel">Email</label><input class="input" id="newEmail" type="email" placeholder="marc@email.com"></div>
+            <div class="field" id="newTelZone" style="display:none;"><label class="field-label">Téléphone (facultatif)</label><input class="input" id="newTel" type="tel" placeholder="06 12 34 56 78"></div>
+            <div id="newStudioInfo" style="display:none;font-size:12px;color:var(--gray-light);margin:-4px 0 10px;line-height:1.5;">
+              Seule la fiche est créée : le client n'a pas d'accès à l'app. Tu pourras l'ouvrir plus tard depuis sa fiche (« Ouvrir l'accès à l'app »).
             </div>
             <div id="createError"></div>
             <button class="btn btn-primary" style="width:100%" onclick="CoachClientsPage.createClient()" id="createBtn">Créer le compte</button>
@@ -241,6 +246,15 @@ const CoachClientsPage = {
       </div>`;
   },
 
+  // Studio sans suivi : email facultatif, téléphone, pas de compte à envoyer
+  _typeCreation() {
+    const studio = document.getElementById('newType').value === 'studio';
+    document.getElementById('newEmailLabel').textContent = studio ? 'Email (facultatif)' : 'Email';
+    document.getElementById('newTelZone').style.display = studio ? '' : 'none';
+    document.getElementById('newStudioInfo').style.display = studio ? '' : 'none';
+    document.getElementById('createBtn').textContent = studio ? 'Créer la fiche' : 'Créer le compte';
+  },
+
   async createClient() {
     const nom    = document.getElementById('newNom').value.trim();
     const prenom = document.getElementById('newPrenom').value.trim();
@@ -248,13 +262,32 @@ const CoachClientsPage = {
     const typeClient = document.getElementById('newType').value;
     const btn    = document.getElementById('createBtn');
 
-    if (!prenom || !email) {
-      document.getElementById('createError').innerHTML = '<div class="alert alert-error">Prénom et email requis.</div>';
+    const studio = typeClient === 'studio';
+    if (!prenom || (!studio && !email)) {
+      document.getElementById('createError').innerHTML = `<div class="alert alert-error">${studio ? 'Prénom requis.' : 'Prénom et email requis.'}</div>`;
       return;
     }
 
     btn.disabled = true;
     btn.textContent = 'Création en cours…';
+
+    // Client du studio sans suivi : seulement la fiche (comme depuis l'agenda),
+    // puis on l'ouvre ; le coach qui la crée en devient le référent
+    if (studio) {
+      try {
+        const { profileId } = await db.createStudioClient({
+          prenom, nom, telephone: document.getElementById('newTel').value.trim(), email,
+        });
+        document.getElementById('coachModal').innerHTML = '';
+        toast(`Fiche de ${prenom} créée`, 'success');
+        Router.navigate('coach-client-edit', { clientId: profileId });
+      } catch (e) {
+        document.getElementById('createError').innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Créer la fiche';
+      }
+      return;
+    }
 
     try {
       const { profileId, password } = await db.createClientAccount(email, prenom, nom, typeClient);
