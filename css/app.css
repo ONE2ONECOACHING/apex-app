@@ -1655,3 +1655,49 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
 .nc-interrupteur:checked::after { transform: translateX(18px); }
 .nc-interrupteur:disabled { opacity: .5; cursor: default; }
 .dd-fantome-bloc { position: absolute; left: 8px; bottom: 6px; font-size: 11px; font-weight: 700; color: #fff; background: #0A84FF; border-radius: 999px; padding: 2px 9px; }
+
+/* Plans cardio : onglets de phases, séances en colonnes (comme le Google Sheet) */
+.cpc-etat { font-size: 12px; color: #8A8A93; }
+.cpc-etat.erreur { color: var(--error); }
+.cpc-barre { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.cpc-nom { flex: 1; min-width: 220px; height: 40px; font-size: 16px; font-weight: 700; margin: 0; }
+.cpc-archive { font-size: 11px; font-weight: 700; color: var(--gray); background: #F1F1EE; border-radius: 999px; padding: 3px 10px; }
+.cpc-onglets { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border-solid); margin-bottom: 10px; }
+.cpc-onglet { flex-shrink: 0; border: none; background: none; padding: 9px 14px; border-radius: 10px 10px 0 0; font-family: var(--font); font-size: 13px;
+  font-weight: 700; color: var(--gray); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.cpc-onglet:hover { background: rgba(0,0,0,.04); }
+.cpc-onglet.on { background: var(--white); color: var(--black); box-shadow: 0 -1px 0 var(--border-solid), 1px 0 0 var(--border-solid), -1px 0 0 var(--border-solid); }
+.cpc-onglet.ajout { color: var(--gold); }
+.cpc-compte { font-size: 10px; font-weight: 700; background: #F1F1EE; color: var(--gray); border-radius: 999px; padding: 1px 7px; }
+.cpc-phase-barre { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.cpc-phase-nom { width: 260px; height: 36px; font-size: 14px; font-weight: 600; margin: 0; }
+.cpc-colonnes { display: flex; gap: 10px; overflow-x: auto; align-items: stretch; padding-bottom: 2rem; }
+.cpc-seance { flex: 0 0 250px; display: flex; flex-direction: column; gap: 6px; background: var(--white); border: 1px solid var(--border-solid);
+  border-radius: 12px; padding: 10px; }
+.cpc-seance.prochaine { border: 2px solid #0A84FF; }
+.cpc-seance.faite { background: #F6FBF8; }
+.cpc-seance.a-modifier { background: #FFF1E0; border-color: #F5C08A; }
+.cpc-seance-tete { display: flex; align-items: center; gap: 8px; }
+.cpc-num { font-size: 15px; font-weight: 800; color: var(--black); min-width: 18px; }
+.cpc-faite { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
+.cpc-faite input { width: 16px; height: 16px; accent-color: #059669; }
+.cpc-seance.faite .cpc-faite { color: #059669; }
+.cpc-outils { margin-left: auto; display: flex; gap: 2px; }
+.cpc-outils button { width: 24px; height: 24px; border: none; border-radius: 6px; background: none; color: #A1A1AA; font-size: 15px; cursor: pointer; }
+.cpc-outils button:hover:not(:disabled) { background: var(--bg); color: var(--black); }
+.cpc-outils button:disabled { opacity: .3; cursor: default; }
+.cpc-titre { border: none; border-bottom: 1px dashed var(--border-solid); background: none; font-family: var(--font); font-size: 12px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 4px 2px; color: var(--black); }
+.cpc-contenu, .cpc-note { width: 100%; box-sizing: border-box; border: 1px solid var(--border-light); border-radius: 8px; background: rgba(255,255,255,.6);
+  font-family: var(--font); font-size: 13px; line-height: 1.45; padding: 8px; resize: vertical; color: var(--black); }
+.cpc-contenu { flex: 1; min-height: 260px; }
+.cpc-note { font-size: 12px; background: #FFFDF5; }
+.cpc-modifier { font-size: 11px; color: #A1A1AA; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.cpc-seance.a-modifier .cpc-modifier { color: #B45309; font-weight: 700; }
+.cpc-ajout-seance { flex: 0 0 140px; border: 2px dashed var(--border-solid); border-radius: 12px; background: none; color: var(--gray);
+  font-family: var(--font); font-size: 14px; font-weight: 600; cursor: pointer; }
+.cpc-ajout-seance:hover { background: rgba(0,0,0,.03); }
+.cp-cardio-raccourci { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #EEF5FF;
+  border: 1px solid #BBD5FA; border-radius: 12px; padding: 12px 14px; margin-bottom: 0.75rem; cursor: pointer; font-size: 14px; }
+.cp-cardio-raccourci:hover { background: #E3EEFF; }
+.cp-cardio-ouvrir { font-size: 13px; font-weight: 700; color: #0A63C8; white-space: nowrap; }

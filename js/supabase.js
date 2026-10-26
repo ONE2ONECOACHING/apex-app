@@ -1888,6 +1888,104 @@ const db = {
     try { return (await this.getNotificationsClient(clientId))[cle] !== false; } catch (_) { return true; }
   },
 
+  // ── Plans cardio (modèles de la bibliothèque et plans des clients) ─────────
+  // cote = 'modele' (bibliothèque) ou 'plan' (client) : mêmes écrans, tables différentes
+  _cardioTables(cote) {
+    return cote === 'modele'
+      ? { racine: 'cardio_modeles', phases: 'cardio_modele_phases', seances: 'cardio_modele_seances', cle: 'modele_id' }
+      : { racine: 'cardio_plans', phases: 'cardio_phases', seances: 'cardio_seances', cle: 'plan_id' };
+  },
+
+  async getCardioModeles() {
+    const { data, error } = await getSupabase().from('cardio_modeles')
+      .select('id, nom, description, cree_le, cardio_modele_phases(id, cardio_modele_seances(id))')
+      .eq('actif', true).order('nom');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Modèle ou plan complet : phases triées, séances triées
+  async getCardio(cote, id) {
+    const t = this._cardioTables(cote);
+    const { data, error } = await getSupabase().from(t.racine)
+      .select(`*, ${t.phases}(*, ${t.seances}(*))`).eq('id', id).single();
+    if (error) throw error;
+    data.phases = (data[t.phases] || []).sort((a, b) => a.ordre - b.ordre).map(ph => ({
+      ...ph, seances: (ph[t.seances] || []).sort((a, b) => a.ordre - b.ordre),
+    }));
+    return data;
+  },
+
+  async creerCardioModele(nom) {
+    const sb = getSupabase();
+    const { data: m, error } = await sb.from('cardio_modeles').insert({ nom }).select().single();
+    if (error) throw error;
+    const ph = await this.ajouterCardioPhase('modele', m.id, 'Phase 1', 0);
+    await this.ajouterCardioSeance('modele', ph.id, 0);
+    return m;
+  },
+
+  async majCardioRacine(cote, id, patch) {
+    const { error } = await getSupabase().from(this._cardioTables(cote).racine).update(patch).eq('id', id);
+    if (error) throw error;
+  },
+
+  async dupliquerCardioModele(id) {
+    const { data, error } = await getSupabase().rpc('dupliquer_modele_cardio', { p_modele: id });
+    if (error) throw error;
+    return data;
+  },
+
+  async attribuerPlanCardio(modeleId, clientId) {
+    const { data, error } = await getSupabase().rpc('attribuer_plan_cardio', { p_modele: modeleId, p_client: clientId });
+    if (error) throw error;
+    return data;
+  },
+
+  // Plans cardio d'un client (en cours et archivés), avec l'état des séances
+  async getCardioPlans(clientId) {
+    const { data, error } = await getSupabase().from('cardio_plans')
+      .select('id, nom, actif, cree_le, cardio_phases(id, nom, ordre, cardio_seances(id, ordre, faite))')
+      .eq('client_id', clientId).order('cree_le', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async ajouterCardioPhase(cote, parentId, nom, ordre) {
+    const t = this._cardioTables(cote);
+    const { data, error } = await getSupabase().from(t.phases).insert({ [t.cle]: parentId, nom, ordre }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async majCardioPhase(cote, id, patch) {
+    const { error } = await getSupabase().from(this._cardioTables(cote).phases).update(patch).eq('id', id);
+    if (error) throw error;
+  },
+
+  async supprimerCardioPhase(cote, id) {
+    const { error } = await getSupabase().from(this._cardioTables(cote).phases).delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async ajouterCardioSeance(cote, phaseId, ordre) {
+    const { data, error } = await getSupabase().from(this._cardioTables(cote).seances)
+      .insert({ phase_id: phaseId, ordre }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async majCardioSeance(cote, id, patch) {
+    const champs = cote === 'plan' ? { ...patch, maj_le: new Date().toISOString() } : patch;
+    const { error } = await getSupabase().from(this._cardioTables(cote).seances).update(champs).eq('id', id);
+    if (error) throw error;
+  },
+
+  async supprimerCardioSeance(cote, id) {
+    const { error } = await getSupabase().from(this._cardioTables(cote).seances).delete().eq('id', id);
+    if (error) throw error;
+  },
+
   async getFicheCoach(clientId) {
     const { data, error } = await getSupabase()
       .from('fiche_coach').select('*').eq('client_id', clientId).maybeSingle();

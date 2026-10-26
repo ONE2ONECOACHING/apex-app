@@ -10,7 +10,7 @@
 const ECRANS_FICHE = ['coach-client-edit', 'coach-client-programme', 'coach-training-client', 'coach-plan-edit',
   'coach-calcul-nutrition', 'coach-habits-edit', 'coach-journal-suivi', 'coach-journal', 'coach-journal-view',
   'coach-bilan-client', 'coach-mesure-client', 'coach-client-messages', 'coach-client-suivi',
-  'coach-seance-studio', 'coach-programme-archive'];
+  'coach-seance-studio', 'coach-programme-archive', 'coach-cardio-plan'];
 
 const FicheOnglets = {
   _cle() { return 'ficheOnglets_' + (Router.userProfile?.id || ''); },
@@ -44,7 +44,8 @@ const FicheOnglets = {
     if (!clients.length) return;
     const liste = this.lire();
     for (const c of clients) {
-      if (!liste.some(x => x.id === c.id)) liste.push({ id: c.id, nom: c.nom || '', page: 'coach-client-edit', params: {} });
+      // Fiches du jour : ouvertes sur l'onglet Entraînement (programme renfo ou plan cardio)
+      if (!liste.some(x => x.id === c.id)) liste.push({ id: c.id, nom: c.nom || '', page: 'coach-client-programme', params: {} });
     }
     this.ecrire(liste);
     this.aller(clients[0].id);

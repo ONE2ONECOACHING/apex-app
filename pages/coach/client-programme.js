@@ -34,6 +34,7 @@ const CoachClientProgrammePage = {
     this.client     = null;
     this.programmes = [];
     this.archives   = [];
+    this.cardio     = [];
     this.templates  = [];
     this._assigning = false;
 
@@ -49,9 +50,10 @@ const CoachClientProgrammePage = {
         db.getClientProgrammesActifs(params.clientId),
         db.getProgTemplates(),
         db.getClientProgrammesArchives(params.clientId).catch(() => []),
+        db.getCardioPlans(params.clientId).catch(() => []),
       ]);
       if (jeton !== this._jeton) return;
-      [this.client, this.programmes, this.templates, this.archives] = donnees;
+      [this.client, this.programmes, this.templates, this.archives, this.cardio] = donnees;
 
       const prenom = this.client?.prenom || 'Client';
       document.getElementById('cpTitle').textContent = 'Programmes — ' + prenom;
@@ -73,6 +75,7 @@ const CoachClientProgrammePage = {
     const progs = this.programmes || [];
 
     el.innerHTML = tabsHtml
+      + this._raccourciCardio()
       + (progs.length ? progs.map(p => this._programmeCard(p)).join('') : this._emptyCard())
       + `
       <button class="btn btn-primary" style="width:100%;margin-top:1rem;"
@@ -84,7 +87,91 @@ const CoachClientProgrammePage = {
         onclick="CoachClientProgrammePage.notifyClient()">
         🔔 Notifier le client
       </button>` : ''}
+      ${this._cardioHtml()}
       ${this._archivesHtml()}`;
+  },
+
+  // ── Plans cardio (HYROX…) ─────────────────────────────────────────────────
+  _etatCardio(p) {
+    const phases = (p.cardio_phases || []).sort((a, b) => a.ordre - b.ordre);
+    for (const ph of phases) {
+      const seances = (ph.cardio_seances || []).sort((a, b) => a.ordre - b.ordre);
+      const i = seances.findIndex(s => !s.faite);
+      if (i >= 0) return `${escHtml(ph.nom)} · séance ${i + 1}/${seances.length} à faire`;
+    }
+    return phases.length ? 'Toutes les séances sont faites' : 'Aucune séance';
+  },
+
+  // En haut de l'onglet : accès direct au plan cardio en cours (renfo ou cardio : le coach choisit)
+  _raccourciCardio() {
+    const enCours = (this.cardio || []).filter(p => p.actif);
+    if (!enCours.length) return '';
+    return enCours.map(p => `
+      <div class="cp-cardio-raccourci" onclick="CoachClientProgrammePage.ouvrirCardio('${p.id}')">
+        <span>🏃 <b>${escHtml(p.nom)}</b> · ${this._etatCardio(p)}</span>
+        <span class="cp-cardio-ouvrir">Ouvrir le plan cardio ›</span>
+      </div>`).join('');
+  },
+
+  _cardioHtml() {
+    const archives = (this.cardio || []).filter(p => !p.actif);
+    return `
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="CoachClientProgrammePage.choisirModeleCardio()">
+        🏃 + Attribuer un plan cardio
+      </button>
+      ${archives.length ? `
+      <div class="cp-archives">
+        <div class="cp-archives-titre">Plans cardio archivés <span>${archives.length}</span></div>
+        ${archives.map(p => `
+          <div class="cp-archive" onclick="CoachClientProgrammePage.ouvrirCardio('${p.id}')">
+            <div class="cp-archive-nom">🏃 ${escHtml(p.nom)}</div>
+            <div class="cp-archive-meta">${new Date(p.cree_le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })} · ${(p.cardio_phases || []).length} phase(s)</div>
+            <span class="cp-archive-fleche">›</span>
+          </div>`).join('')}
+      </div>` : ''}`;
+  },
+
+  ouvrirCardio(planId) {
+    Router.navigate('coach-cardio-plan', { clientId: this.client.id, planId });
+  },
+
+  async choisirModeleCardio() {
+    let modeles;
+    try { modeles = await db.getCardioModeles(); }
+    catch (e) { toast('Erreur : ' + e.message, 'error'); return; }
+    document.getElementById('cpModal').innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal">
+          <div class="modal-title">Attribuer un plan cardio
+            <button class="modal-close" onclick="document.getElementById('cpModal').innerHTML=''">×</button>
+          </div>
+          ${modeles.length ? `
+          <div class="field"><label class="field-label">Modèle</label>
+            <select class="input" id="cpCardioModele">
+              ${modeles.map(m => `<option value="${m.id}">${escHtml(m.nom)} (${(m.cardio_modele_phases || []).length} phase(s))</option>`).join('')}
+            </select>
+          </div>
+          <div style="font-size:12px;color:var(--gray-light);margin:-4px 0 12px;">Toutes les phases et séances du modèle sont copiées chez le client : tu pourras ensuite les adapter sans toucher au modèle.</div>
+          <div id="cpCardioErreur"></div>
+          <button class="btn btn-primary" style="width:100%;" id="cpCardioBtn" onclick="CoachClientProgrammePage.attribuerCardio()">Attribuer</button>`
+          : `<div style="font-size:14px;margin-bottom:12px;">Aucun plan cardio dans la bibliothèque.</div>
+             <button class="btn btn-primary" style="width:100%;" onclick="window.location.hash='#coach-cardio-modeles'">Créer un plan cardio</button>`}
+        </div>
+      </div>`;
+  },
+
+  async attribuerCardio() {
+    const btn = document.getElementById('cpCardioBtn');
+    btn.disabled = true; btn.textContent = 'Attribution…';
+    try {
+      const planId = await db.attribuerPlanCardio(document.getElementById('cpCardioModele').value, this.client.id);
+      document.getElementById('cpModal').innerHTML = '';
+      toast('Plan cardio attribué', 'success');
+      this.ouvrirCardio(planId);
+    } catch (e) {
+      document.getElementById('cpCardioErreur').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
+      btn.disabled = false; btn.textContent = 'Attribuer';
+    }
   },
 
   _archivesHtml() {
