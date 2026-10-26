@@ -99,33 +99,43 @@ const FicheOnglets = {
   _ddDebut(e, id) {
     if (e.button !== 0 || e.target.closest('.fo-fermer')) return;
     const el = e.currentTarget;
-    const d = { id, el, x0: e.clientX, actif: false };
+    const onglets = [...document.querySelectorAll('[data-onglet]')];
+    const i = onglets.indexOf(el);
+    const rects = onglets.map(o => o.getBoundingClientRect());
+    // Place libérée par l'onglet tenu : sa largeur + l'écart entre deux onglets
+    const ecart = rects.length > 1 ? Math.max(0, rects[1].left - rects[0].right) : 0;
+    const largeur = rects[i].width + ecart;
+    const d = { id, el, x0: e.clientX, actif: false, j: i };
     const bouge = ev => {
       const dx = ev.clientX - d.x0;
       if (!d.actif && Math.abs(dx) < 5) return;
       d.actif = true;
       el.classList.add('fo-glisse');
       el.style.transform = `translateX(${dx}px)`;
+      // Nouvelle place = nombre d'autres onglets dont le milieu est avant celui de l'onglet tenu ;
+      // les autres se poussent en direct pour la montrer
+      const milieu = rects[i].left + rects[i].width / 2 + dx;
+      d.j = rects.filter((r, k) => k !== i && r.left + r.width / 2 < milieu).length;
+      onglets.forEach((o, k) => {
+        if (k === i) return;
+        const decal = i < d.j && k > i && k <= d.j ? -largeur : d.j < i && k >= d.j && k < i ? largeur : 0;
+        o.style.transform = decal ? `translateX(${decal}px)` : '';
+      });
     };
     const fin = ev => {
       document.removeEventListener('pointermove', bouge);
       document.removeEventListener('pointerup', fin);
       document.removeEventListener('pointercancel', fin);
       if (!d.actif) return;
-      // Nouvelle place : d'après le milieu des autres onglets
-      const autres = [...document.querySelectorAll('[data-onglet]')].filter(x => x !== el);
-      let idx = autres.length;
-      for (let i = 0; i < autres.length; i++) {
-        const r = autres[i].getBoundingClientRect();
-        if (ev.clientX < r.left + r.width / 2) { idx = i; break; }
-      }
-      const liste = this.lire();
-      const i = liste.findIndex(x => x.id === id);
-      const [o] = liste.splice(i, 1);
-      liste.splice(idx, 0, o);
-      this.ecrire(liste);
       this._glisse = true;
       setTimeout(() => { this._glisse = false; }, 0);
+      if (ev.type !== 'pointercancel' && d.j !== i) {
+        const liste = this.lire();
+        const k = liste.findIndex(x => x.id === id);
+        const [o] = liste.splice(k, 1);
+        liste.splice(d.j, 0, o);
+        this.ecrire(liste);
+      }
       this.afficher(Router.getParams().clientId);
     };
     document.addEventListener('pointermove', bouge);
