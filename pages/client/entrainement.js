@@ -9,6 +9,9 @@ const EntrainementPage = {
   _cardioVals:  [],           // validations cardio du client
   _cardioOpen:  null,         // seance.id de la séance cardio ouverte
   _cardioRessenti: null,      // ressenti sélectionné dans la vue validation
+  plansCardio:  [],           // plans cardio « à distance » (HYROX…) donnés par le coach
+  _pcPhase:     {},           // plan.id → index de la phase affichée
+  _pcOuverte:   null,         // séance du plan cardio dépliée
 
   _jours: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
 
@@ -36,11 +39,14 @@ const EntrainementPage = {
     this._expanded   = null;
     this._cardioOpen = null;
     this._cardioRessenti = null;
+    this._pcPhase    = {};
+    this._pcOuverte  = null;
 
     try {
-      [this.programmes, this._cardioVals] = await Promise.all([
+      [this.programmes, this._cardioVals, this.plansCardio] = await Promise.all([
         db.getClientProgrammesActifs(profile.id),
         db.getCardioValidations(profile.id).catch(() => []),
+        db.getMesPlansCardio().catch(() => []),
       ]);
       this._renderContent();
     } catch (e) {
@@ -112,6 +118,8 @@ const EntrainementPage = {
 
   _renderProgramme() {
     const progs = this.programmes || [];
+    const plansCardio = this._renderPlansCardio();
+    if (!progs.length && plansCardio) return plansCardio;
     if (!progs.length) {
       return `<div class="empty-state" style="margin-top:2rem;">
         <div class="empty-icon">💪</div>
@@ -133,7 +141,76 @@ const EntrainementPage = {
         </div>
       </div>`).join('');
 
-    return consignesHtml + this._renderSeancesGrouped(this._allSeances());
+    return consignesHtml + this._renderSeancesGrouped(this._allSeances()) + plansCardio;
+  },
+
+  // ── Plan cardio à distance (HYROX…) : phases, séances en texte, le client coche ──
+  _renderPlansCardio() {
+    const plans = this.plansCardio || [];
+    if (!plans.length) return '';
+    const jour = d => new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return `
+      <div style="display:flex;align-items:center;gap:8px;margin:14px 0 10px;">
+        <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#EF4444;">🏃 Plan cardio</div>
+        <div style="flex:1;height:1px;background:#EF4444;opacity:.25;"></div>
+      </div>
+      ${plans.map(p => {
+        const a = avancementCardio({ cardio_phases: (p.phases || []).map(ph => ({ ...ph, cardio_seances: ph.seances || [] })) });
+        if (!a.phases.length) return '';
+        const iPhase = this._pcPhase[p.id] ?? Math.max(0, a.phases.indexOf(a.phase));
+        const ph = a.phases[Math.min(iPhase, a.phases.length - 1)];
+        const prochaineId = a.prochaine ? a.prochaine.phase.seances[a.prochaine.n - 1].id : null;
+        const ouverte = this._pcOuverte === null ? prochaineId : this._pcOuverte;
+        return `
+        <div class="card" style="margin-bottom:0.75rem;border-left:3px solid #EF4444;">
+          <div style="font-weight:700;font-size:15px;">${escHtml(p.nom)}</div>
+          <div style="font-size:12px;color:var(--gray-light);margin:2px 0 10px;">Séances faites : ${a.faites}/${a.total}</div>
+          ${a.phases.length > 1 ? `<div class="pc-phases">${a.phases.map((x, i) => `
+            <button class="${x === ph ? 'on' : ''}" onclick="EntrainementPage._pcChoisirPhase('${p.id}', ${i})">${escHtml(x.nom || 'Phase ' + (i + 1))}</button>`).join('')}
+          </div>` : ''}
+          ${ph.seances.map((s, i) => {
+            const ouv = s.id === ouverte;
+            return `
+            <div class="pc-seance ${s.faite ? 'faite' : ''} ${s.id === prochaineId ? 'prochaine' : ''}" data-id="${s.id}">
+              <div class="pc-seance-tete" onclick="EntrainementPage._pcOuvrir('${s.id}')">
+                <span class="pc-rond">${s.faite ? '✓' : i + 1}</span>
+                <span class="pc-titre">Séance ${i + 1}${s.titre ? ' · ' + escHtml(s.titre) : ''}</span>
+                <span class="pc-etat">${s.faite ? (s.faite_le ? 'faite le ' + jour(s.faite_le) : 'faite') : s.id === prochaineId ? 'à faire' : ''}</span>
+                <span style="color:var(--gray-muted);">${ouv ? '⌃' : '›'}</span>
+              </div>
+              ${ouv ? `
+              <div class="pc-contenu">${escHtml(s.contenu || 'Pas de détail pour cette séance.')}</div>
+              <button class="btn ${s.faite ? 'btn-secondary' : 'btn-primary'} btn-small" style="width:100%;margin-top:10px;"
+                onclick="EntrainementPage._pcCocher('${s.id}', ${!s.faite})">${s.faite ? 'Annuler : pas encore faite' : '✓ J\'ai fait cette séance'}</button>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}`;
+  },
+
+  _pcChoisirPhase(planId, i) {
+    this._pcPhase[planId] = i;
+    this._pcOuverte = null;
+    this._rerenderProgrammeTab();
+  },
+
+  _pcOuvrir(seanceId) {
+    const ouverte = this._pcOuverte === null ? document.querySelector('.pc-contenu')?.closest('.pc-seance')?.dataset.id : this._pcOuverte;
+    this._pcOuverte = ouverte === seanceId ? '' : seanceId;
+    this._rerenderProgrammeTab();
+  },
+
+  async _pcCocher(seanceId, faite) {
+    try {
+      await db.cocherSeanceCardio(seanceId, faite);
+      for (const p of this.plansCardio) for (const ph of p.phases || []) for (const s of ph.seances || []) {
+        if (s.id === seanceId) { s.faite = faite; s.faite_le = faite ? formatDate(new Date()) : null; }
+      }
+      // Séance cochée : on passe à la suivante (et à sa phase)
+      if (faite) { this._pcOuverte = null; this._pcPhase = {}; }
+      this._rerenderProgrammeTab();
+      toast(faite ? '🏃 Séance validée !' : 'Séance remise à faire', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   _renderSeancesGrouped(toutes) {

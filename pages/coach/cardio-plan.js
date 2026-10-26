@@ -131,6 +131,10 @@ const CoachCardioPlanPage = {
           oninput="CoachCardioPlanPage.saisirNom(this.value)">
         ${plan ? `
           ${d.actif === false ? '<span class="cpc-archive">Archivé</span>' : ''}
+          <div class="cp-lieu" title="Studio : coachs seulement. Distance : le client voit le plan et coche ses séances.">
+            <button class="${d.lieu !== 'distance' ? 'on' : ''}" onclick="CoachCardioPlanPage.changerLieu('studio')">Studio</button>
+            <button class="${d.lieu === 'distance' ? 'on' : ''}" onclick="CoachCardioPlanPage.changerLieu('distance')">Distance</button>
+          </div>
           <button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-client-programme',{clientId:'${this.clientId}'})">‹ Entraînement</button>
           <button class="btn btn-secondary btn-small" onclick="CoachCardioPlanPage.archiver(${d.actif === false})">${d.actif === false ? 'Réactiver' : 'Archiver'}</button>`
           : `<button class="btn btn-secondary btn-small" onclick="window.location.hash='#coach-cardio-modeles'">‹ Plans cardio</button>`}
@@ -313,6 +317,12 @@ const CoachCardioPlanPage = {
     [liste[i], liste[j]] = [liste[j], liste[i]];
     this._phase = j;
     this._faire(() => this._renumeroter(liste, 'phase'));
+  },
+
+  changerLieu(lieu) {
+    if (this.data.lieu === lieu) return;
+    this._faire(async () => { await db.majCardioRacine('plan', this.data.id, { lieu }); this.data.lieu = lieu; },
+      lieu === 'distance' ? '✓ À distance : le client voit le plan' : '✓ Au studio : coachs seulement');
   },
 
   archiver(reactiver) {

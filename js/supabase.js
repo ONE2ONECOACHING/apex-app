@@ -1936,16 +1936,28 @@ const db = {
     return data;
   },
 
-  async attribuerPlanCardio(modeleId, clientId) {
-    const { data, error } = await getSupabase().rpc('attribuer_plan_cardio', { p_modele: modeleId, p_client: clientId });
+  async attribuerPlanCardio(modeleId, clientId, lieu = 'studio') {
+    const { data, error } = await getSupabase().rpc('attribuer_plan_cardio', { p_modele: modeleId, p_client: clientId, p_lieu: lieu });
     if (error) throw error;
     return data;
+  },
+
+  // Côté client : ses plans cardio « distance » en cours (sans les notes internes)
+  async getMesPlansCardio() {
+    const { data, error } = await getSupabase().rpc('plans_cardio_client');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async cocherSeanceCardio(seanceId, faite) {
+    const { error } = await getSupabase().rpc('cocher_seance_cardio', { p_seance: seanceId, p_faite: faite });
+    if (error) throw error;
   },
 
   // Plans cardio d'un client (en cours et archivés), avec l'état des séances
   async getCardioPlans(clientId) {
     const { data, error } = await getSupabase().from('cardio_plans')
-      .select('id, nom, actif, cree_le, cardio_phases(id, nom, ordre, cardio_seances(id, ordre, faite, faite_le))')
+      .select('id, nom, actif, lieu, cree_le, cardio_phases(id, nom, ordre, cardio_seances(id, ordre, titre, faite, faite_le))')
       .eq('client_id', clientId).order('cree_le', { ascending: false });
     if (error) throw error;
     return data || [];
