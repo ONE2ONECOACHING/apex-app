@@ -1,4 +1,4 @@
-const CACHE = 'apex-v13';
+const CACHE = 'apex-v14';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -29,13 +29,18 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = e.notification.data?.url || '/';
+  // Seulement une adresse de l'app (une notification ne peut pas ouvrir un autre site)
+  let cible = self.location.origin + '/';
+  try {
+    const u = new URL(e.notification.data?.url || '/', self.location.origin);
+    if (u.origin === self.location.origin) cible = u.href;
+  } catch (_) {}
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const c of list) {
-        if (c.url.includes(self.location.origin)) { c.focus(); c.navigate(self.location.origin + url); return; }
+        if (c.url.startsWith(self.location.origin)) { c.focus(); c.navigate(cible); return; }
       }
-      return clients.openWindow(self.location.origin + url);
+      return clients.openWindow(cible);
     })
   );
 });

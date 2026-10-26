@@ -59,7 +59,7 @@ const ResetPasswordPage = {
       await db.signOut();
       setTimeout(() => { Router.userProfile = null; window.location.hash = '#login'; }, 2000);
     } catch (e) {
-      alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      alertEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
       btn.disabled = false;
       btn.textContent = 'Enregistrer';
     }

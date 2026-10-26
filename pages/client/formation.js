@@ -39,7 +39,7 @@ const FormationPage = {
       ]);
       this._render();
     } catch (e) {
-      document.getElementById('formationContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('formationContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 

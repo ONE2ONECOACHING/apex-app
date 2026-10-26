@@ -38,10 +38,13 @@ Deno.serve(async (req) => {
 
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     const { data: msg } = await sb.from("messages")
-      .select("id, client_id, canal, auteur_id, texte, piece_type, supprime")
+      .select("id, client_id, canal, auteur_id, texte, piece_type, supprime, cree_le")
       .eq("id", messageId).single();
     // Seul l'auteur peut déclencher la notification de son message
     if (!msg || msg.auteur_id !== user.id || msg.supprime) return json({ error: "Accès refusé" }, 403);
+    // Une seule fois, juste après l'envoi : un message de plus de 2 minutes ne
+    // déclenche plus de notification (évite les envois en boucle)
+    if (Date.now() - new Date(msg.cree_le).getTime() > 120000) return json({ sent: 0 });
 
     const { data: client } = await sb.from("profiles")
       .select("id, prenom, nom, coach_referent_id").eq("id", msg.client_id).single();
@@ -50,7 +53,7 @@ Deno.serve(async (req) => {
     if (!client || !auteur) return json({ error: "Introuvable" }, 404);
 
     let destinataires: string[] = [];
-    let url = "/#messages";
+    let url = `/#messages?k=${msg.canal}`;
     if (auteur.role === "coach") {
       destinataires = [client.id];
     } else {

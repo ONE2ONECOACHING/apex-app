@@ -63,7 +63,7 @@ const CoachClientProgrammePage = {
       this._render(tabsHtml);
     } catch (e) {
       document.getElementById('cpContent').innerHTML =
-        '<div class="alert alert-error">' + e.message + '</div>';
+        '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
@@ -318,7 +318,7 @@ const CoachClientProgrammePage = {
 
           <div class="field" style="margin-bottom:20px;">
             <label class="field-label">Date de début</label>
-            <input type="date" class="input" id="cpDateDebut" value="${new Date().toISOString().slice(0,10)}">
+            <input type="date" class="input" id="cpDateDebut" value="${formatDate(new Date())}">
           </div>
 
           <div class="field" id="cpLieux" style="margin-bottom:20px;"></div>
@@ -377,7 +377,7 @@ const CoachClientProgrammePage = {
       this._assigning = false;
       if (btn) { btn.disabled = false; btn.textContent = '✓ Assigner ce programme'; }
       document.getElementById('cpAssignErr').innerHTML =
-        '<div class="alert alert-error">' + e.message + '</div>';
+        '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 

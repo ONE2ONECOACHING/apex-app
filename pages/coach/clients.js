@@ -313,7 +313,7 @@ const CoachClientsPage = {
         <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('coachModal').innerHTML='';CoachClientsPage.init()">Fermer</button>
       `;
     } catch (e) {
-      document.getElementById('createError').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      document.getElementById('createError').innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
       btn.disabled = false;
       btn.textContent = 'Créer le compte';
     }

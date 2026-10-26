@@ -82,7 +82,7 @@ const LoginPage = {
       await db.resetPassword(email);
       alertEl.innerHTML = '<div class="alert alert-success">✅ Lien envoyé ! Vérifie ta boîte mail.</div>';
     } catch (e) {
-      alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      alertEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
     }
   },
 

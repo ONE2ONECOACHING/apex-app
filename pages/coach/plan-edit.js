@@ -55,7 +55,7 @@ const CoachPlanEditPage = {
 
       this.renderEditor();
     } catch (e) {
-      document.getElementById('peContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('peContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
@@ -456,7 +456,7 @@ const CoachPlanEditPage = {
       }
     } catch (e) {
       const msg = document.getElementById('peSaveMsg');
-      if (msg) msg.innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      if (msg) msg.innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   }
 };

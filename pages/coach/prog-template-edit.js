@@ -820,6 +820,9 @@ const CoachProgTemplateEditPage = {
     document.addEventListener('pointermove', this._ddBouge);
     document.addEventListener('pointerup', this._ddFin);
     document.addEventListener('pointercancel', this._ddFin);
+    // Échap : on annule le déplacement
+    this._ddEchap = ev => { if (ev.key === 'Escape' && this._dd) { this._dd.cible = null; this._ddLacher(); } };
+    document.addEventListener('keydown', this._ddEchap);
     this._ddDeplacer(e);
   },
 
@@ -884,8 +887,9 @@ const CoachProgTemplateEditPage = {
     document.removeEventListener('pointermove', this._ddBouge);
     document.removeEventListener('pointerup', this._ddFin);
     document.removeEventListener('pointercancel', this._ddFin);
+    document.removeEventListener('keydown', this._ddEchap);
     d.fantome.remove(); d.ligne.remove();
-    d.src.classList.remove('dd-source');
+    document.querySelectorAll('.dd-source').forEach(el => el.classList.remove('dd-source'));
     document.body.classList.remove('dd-actif');
     this._dd = null;
     if (!d.cible) return;
@@ -983,6 +987,10 @@ const CoachProgTemplateEditPage = {
 
   removeExo(si, ei) {
     this._syncFromDOM();
+    // Programme d'un client : les charges notées dans la grille du studio pour cet
+    // exercice disparaîtront avec lui à l'enregistrement
+    const ex = this.seances[si].exercices[ei];
+    if (this._clientMode && ex?.id && !confirm(`Retirer « ${ex.exercice?.nom || 'cet exercice'} » ?\n\nÀ l'enregistrement, les charges notées pour cet exercice (grille du studio) seront supprimées.`)) return;
     this.seances[si].exercices.splice(ei, 1);
     // Nettoyer un éventuel superset devenu orphelin (1 seul membre restant). #41
     this._normalizeSupersets(this.seances[si].exercices);

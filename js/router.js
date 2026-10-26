@@ -65,7 +65,7 @@ const Router = {
 
     // Page invite accessible sans connexion
     if (hash === 'invite') {
-      app.innerHTML = InvitePage.render();
+      document.getElementById('app').innerHTML = InvitePage.render();
       InvitePage.init();
       return;
     }

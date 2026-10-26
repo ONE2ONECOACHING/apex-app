@@ -32,7 +32,7 @@ const CoachBilanTemplatesPage = {
       this.templates = await db.getBilanTemplates();
       this.renderList();
     } catch (e) {
-      document.getElementById('btContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('btContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
@@ -271,7 +271,7 @@ const CoachBilanTemplatesPage = {
       document.getElementById('btModal').innerHTML = '';
       this.renderList();
     } catch (e) {
-      document.getElementById('btSaveMsg').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('btSaveMsg').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 

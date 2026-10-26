@@ -53,6 +53,7 @@ const CoachMessageriePage = {
       this._minuteur = setInterval(() => {
         if (Router.currentPage !== 'coach-messagerie') { clearInterval(this._minuteur); return; }
         this._rafraichirResumes();
+        if (typeof rafraichirCompteurMessages === 'function') rafraichirCompteurMessages();
       }, 30000);
 
       // Conversation demandée par une notification (#coach-messagerie?c=…&k=…)
@@ -165,6 +166,8 @@ const CoachMessageriePage = {
   // Un message envoyé ou reçu dans la conversation ouverte : la liste suit
   _majApercu(v, m) {
     if (this._actif !== `${v.client.id}|${v.canal}`) return;
+    // Suppression d'un ancien message : l'aperçu reste sur le dernier message
+    if (v.resume?.dernier_le && m.cree_le < v.resume.dernier_le) return;
     v.resume = {
       ...(v.resume || {}), client_id: v.client.id, canal: v.canal, dernier_le: m.cree_le,
       dernier_texte: m.supprime ? 'Message supprimé' : m.texte, dernier_type: m.piece_type,

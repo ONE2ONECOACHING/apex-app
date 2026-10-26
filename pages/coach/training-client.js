@@ -44,7 +44,7 @@ const CoachTrainingClientPage = {
       this._renderContent();
     } catch (e) {
       document.getElementById('ctcContent').innerHTML =
-        `<div class="alert alert-error">${e.message}</div>`;
+        `<div class="alert alert-error">${escHtml(e.message)}</div>`;
     }
   },
 

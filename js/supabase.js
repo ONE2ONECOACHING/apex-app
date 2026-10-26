@@ -19,6 +19,13 @@ const db = {
   },
 
   async signOut() {
+    // Cet appareil ne reçoit plus les notifications du compte qui se déconnecte
+    // (tablette partagée du studio, ordinateur commun)
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      const sub = await reg?.pushManager?.getSubscription();
+      if (sub) await getSupabase().from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+    } catch (_) {}
     await getSupabase().auth.signOut();
   },
 

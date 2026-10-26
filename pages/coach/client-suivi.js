@@ -50,7 +50,7 @@ const CoachClientSuiviPage = {
       this._render();
     } catch (e) {
       document.getElementById('suiviContent').innerHTML =
-        '<div class="alert alert-error">' + e.message + '</div>';
+        '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 

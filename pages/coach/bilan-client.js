@@ -43,7 +43,7 @@ const CoachBilanClientPage = {
       db.markBilansAsRead(this.clientId).catch(() => {});
       this.renderContent();
     } catch (e) {
-      document.getElementById('bcContent').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      document.getElementById('bcContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
@@ -226,7 +226,7 @@ const CoachBilanClientPage = {
       toast('✅ Assignation enregistrée', 'success');
       msg.innerHTML = '';
     } catch (e) {
-      msg.innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      msg.innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   }
 };

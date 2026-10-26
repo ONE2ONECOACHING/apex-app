@@ -299,7 +299,7 @@ const MesurePage = {
       this.renderContent();
     } catch (e) {
       document.getElementById('mesureSaveResult').innerHTML =
-        '<div class="alert alert-error">' + e.message + '</div>';
+        '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
       if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer'; }
     }
   },
@@ -346,7 +346,7 @@ const MesurePage = {
       resultEl.innerHTML = '';
       this.renderContent();
     } catch (e) {
-      resultEl.innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+      resultEl.innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
   },
 
