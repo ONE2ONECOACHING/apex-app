@@ -83,7 +83,7 @@ const CoachClientProgrammePage = {
       + `
       <div class="cp-assigner">
         <button class="btn btn-primary" onclick="CoachClientProgrammePage.openAssignModal()">
-          💪 + Assigner un programme renfo
+          💪 + Assigner un plan renfo
         </button>
         <button class="btn btn-primary" onclick="CoachClientProgrammePage.choisirModeleCardio()">
           🏃 + Assigner un plan cardio
