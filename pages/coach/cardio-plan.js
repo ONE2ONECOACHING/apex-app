@@ -316,13 +316,27 @@ const CoachCardioPlanPage = {
   _ddPhase(e, i) {
     if (e.button !== 0) return;
     const el = e.currentTarget;
-    const d = { x0: e.clientX, actif: false };
+    const onglets = [...document.querySelectorAll('.cpc-onglet[data-phase]')];
+    const rects = onglets.map(o => o.getBoundingClientRect());
+    // Place libérée par l'onglet tenu : sa largeur + l'écart entre deux onglets
+    const ecart = rects.length > 1 ? Math.max(0, rects[1].left - rects[0].right) : 0;
+    const largeur = rects[i].width + ecart;
+    const d = { x0: e.clientX, actif: false, j: i };
     const bouge = ev => {
       const dx = ev.clientX - d.x0;
       if (!d.actif && Math.abs(dx) < 5) return;
       d.actif = true;
       el.classList.add('cpc-glisse');
       el.style.transform = `translateX(${dx}px)`;
+      // Nouvelle place = nombre d'autres onglets dont le milieu est avant le milieu de l'onglet tenu
+      const milieu = rects[i].left + rects[i].width / 2 + dx;
+      d.j = rects.filter((r, k) => k !== i && r.left + r.width / 2 < milieu).length;
+      // Les autres onglets se poussent en direct pour montrer la place
+      onglets.forEach((o, k) => {
+        if (k === i) return;
+        const decal = i < d.j && k > i && k <= d.j ? -largeur : d.j < i && k >= d.j && k < i ? largeur : 0;
+        o.style.transform = decal ? `translateX(${decal}px)` : '';
+      });
     };
     const fin = ev => {
       document.removeEventListener('pointermove', bouge);
@@ -331,14 +345,7 @@ const CoachCardioPlanPage = {
       if (!d.actif) return;
       this._glisse = true;
       setTimeout(() => { this._glisse = false; }, 0);
-      // Nouvelle place : d'après le milieu des autres onglets
-      const autres = [...document.querySelectorAll('.cpc-onglet[data-phase]')].filter(x => x !== el);
-      let j = autres.length;
-      for (let k = 0; k < autres.length; k++) {
-        const r = autres[k].getBoundingClientRect();
-        if (ev.clientX < r.left + r.width / 2) { j = k; break; }
-      }
-      const liste = this.data.phases;
+      const liste = this.data.phases, j = d.j;
       if (ev.type === 'pointercancel' || j === i) { this._render(); return; }
       const ouverte = liste[this._phase];
       const [ph] = liste.splice(i, 1);
