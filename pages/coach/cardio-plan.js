@@ -68,6 +68,7 @@ const CoachCardioPlanPage = {
   // ── Affichage ─────────────────────────────────────────────────────────────
   _render() {
     this._envoyerAttente();
+    document.getElementById('cpcEmojis')?.remove();
     const d = this.data;
     const plan = this.cote === 'plan';
     document.getElementById('cpcTitre').textContent = (plan ? 'Plan cardio — ' : 'Modèle cardio — ') + (d.nom || '');
@@ -91,17 +92,18 @@ const CoachCardioPlanPage = {
             <span>${s.faite ? `Faite${s.faite_le ? ' le ' + new Date(s.faite_le + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''}` : 'À faire'}</span>
           </label>` : ''}
           <span class="cpc-outils">
+            <button title="Ajouter un emoji" onclick="CoachCardioPlanPage.emojis(this, '${s.id}')">😀</button>
             <button title="Vers la gauche" onclick="CoachCardioPlanPage.deplacerSeance('${s.id}', -1)" ${i === 0 ? 'disabled' : ''}>‹</button>
             <button title="Vers la droite" onclick="CoachCardioPlanPage.deplacerSeance('${s.id}', 1)" ${i === phase.seances.length - 1 ? 'disabled' : ''}>›</button>
             <button title="Supprimer la séance" onclick="CoachCardioPlanPage.supprimerSeance('${s.id}')">×</button>
           </span>
         </div>
         <input class="cpc-titre" placeholder="Titre (ex. AVEC CYRIL)" value="${escHtml(s.titre || '')}"
-          oninput="CoachCardioPlanPage.saisir('${s.id}', 'titre', this.value)">
+          oninput="CoachCardioPlanPage.saisir('${s.id}', 'titre', this.value)" onfocus="CoachCardioPlanPage._champ = this" data-champ="titre" data-seance="${s.id}">
         <textarea class="cpc-contenu" rows="14" placeholder="For Time&#10;1000m Run&#10;3 rounds…"
-          oninput="CoachCardioPlanPage.saisir('${s.id}', 'contenu', this.value)">${escHtml(s.contenu || '')}</textarea>
+          oninput="CoachCardioPlanPage.saisir('${s.id}', 'contenu', this.value)" onfocus="CoachCardioPlanPage._champ = this" data-champ="contenu" data-seance="${s.id}">${escHtml(s.contenu || '')}</textarea>
         ${plan ? `<textarea class="cpc-note" rows="2" placeholder="Note (temps réalisé, remarques…)"
-          oninput="CoachCardioPlanPage.saisir('${s.id}', 'note', this.value)">${escHtml(s.note || '')}</textarea>` : ''}
+          oninput="CoachCardioPlanPage.saisir('${s.id}', 'note', this.value)" onfocus="CoachCardioPlanPage._champ = this" data-champ="note" data-seance="${s.id}">${escHtml(s.note || '')}</textarea>` : ''}
         <label class="cpc-modifier"><input type="checkbox" ${s.a_modifier ? 'checked' : ''}
           onchange="CoachCardioPlanPage.marquer('${s.id}', this.checked)"> À modifier</label>
       </div>`).join('') : '';
@@ -189,6 +191,47 @@ const CoachCardioPlanPage = {
     if (btn) btn.firstChild.textContent = valeur || 'Phase';
     const cote = this.cote;
     this._programmer(`phase_${id}`, () => db.majCardioPhase(cote, id, { nom: valeur.trim() || 'Phase' }));
+  },
+
+  // ── Emojis : insérés à l'endroit du curseur, dans le dernier champ utilisé de la séance ──
+  EMOJIS: ['🏃', '🚴', '🚣', '⛷️', '🏋️', '💪', '🦵', '🤸', '🏊', '🚶', '🧘', '🔥', '⚡', '💥', '⏱️', '⏸️',
+    '🔁', '❤️', '💓', '🥵', '💦', '💧', '😮‍💨', '😴', '🤕', '🎯', '✅', '❌', '⚠️', '📌', '📈', '📉',
+    '⬆️', '⬇️', '➡️', '🥇', '🏆', '👍', '👏', '😀', '😅', '💯', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '🍌'],
+  _champ: null,
+
+  emojis(btn, seanceId) {
+    const ouvert = document.getElementById('cpcEmojis');
+    if (ouvert) { ouvert.remove(); if (ouvert.dataset.seance === seanceId) return; }
+    const r = btn.getBoundingClientRect();
+    const boite = document.createElement('div');
+    boite.id = 'cpcEmojis';
+    boite.className = 'cpc-emojis';
+    boite.dataset.seance = seanceId;
+    boite.style.top = (r.bottom + 4) + 'px';
+    boite.style.left = Math.max(8, Math.min(r.right - 248, window.innerWidth - 256)) + 'px';
+    boite.innerHTML = this.EMOJIS.map(e => `<button type="button">${e}</button>`).join('');
+    // mousedown : le champ garde la position du curseur
+    boite.onmousedown = ev => ev.preventDefault();
+    boite.onclick = ev => { const b = ev.target.closest('button'); if (b) this._insererEmoji(seanceId, b.textContent); };
+    document.body.appendChild(boite);
+    setTimeout(() => document.addEventListener('mousedown', function fermer(ev) {
+      if (boite.contains(ev.target) || ev.target === btn) return;
+      boite.remove(); document.removeEventListener('mousedown', fermer);
+    }), 0);
+  },
+
+  _insererEmoji(seanceId, emoji) {
+    let champ = this._champ;
+    if (!champ || !champ.isConnected || champ.dataset.seance !== seanceId) {
+      champ = document.querySelector(`[data-seance="${seanceId}"][data-champ="contenu"]`);
+    }
+    if (!champ) return;
+    const debut = champ.selectionStart ?? champ.value.length, fin = champ.selectionEnd ?? debut;
+    champ.value = champ.value.slice(0, debut) + emoji + champ.value.slice(fin);
+    champ.focus();
+    champ.setSelectionRange(debut + emoji.length, debut + emoji.length);
+    this._champ = champ;
+    this.saisir(seanceId, champ.dataset.champ, champ.value);
   },
 
   // ── Actions immédiates ────────────────────────────────────────────────────

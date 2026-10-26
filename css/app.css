@@ -1701,3 +1701,7 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
   border: 1px solid #BBD5FA; border-radius: 12px; padding: 12px 14px; margin-bottom: 0.75rem; cursor: pointer; font-size: 14px; }
 .cp-cardio-raccourci:hover { background: #E3EEFF; }
 .cp-cardio-ouvrir { font-size: 13px; font-weight: 700; color: #0A63C8; white-space: nowrap; }
+.cpc-emojis { position: fixed; z-index: 1000; width: 248px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; background: var(--white);
+  border: 1px solid var(--border-solid); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.15); padding: 6px; }
+.cpc-emojis button { border: none; background: none; font-size: 19px; height: 30px; border-radius: 6px; cursor: pointer; padding: 0; }
+.cpc-emojis button:hover { background: var(--bg); }
