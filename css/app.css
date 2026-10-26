@@ -1713,3 +1713,8 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
 .emoji-grille { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(8, 1fr); align-content: start; gap: 2px; }
 .emoji-grille button { border: none; background: none; font-size: 21px; height: 34px; border-radius: 6px; cursor: pointer; padding: 0; }
 .emoji-grille button:hover { background: var(--bg); }
+.st-cardio { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.st-cardio-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 13px; font-weight: 700;
+  margin-bottom: 6px; cursor: pointer; }
+.st-cardio-info { font-size: 11px; font-weight: 500; color: var(--gray-light); }
+.st-cardio-tete:hover .st-cardio-info { color: #0A63C8; }

@@ -32,6 +32,7 @@ const CoachClientEditPage = {
     this.fiche       = null;
     this.semainesStudio = [];
     this.programmes  = [];
+    this.cardio      = [];
     this.notifs      = null;
 
     const params = Router.getParams();
@@ -47,11 +48,12 @@ const CoachClientEditPage = {
         db.getSemainesStudioClient(params.clientId).catch(() => []),
         db.getClientProgrammesActifs(params.clientId).catch(() => []),
         db.getNotificationsClient(params.clientId).catch(() => null),
+        db.getCardioPlans(params.clientId).catch(() => []),
       ]);
       if (jeton !== this._jeton) return;
       this.client = client;
       this.coachs = coachs;
-      [this.fiche, this.semainesStudio, this.programmes, this.notifs] = donnees;
+      [this.fiche, this.semainesStudio, this.programmes, this.notifs, this.cardio] = donnees;
       document.getElementById('ceTitle').textContent = 'Infos — ' + (this.client.prenom || 'Client');
       this.renderForm();
     } catch (e) {
@@ -250,18 +252,21 @@ const CoachClientEditPage = {
   // ── Séances au studio d'un coup d'œil (se remplit avec les cases « faite ») ──
   // Colonnes = semaines du programme en cours (le plus long s'il y en a plusieurs),
   // lignes = séances attribuées au client dans ses programmes en cours.
+  // En dessous : les plans cardio en cours, une ligne par phase.
   _studioHtml() {
     const c = this.client;
     const progs = (this.programmes || []).filter(p => (p.seances || []).some(s => !s.cardio));
-    if (c.type_client === 'distance' && !progs.some(p => p.seances.some(s => s.lieu === 'studio'))) return '';
+    const cardio = this._cardioHtml();
+    if (c.type_client === 'distance' && !cardio && !progs.some(p => p.seances.some(s => s.lieu === 'studio'))) return '';
 
     const carte = contenu => `
       <div class="card">
         <div class="card-title">Séances au studio</div>
         ${contenu}
+        ${cardio}
       </div>`;
     if (!progs.length) {
-      return carte('<div style="font-size:13px;color:var(--gray-light);">Aucun programme en cours.</div>');
+      return carte(`<div style="font-size:13px;color:var(--gray-light);">Aucun programme ${cardio ? 'renfo ' : ''}en cours.</div>`);
     }
 
     const ref = progs.reduce((a, b) => ((b.nb_semaines || 4) > (a.nb_semaines || 4) ? b : a));
@@ -299,7 +304,43 @@ const CoachClientEditPage = {
           </table>
         </div>
         <div style="font-size:11px;color:var(--gray-light);margin-top:6px;">Se coche tout seul quand un coach coche « faite » dans la grille d'une séance au studio.</div>
+        ${cardio}
       </div>`;
+  },
+
+  // Plans cardio en cours : séances cochées « faite » dans le plan, phase par phase
+  _cardioHtml() {
+    const plans = (this.cardio || []).filter(p => p.actif);
+    if (!plans.length) return '';
+    const jour = d => new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return plans.map(p => {
+      const phases = [...(p.cardio_phases || [])].sort((a, b) => a.ordre - b.ordre)
+        .map(ph => ({ ...ph, seances: [...(ph.cardio_seances || [])].sort((a, b) => a.ordre - b.ordre) }));
+      const toutes = phases.flatMap(ph => ph.seances);
+      const faites = toutes.filter(s => s.faite).length;
+      const max = Math.max(1, ...phases.map(ph => ph.seances.length));
+      // Prochaine séance à faire : la première non cochée après la dernière cochée
+      let prochaine = null;
+      phases.forEach(ph => ph.seances.forEach((s, i) => { if (s.faite) prochaine = null; else if (!prochaine) prochaine = { ph, n: i + 1 }; }));
+      return `
+        <div class="st-cardio">
+          <div class="st-cardio-tete" onclick="Router.navigate('coach-cardio-plan',{clientId:'${this.client.id}',planId:'${p.id}'})">
+            <span>🏃 ${escHtml(p.nom)}</span>
+            <span class="st-cardio-info">${faites}/${toutes.length} faite${faites > 1 ? 's' : ''}${prochaine ? ` · prochaine : ${escHtml(prochaine.ph.nom || 'Phase')}, séance ${prochaine.n}` : ''} · Ouvrir ›</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="st-table">
+              <tr><th></th>${Array.from({ length: max }, (_, i) => `<th>${i + 1}</th>`).join('')}</tr>
+              ${phases.map(ph => `
+                <tr><th class="st-seance">${escHtml(ph.nom || 'Phase')}</th>${Array.from({ length: max }, (_, i) => {
+                  const s = ph.seances[i];
+                  if (!s) return '<td></td>';
+                  return `<td><span class="st-case ${s.faite ? 'on' : ''}" title="Séance ${i + 1}${s.faite ? ` — faite${s.faite_le ? ' le ' + jour(s.faite_le) : ''}` : ''}"></span></td>`;
+                }).join('')}</tr>`).join('')}
+            </table>
+          </div>
+        </div>`;
+    }).join('');
   },
 
   // Client studio : accès à l'app réduite (séances au studio, charges, messages)

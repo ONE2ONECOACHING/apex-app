@@ -1945,7 +1945,7 @@ const db = {
   // Plans cardio d'un client (en cours et archivés), avec l'état des séances
   async getCardioPlans(clientId) {
     const { data, error } = await getSupabase().from('cardio_plans')
-      .select('id, nom, actif, cree_le, cardio_phases(id, nom, ordre, cardio_seances(id, ordre, faite))')
+      .select('id, nom, actif, cree_le, cardio_phases(id, nom, ordre, cardio_seances(id, ordre, faite, faite_le))')
       .eq('client_id', clientId).order('cree_le', { ascending: false });
     if (error) throw error;
     return data || [];
