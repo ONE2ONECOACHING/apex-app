@@ -68,7 +68,7 @@ const CoachCardioPlanPage = {
   // ── Affichage ─────────────────────────────────────────────────────────────
   _render() {
     this._envoyerAttente();
-    document.getElementById('cpcEmojis')?.remove();
+    EmojiPicker.fermer();
     const d = this.data;
     const plan = this.cote === 'plan';
     document.getElementById('cpcTitre').textContent = (plan ? 'Plan cardio — ' : 'Modèle cardio — ') + (d.nom || '');
@@ -194,30 +194,10 @@ const CoachCardioPlanPage = {
   },
 
   // ── Emojis : insérés à l'endroit du curseur, dans le dernier champ utilisé de la séance ──
-  EMOJIS: ['🏃', '🚴', '🚣', '⛷️', '🏋️', '💪', '🦵', '🤸', '🏊', '🚶', '🧘', '🔥', '⚡', '💥', '⏱️', '⏸️',
-    '🔁', '❤️', '💓', '🥵', '💦', '💧', '😮‍💨', '😴', '🤕', '🎯', '✅', '❌', '⚠️', '📌', '📈', '📉',
-    '⬆️', '⬇️', '➡️', '🥇', '🏆', '👍', '👏', '😀', '😅', '💯', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '🍌'],
   _champ: null,
 
   emojis(btn, seanceId) {
-    const ouvert = document.getElementById('cpcEmojis');
-    if (ouvert) { ouvert.remove(); if (ouvert.dataset.seance === seanceId) return; }
-    const r = btn.getBoundingClientRect();
-    const boite = document.createElement('div');
-    boite.id = 'cpcEmojis';
-    boite.className = 'cpc-emojis';
-    boite.dataset.seance = seanceId;
-    boite.style.top = (r.bottom + 4) + 'px';
-    boite.style.left = Math.max(8, Math.min(r.right - 248, window.innerWidth - 256)) + 'px';
-    boite.innerHTML = this.EMOJIS.map(e => `<button type="button">${e}</button>`).join('');
-    // mousedown : le champ garde la position du curseur
-    boite.onmousedown = ev => ev.preventDefault();
-    boite.onclick = ev => { const b = ev.target.closest('button'); if (b) this._insererEmoji(seanceId, b.textContent); };
-    document.body.appendChild(boite);
-    setTimeout(() => document.addEventListener('mousedown', function fermer(ev) {
-      if (boite.contains(ev.target) || ev.target === btn) return;
-      boite.remove(); document.removeEventListener('mousedown', fermer);
-    }), 0);
+    EmojiPicker.ouvrir(btn, e => this._insererEmoji(seanceId, e));
   },
 
   _insererEmoji(seanceId, emoji) {
