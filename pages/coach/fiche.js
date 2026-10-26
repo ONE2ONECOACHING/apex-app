@@ -10,7 +10,7 @@
 const ECRANS_FICHE = ['coach-client-edit', 'coach-client-programme', 'coach-training-client', 'coach-plan-edit',
   'coach-calcul-nutrition', 'coach-habits-edit', 'coach-journal-suivi', 'coach-journal', 'coach-journal-view',
   'coach-bilan-client', 'coach-mesure-client', 'coach-client-messages', 'coach-client-suivi',
-  'coach-seance-studio', 'coach-programme-archive'];
+  'coach-seance-studio', 'coach-programme-archive', 'coach-cardio-plan'];
 
 const FicheOnglets = {
   _cle() { return 'ficheOnglets_' + (Router.userProfile?.id || ''); },
@@ -44,7 +44,8 @@ const FicheOnglets = {
     if (!clients.length) return;
     const liste = this.lire();
     for (const c of clients) {
-      if (!liste.some(x => x.id === c.id)) liste.push({ id: c.id, nom: c.nom || '', page: 'coach-client-edit', params: {} });
+      // Fiches du jour : ouvertes sur l'onglet Entraînement (programme renfo ou plan cardio)
+      if (!liste.some(x => x.id === c.id)) liste.push({ id: c.id, nom: c.nom || '', page: 'coach-client-programme', params: {} });
     }
     this.ecrire(liste);
     this.aller(clients[0].id);
@@ -202,7 +203,7 @@ const FicheResume = {
     FicheOnglets.nommer(clientId, nomClient);
     const studioSeul = client.type_client === 'studio';
     const suivi = !studioSeul && (moi.is_gerant || client.coach_referent_id === moi.id);
-    const [prochain, progs, plan, bilans, journal, profil, coachs] = await Promise.all([
+    const [prochain, progs, plan, bilans, journal, profil, coachs, cardio] = await Promise.all([
       client.type_client === 'distance' ? null : db.getProchainCoaching(clientId).catch(() => null),
       db.getCyclesClients(moi.id, true, clientId).catch(() => []),
       suivi ? db.getActivePlan(clientId).catch(() => null) : null,
@@ -210,6 +211,7 @@ const FicheResume = {
       suivi ? db.getJournalSuivi(clientId).catch(() => null) : null,
       db.getFicheCoach(clientId).catch(() => null),
       db.getCoachs().catch(() => []),
+      db.getCardioPlans(clientId).catch(() => []),
     ]);
     const nomCoach = id => coachs.find(x => x.id === id)?.prenom || '';
     const types = { suivi: 'Studio + suivi', distance: 'Suivi à distance', studio: 'Studio sans suivi' };
@@ -227,6 +229,13 @@ const FicheResume = {
       const a = CoachAccueilPage._avancement(p);
       return `<div>${escHtml(p.nom)}</div><div class="fr-sous">${a.termine ? 'terminé' : `sem. ${a.faites}/${a.nb}`}</div>`;
     }).join('') : vide('Aucun programme');
+
+    // Plans cardio en cours : phase en cours et séances faites dans cette phase
+    const cardioHtml = cardio.filter(p => p.actif).map(p => {
+      const a = avancementCardio(p);
+      return `<div>${escHtml(p.nom)}</div><div class="fr-sous">${!a.phase ? 'aucune séance'
+        : `${escHtml(a.phase.nom || 'Phase')} · ${a.prochaine ? `séance ${a.prochaine.n}/${a.phase.seances.length}` : 'terminé'}`}</div>`;
+    }).join('');
 
     const planHtml = plan
       ? `${plan.calories_cible || '—'} kcal<div class="fr-sous">P ${plan.proteines_cible || 0} · G ${plan.glucides_cible || 0} · L ${plan.lipides_cible || 0}</div>`
@@ -262,6 +271,7 @@ const FicheResume = {
       </div>
       ${studioSeul && !prochain ? '' : bloc('Prochain coaching', prochainHtml)}
       ${bloc('Entraînement', progHtml)}
+      ${cardioHtml ? bloc('Cardio', cardioHtml) : ''}
       ${suivi ? bloc('Nutrition', planHtml) + bloc('Dernier bilan', bilanHtml) + bloc('Journal de suivi', journalHtml) : ''}
       ${bloc('Profil coaching', profilHtml)}
       <div class="fr-actions">

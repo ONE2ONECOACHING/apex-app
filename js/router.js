@@ -114,7 +114,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation', 'messages'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive', 'coach-suivi'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive', 'coach-suivi', 'coach-cardio-modeles', 'coach-cardio-modele', 'coach-cardio-plan'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash) && hash !== 'set-password') {
         window.location.hash = '#coach-accueil';
@@ -142,7 +142,7 @@ const Router = {
     if (typeof afficherFiche === 'function') afficherFiche(hash);
     // Écrans qui utilisent toute la largeur (les formulaires gardent une largeur limitée)
     document.body.classList.toggle('coach-plein', ['coach-agenda', 'coach-accueil', 'coach-messagerie',
-      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi', 'coach-client-messages'].includes(hash));
+      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi', 'coach-client-messages', 'coach-cardio-plan', 'coach-cardio-modele'].includes(hash));
 
     // Charger la page avec transition
     this.currentPage = hash;
@@ -186,6 +186,9 @@ const Router = {
         case 'coach-equipe':          app.innerHTML = CoachEquipePage.render();        CoachEquipePage.init();        break;
         case 'coach-agenda':          app.innerHTML = CoachAgendaPage.render();        CoachAgendaPage.init();        break;
         case 'coach-seance-studio':   app.innerHTML = CoachSeanceStudioPage.render();  CoachSeanceStudioPage.init();  break;
+        case 'coach-cardio-modeles':  app.innerHTML = CoachCardioModelesPage.render();  CoachCardioModelesPage.init();  break;
+        case 'coach-cardio-modele':
+        case 'coach-cardio-plan':     app.innerHTML = CoachCardioPlanPage.render();     CoachCardioPlanPage.init();     break;
         case 'coach-suivi':           app.innerHTML = CoachSuiviPage.render();         CoachSuiviPage.init();         break;
         case 'coach-programme-archive': app.innerHTML = CoachProgrammeArchivePage.render(); CoachProgrammeArchivePage.init(); break;
         case 'coach-accueil':         app.innerHTML = CoachAccueilPage.render();       CoachAccueilPage.init();       break;
@@ -277,6 +280,27 @@ function formatDate(date) {
   return `${y}-${m}-${d}`;
 }
 
+// Bulle d'information immédiate sur tout élément [data-info] (survol, ou toucher sur téléphone) :
+// l'attribut title met trop de temps à s'afficher dans Safari et jamais au doigt.
+(function () {
+  let bulle = null;
+  const cacher = () => { if (bulle) { bulle.remove(); bulle = null; } };
+  const montrer = el => {
+    cacher();
+    bulle = document.createElement('div');
+    bulle.className = 'info-bulle';
+    bulle.textContent = el.dataset.info;
+    document.body.appendChild(bulle);
+    const r = el.getBoundingClientRect(), b = bulle.getBoundingClientRect();
+    bulle.style.left = Math.max(8, Math.min(r.left + r.width / 2 - b.width / 2, window.innerWidth - b.width - 8)) + 'px';
+    bulle.style.top = (r.top - b.height - 6 < 8 ? r.bottom + 6 : r.top - b.height - 6) + 'px';
+  };
+  document.addEventListener('mouseover', e => { const el = e.target.closest?.('[data-info]'); if (el) montrer(el); });
+  document.addEventListener('mouseout', e => { if (e.target.closest?.('[data-info]')) cacher(); });
+  document.addEventListener('click', e => { const el = e.target.closest?.('[data-info]'); if (el) montrer(el); else cacher(); });
+  document.addEventListener('scroll', cacher, true);
+})();
+
 function todayStr() {
   return formatDate(new Date());
 }
@@ -344,11 +368,11 @@ const MENU_COACH = [
   { route: 'coach-agenda',          icone: '📅', label: 'Agenda',          ecrans: ['coach-agenda'] },
   { route: 'coach-clients',         icone: '👥', label: 'Clients',         ecrans: ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal',
       'coach-journal-view', 'coach-habits-edit', 'coach-bilan-client', 'coach-mesure-client', 'coach-client-programme',
-      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-client-messages', 'coach-programme-archive'] },
+      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-client-messages', 'coach-programme-archive', 'coach-cardio-plan'] },
   { route: 'coach-suivi',           icone: '📋', label: 'Suivi',           ecrans: ['coach-suivi'], compteurSuivi: true },
   { route: 'coach-messagerie',      icone: '💬', label: 'Messagerie',      ecrans: ['coach-messagerie'], compteur: true },
   { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
-      'coach-exercices', 'coach-bilan-templates', 'coach-formations'] },
+      'coach-exercices', 'coach-bilan-templates', 'coach-formations', 'coach-cardio-modeles', 'coach-cardio-modele'] },
   { route: 'coach-equipe',          icone: '🧑‍🤝‍🧑', label: 'Équipe',     ecrans: ['coach-equipe'], gerant: true },
 ];
 
@@ -387,6 +411,7 @@ function afficherMenuCoach(hash) {
 function biblioNav(actif) {
   const onglets = [
     ['coach-prog-templates', 'Programmes'],
+    ['coach-cardio-modeles', 'Plans cardio'],
     ['coach-exercices', 'Exercices'],
     ['coach-bilan-templates', 'Modèles de bilans'],
     ['coach-formations', 'Formations'],
@@ -409,7 +434,7 @@ const _ficheClients = new Map();   // profils déjà chargés, pour les droits
 let _ficheCoachs = null;           // comptes coach, pour afficher le référent
 
 function coachClientNav(clientId, activeTab) {
-  const page = { 'coach-seance-studio': 'coach-client-programme', 'coach-programme-archive': 'coach-client-programme', 'coach-journal-view': 'coach-journal',
+  const page = { 'coach-seance-studio': 'coach-client-programme', 'coach-programme-archive': 'coach-client-programme', 'coach-cardio-plan': 'coach-client-programme', 'coach-journal-view': 'coach-journal',
                  'coach-client-suivi': 'coach-journal' }[activeTab] || activeTab;
   const groupe = FICHE_ONGLETS.find(g => g.pages.some(([k]) => k === page)) || FICHE_ONGLETS[0];
   const navId = 'ficheNav' + Math.random().toString(36).slice(2, 8);

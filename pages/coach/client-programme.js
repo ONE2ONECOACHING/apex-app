@@ -34,6 +34,7 @@ const CoachClientProgrammePage = {
     this.client     = null;
     this.programmes = [];
     this.archives   = [];
+    this.cardio     = [];
     this.templates  = [];
     this._assigning = false;
 
@@ -49,9 +50,10 @@ const CoachClientProgrammePage = {
         db.getClientProgrammesActifs(params.clientId),
         db.getProgTemplates(),
         db.getClientProgrammesArchives(params.clientId).catch(() => []),
+        db.getCardioPlans(params.clientId).catch(() => []),
       ]);
       if (jeton !== this._jeton) return;
-      [this.client, this.programmes, this.templates, this.archives] = donnees;
+      [this.client, this.programmes, this.templates, this.archives, this.cardio] = donnees;
 
       const prenom = this.client?.prenom || 'Client';
       document.getElementById('cpTitle').textContent = 'Programmes — ' + prenom;
@@ -72,19 +74,160 @@ const CoachClientProgrammePage = {
     if (!el) return;
     const progs = this.programmes || [];
 
+    const cardio = (this.cardio || []).filter(p => p.actif);
+
     el.innerHTML = tabsHtml
-      + (progs.length ? progs.map(p => this._programmeCard(p)).join('') : this._emptyCard())
+      + progs.map(p => this._programmeCard(p)).join('')
+      + cardio.map(p => this._cardioCard(p)).join('')
+      + (progs.length || cardio.length ? '' : this._emptyCard())
       + `
-      <button class="btn btn-primary" style="width:100%;margin-top:1rem;"
-        onclick="CoachClientProgrammePage.openAssignModal()">
-        + Assigner un programme
-      </button>
-      ${progs.length ? `
+      <div class="cp-assigner">
+        <button class="btn btn-primary" onclick="CoachClientProgrammePage.openAssignModal()">
+          💪 + Assigner un plan renfo
+        </button>
+        <button class="btn btn-primary" onclick="CoachClientProgrammePage.choisirModeleCardio()">
+          🏃 + Assigner un plan cardio
+        </button>
+      </div>
+      ${progs.length || cardio.some(p => p.lieu === 'distance') ? `
       <button id="cpNotifyBtn" class="btn btn-secondary" style="width:100%;margin-top:8px;"
         onclick="CoachClientProgrammePage.notifyClient()">
         🔔 Notifier le client
       </button>` : ''}
-      ${this._archivesHtml()}`;
+      ${this._archivesHtml()}
+      ${this._cardioArchivesHtml()}`;
+  },
+
+  // ── Plans cardio (HYROX…) ─────────────────────────────────────────────────
+  // Carte comme un programme renfo : studio (coachs seulement) ou distance
+  // (le client le voit dans son app et coche lui-même ses séances)
+  _cardioCard(p) {
+    const a = avancementCardio(p);
+    const distance = p.lieu === 'distance';
+    const date = new Date(p.cree_le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const etat = !a.total ? 'Aucune séance'
+      : a.prochaine ? `${escHtml(a.prochaine.phase.nom || 'Phase')} · séance ${a.prochaine.n}/${a.prochaine.phase.seances.length} à faire`
+      : 'Toutes les séances sont faites';
+    const suivante = a.prochaine ? a.prochaine.phase.seances[a.prochaine.n - 1] : null;
+    return `
+      <div class="card" style="margin-bottom:0.75rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;">
+          <div style="flex:1;min-width:0;cursor:pointer;" onclick="CoachClientProgrammePage.ouvrirCardio('${p.id}')">
+            <div style="font-weight:700;font-size:16px;">🏃 ${escHtml(p.nom)}</div>
+            <div style="font-size:12px;color:var(--gray-muted);margin-top:3px;">
+              Plan cardio · attribué le ${date} · ${a.phases.length} phase${a.phases.length > 1 ? 's' : ''} · séances faites : ${a.faites}/${a.total}
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="btn btn-secondary btn-small" title="Ouvrir et modifier le plan"
+              onclick="CoachClientProgrammePage.ouvrirCardio('${p.id}')">✏️</button>
+            <button class="btn btn-secondary btn-small" title="Archiver : le plan n'est plus en cours${distance ? ', le client ne le voit plus' : ''}"
+              onclick="CoachClientProgrammePage.archiverCardio('${p.id}')">Archiver</button>
+          </div>
+        </div>
+        <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+            <div style="font-weight:600;font-size:13px;flex:1;min-width:120px;">📌 ${etat}</div>
+            <div class="cp-lieu" title="Studio : coachs seulement. Distance : le client voit le plan et coche ses séances.">
+              <button class="${!distance ? 'on' : ''}" onclick="CoachClientProgrammePage.changerLieuCardio('${p.id}','studio')">Studio</button>
+              <button class="${distance ? 'on' : ''}" onclick="CoachClientProgrammePage.changerLieuCardio('${p.id}','distance')">Distance</button>
+            </div>
+            <button class="btn btn-secondary btn-small" onclick="CoachClientProgrammePage.ouvrirCardio('${p.id}')">📋 Plan</button>
+          </div>
+          ${suivante?.titre ? `<div style="font-size:12px;color:var(--gray-muted);padding:1px 0;">· ${escHtml(suivante.titre)}</div>` : ''}
+          <div style="font-size:11px;color:var(--gray-muted);margin-top:2px;">${distance
+            ? 'Le client voit ce plan dans son app et coche lui-même ses séances.'
+            : 'Visible des coachs seulement.'}</div>
+        </div>
+      </div>`;
+  },
+
+  _cardioArchivesHtml() {
+    const archives = (this.cardio || []).filter(p => !p.actif);
+    if (!archives.length) return '';
+    return `
+      <div class="cp-archives">
+        <div class="cp-archives-titre">Plans cardio archivés <span>${archives.length}</span></div>
+        ${archives.map(p => `
+          <div class="cp-archive" onclick="CoachClientProgrammePage.ouvrirCardio('${p.id}')">
+            <div class="cp-archive-nom">🏃 ${escHtml(p.nom)}</div>
+            <div class="cp-archive-meta">${new Date(p.cree_le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })} · ${(p.cardio_phases || []).length} phase(s)</div>
+            <span class="cp-archive-fleche">›</span>
+          </div>`).join('')}
+      </div>`;
+  },
+
+  async changerLieuCardio(planId, lieu) {
+    const p = (this.cardio || []).find(x => x.id === planId);
+    if (!p || p.lieu === lieu) return;
+    try {
+      await db.majCardioRacine('plan', planId, { lieu });
+      p.lieu = lieu;
+      this._render(coachClientNav(this.client.id, 'coach-client-programme'));
+      toast(lieu === 'distance' ? 'Plan à distance : le client le voit dans son app' : 'Plan au studio : coachs seulement', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  async archiverCardio(planId) {
+    const p = (this.cardio || []).find(x => x.id === planId);
+    if (!p || !confirm(`Archiver le plan cardio « ${p.nom} » ?\n\nIl n'est plus en cours${p.lieu === 'distance' ? ' et le client ne le voit plus' : ''}. Tu le retrouves dans « Plans cardio archivés ».`)) return;
+    try {
+      await db.majCardioRacine('plan', planId, { actif: false });
+      p.actif = false;
+      this._render(coachClientNav(this.client.id, 'coach-client-programme'));
+      toast('Plan cardio archivé', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  ouvrirCardio(planId) {
+    Router.navigate('coach-cardio-plan', { clientId: this.client.id, planId });
+  },
+
+  async choisirModeleCardio() {
+    let modeles;
+    try { modeles = await db.getCardioModeles(); }
+    catch (e) { toast('Erreur : ' + e.message, 'error'); return; }
+    document.getElementById('cpModal').innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal">
+          <div class="modal-title">Assigner un plan cardio
+            <button class="modal-close" onclick="document.getElementById('cpModal').innerHTML=''">×</button>
+          </div>
+          ${modeles.length ? `
+          <div class="field"><label class="field-label">Modèle</label>
+            <select class="input" id="cpCardioModele">
+              ${modeles.map(m => `<option value="${m.id}">${escHtml(m.nom)} (${(m.cardio_modele_phases || []).length} phase(s))</option>`).join('')}
+            </select>
+          </div>
+          <div style="font-size:12px;color:var(--gray-light);margin:-4px 0 12px;">Toutes les phases et séances du modèle sont copiées chez le client : tu pourras ensuite les adapter sans toucher au modèle.</div>
+          <div class="field"><label class="field-label">Lieu</label>
+            <div class="cp-lieu" id="cpCardioLieu" data-lieu="${this.client.type_client === 'distance' ? 'distance' : 'studio'}">
+              ${['studio', 'distance'].map(l => `<button type="button" class="${(this.client.type_client === 'distance' ? 'distance' : 'studio') === l ? 'on' : ''}"
+                onclick="this.parentNode.dataset.lieu='${l}';[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this))">${l === 'studio' ? 'Studio' : 'Distance'}</button>`).join('')}
+            </div>
+            <div style="font-size:12px;color:var(--gray-light);margin-top:6px;">Studio : coachs seulement. Distance : le client voit le plan dans son app et coche ses séances.</div>
+          </div>
+          <div id="cpCardioErreur"></div>
+          <button class="btn btn-primary" style="width:100%;" id="cpCardioBtn" onclick="CoachClientProgrammePage.attribuerCardio()">✓ Assigner ce plan</button>`
+          : `<div style="font-size:14px;margin-bottom:12px;">Aucun plan cardio dans la bibliothèque.</div>
+             <button class="btn btn-primary" style="width:100%;" onclick="window.location.hash='#coach-cardio-modeles'">Créer un plan cardio</button>`}
+        </div>
+      </div>`;
+  },
+
+  async attribuerCardio() {
+    const btn = document.getElementById('cpCardioBtn');
+    btn.disabled = true; btn.textContent = '⏳ Assignation…';
+    try {
+      const planId = await db.attribuerPlanCardio(document.getElementById('cpCardioModele').value, this.client.id,
+        document.getElementById('cpCardioLieu').dataset.lieu);
+      document.getElementById('cpModal').innerHTML = '';
+      toast('Plan cardio attribué', 'success');
+      this.ouvrirCardio(planId);
+    } catch (e) {
+      document.getElementById('cpCardioErreur').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
+      btn.disabled = false; btn.textContent = '✓ Assigner ce plan';
+    }
   },
 
   _archivesHtml() {
@@ -382,7 +525,7 @@ const CoachClientProgrammePage = {
   },
 
   async notifyClient() {
-    if (!this.programmes.length || !this.client) return;
+    if (!this.client) return;
     const btn = document.getElementById('cpNotifyBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
     try {

@@ -109,7 +109,7 @@ const CoachAccueilPage = {
     const termines = this.coachings.length - aVenir.length;
     const coachings = aVenir.length
       ? aVenir.map(r => `
-          <div class="ac-ligne" onclick="${r.type === 'prospect' ? "window.location.hash='#coach-agenda'" : `CoachSeanceStudioPage.ouvrirPourClient('${r.client_id}')`}">
+          <div class="ac-ligne" onclick="${r.type === 'prospect' ? "window.location.hash='#coach-agenda'" : `Router.navigate('coach-client-programme',{clientId:'${r.client_id}'})`}">
             <span class="ac-heure">${this._hm(r.debut)} – ${this._hm(r.fin)}${new Date(r.debut).getTime() <= maintenant ? ' <span class="ac-en-cours">en cours</span>' : ''}</span>
             <span class="ac-nom">${r.type === 'prospect' ? '🎯 ' + escHtml(r.prospect_nom || 'Prospect') : this._nom(r.client)}</span><span class="ac-fleche">›</span>
           </div>`).join('')
