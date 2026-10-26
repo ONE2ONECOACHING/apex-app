@@ -1736,3 +1736,5 @@ body.dd-actif, body.dd-actif * { cursor: grabbing !important; user-select: none 
 .pc-seance.faite .pc-etat { color: #059669; }
 .pc-seance.prochaine .pc-etat { color: #EF4444; font-weight: 700; }
 .pc-contenu { white-space: pre-wrap; font-size: 14px; line-height: 1.5; background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+.cpc-onglet[data-phase] { cursor: grab; user-select: none; -webkit-user-select: none; }
+.cpc-onglet.cpc-glisse { position: relative; z-index: 2; cursor: grabbing; background: var(--white); box-shadow: 0 6px 18px rgba(0,0,0,.15); transition: none; }

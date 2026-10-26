@@ -96,7 +96,8 @@ const CoachCardioPlanPage = {
 
     const onglets = d.phases.map((ph, i) => {
       const faites = ph.seances.filter(s => s.faite).length;
-      return `<button class="cpc-onglet ${i === this._phase ? 'on' : ''}" onclick="CoachCardioPlanPage.ouvrirPhase(${i})">
+      return `<button class="cpc-onglet ${i === this._phase ? 'on' : ''}" data-phase="${i}" title="Glisser pour changer l'ordre"
+        onclick="CoachCardioPlanPage.ouvrirPhase(${i})" onpointerdown="CoachCardioPlanPage._ddPhase(event, ${i})">
         ${escHtml(ph.nom || 'Phase')}${plan && ph.seances.length ? `<span class="cpc-compte">${faites}/${ph.seances.length}</span>` : ''}</button>`;
     }).join('');
 
@@ -146,8 +147,6 @@ const CoachCardioPlanPage = {
       <div class="cpc-phase-barre">
         <input class="input cpc-phase-nom" value="${escHtml(phase.nom || '')}" placeholder="Nom de la phase"
           oninput="CoachCardioPlanPage.saisirPhase('${phase.id}', this.value)">
-        <button class="btn btn-ghost btn-small" onclick="CoachCardioPlanPage.deplacerPhase(-1)" ${this._phase === 0 ? 'disabled' : ''}>‹ Avant</button>
-        <button class="btn btn-ghost btn-small" onclick="CoachCardioPlanPage.deplacerPhase(1)" ${this._phase === d.phases.length - 1 ? 'disabled' : ''}>Après ›</button>
         <button class="btn btn-ghost btn-small" style="color:var(--error);" onclick="CoachCardioPlanPage.supprimerPhase()">Supprimer la phase</button>
       </div>
       <div class="cpc-colonnes">
@@ -159,6 +158,7 @@ const CoachCardioPlanPage = {
   },
 
   ouvrirPhase(i) {
+    if (this._glisse) return;   // fin d'un glisser-déposer, pas un clic
     this._phase = i;
     try { sessionStorage.setItem('cpcPhase_' + this.data.id, i); } catch (_) {}
     this._render();
@@ -311,12 +311,46 @@ const CoachCardioPlanPage = {
     });
   },
 
-  deplacerPhase(sens) {
-    const liste = this.data.phases, i = this._phase, j = i + sens;
-    if (j < 0 || j >= liste.length) return;
-    [liste[i], liste[j]] = [liste[j], liste[i]];
-    this._phase = j;
-    this._faire(() => this._renumeroter(liste, 'phase'));
+  // Glisser un onglet de phase pour changer l'ordre (au-delà de 5 px : sinon c'est un clic),
+  // comme les onglets des fiches clients
+  _ddPhase(e, i) {
+    if (e.button !== 0) return;
+    const el = e.currentTarget;
+    const d = { x0: e.clientX, actif: false };
+    const bouge = ev => {
+      const dx = ev.clientX - d.x0;
+      if (!d.actif && Math.abs(dx) < 5) return;
+      d.actif = true;
+      el.classList.add('cpc-glisse');
+      el.style.transform = `translateX(${dx}px)`;
+    };
+    const fin = ev => {
+      document.removeEventListener('pointermove', bouge);
+      document.removeEventListener('pointerup', fin);
+      document.removeEventListener('pointercancel', fin);
+      if (!d.actif) return;
+      this._glisse = true;
+      setTimeout(() => { this._glisse = false; }, 0);
+      // Nouvelle place : d'après le milieu des autres onglets
+      const autres = [...document.querySelectorAll('.cpc-onglet[data-phase]')].filter(x => x !== el);
+      let j = autres.length;
+      for (let k = 0; k < autres.length; k++) {
+        const r = autres[k].getBoundingClientRect();
+        if (ev.clientX < r.left + r.width / 2) { j = k; break; }
+      }
+      const liste = this.data.phases;
+      if (ev.type === 'pointercancel' || j === i) { this._render(); return; }
+      const ouverte = liste[this._phase];
+      const [ph] = liste.splice(i, 1);
+      liste.splice(j, 0, ph);
+      this._phase = liste.indexOf(ouverte);
+      try { sessionStorage.setItem('cpcPhase_' + this.data.id, this._phase); } catch (_) {}
+      this._render();
+      this._faire(() => this._renumeroter(liste, 'phase'), '✓ Ordre des phases enregistré');
+    };
+    document.addEventListener('pointermove', bouge);
+    document.addEventListener('pointerup', fin);
+    document.addEventListener('pointercancel', fin);
   },
 
   changerLieu(lieu) {
