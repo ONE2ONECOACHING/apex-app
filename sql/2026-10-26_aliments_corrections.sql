@@ -42,10 +42,17 @@ where id = (select id from public.aliments_bdd where nom = 'Steak haché 10% MG'
 update public.aliments_bdd set actif = false where nom in ('Sauce pesto vert', 'Fromage blanc 20%', 'Pomme de terre vapeur', 'Couscous cuit');
 
 -- ── Valeurs (et nom quand il change) ────────────────────────────────────────
--- (nom actuel, nouveau nom, kcal, prot, gluc, lip, fibres) ; null = inchangé
-create temporary table _corr (ancien text, nouveau text, kcal int, p numeric, g numeric, l numeric, f numeric, cat text) on commit drop;
-insert into _corr values
-  ('Moutarde',                      'Moutarde de Dijon',                   160, 7,    4,    12,   3,    null),
+-- (nom actuel, nouveau nom, kcal, prot, gluc, lip, fibres, catégorie) ; null = inchangé
+update public.aliments_bdd a set
+  nom       = coalesce(c.nouveau, a.nom),
+  calories  = coalesce(c.kcal::int, a.calories),
+  proteines = coalesce(c.p::numeric, a.proteines),
+  glucides  = coalesce(c.g::numeric, a.glucides),
+  lipides   = coalesce(c.l::numeric, a.lipides),
+  fibres    = coalesce(c.f::numeric, a.fibres),
+  categorie = coalesce(c.cat, a.categorie)
+from (values
+  ('Moutarde'::text,                'Moutarde de Dijon'::text,             160, 7::numeric, 4::numeric, 12::numeric, 3::numeric, null::text),
   ('Tofu ferme',                    null,                                  125, 13,   1.5,  7.5,  1,    null),
   ('Sauce pesto rouge',             null,                                  330, 5,    9,    30,   3,    null),
   ('Pesto basilic',                 'Pesto vert (basilic)',                480, 5,    6,    48,   2,    null),
@@ -121,17 +128,8 @@ insert into _corr values
   ('Framboises',                    null,                                  45,  null, 4.5,  null, null, null),
   ('Haricots rouges cuits',         null,                                  115, null, 14,   null, null, null),
   ('Lardons nature',                null,                                  290, 15,   0.5,  25,   null, null),
-  ('Chèvre frais',                  null,                                  200, 11,   3,    16,   null, null);
-
-update public.aliments_bdd a set
-  nom       = coalesce(c.nouveau, a.nom),
-  calories  = coalesce(c.kcal, a.calories),
-  proteines = coalesce(c.p, a.proteines),
-  glucides  = coalesce(c.g, a.glucides),
-  lipides   = coalesce(c.l, a.lipides),
-  fibres    = coalesce(c.f, a.fibres),
-  categorie = coalesce(c.cat, a.categorie)
-from _corr c
+  ('Chèvre frais',                  null,                                  200, 11,   3,    16,   null, null)
+) as c(ancien, nouveau, kcal, p, g, l, f, cat)
 where a.nom = c.ancien and a.actif is not false;
 
 -- ── Ajout : steak haché 5 % cuit ────────────────────────────────────────────
