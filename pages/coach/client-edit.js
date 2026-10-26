@@ -299,7 +299,7 @@ const CoachClientEditPage = {
             ${numeros.map(n => `
               <tr><th class="st-seance">Séance ${n}</th>${colonnes.map(k => {
                 const d = cochees.get(n)?.get(k);
-                return `<td><span class="st-case ${d ? 'on' : ''}" ${d ? `title="faite le ${d.toLocaleDateString('fr-FR')}"` : ''}></span></td>`;
+                return `<td><span class="st-case ${d ? 'on' : ''}" ${d ? `data-info="Faite le ${d.toLocaleDateString('fr-FR')}"` : ''}></span></td>`;
               }).join('')}</tr>`).join('')}
           </table>
         </div>
@@ -327,7 +327,7 @@ const CoachClientEditPage = {
             <table class="st-table">
               <tr><th></th>${ph.seances.map((_, i) => `<th>${i + 1}</th>`).join('')}</tr>
               <tr><th class="st-seance">${escHtml(ph.nom || 'Phase')}</th>${ph.seances.map((s, i) =>
-                `<td><span class="st-case ${s.faite ? 'on' : ''}" title="Séance ${i + 1}${s.faite ? ` — faite${s.faite_le ? ' le ' + jour(s.faite_le) : ''}` : ''}"></span></td>`).join('')}</tr>
+                `<td><span class="st-case ${s.faite ? 'on' : ''}" data-info="Séance ${i + 1}${s.faite ? ` — faite${s.faite_le ? ' le ' + jour(s.faite_le) : ''}` : ''}"></span></td>`).join('')}</tr>
             </table>
           </div>` : '<div style="font-size:12px;color:var(--gray-light);">Aucune séance.</div>'}
         </div>`;

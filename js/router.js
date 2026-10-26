@@ -280,6 +280,27 @@ function formatDate(date) {
   return `${y}-${m}-${d}`;
 }
 
+// Bulle d'information immédiate sur tout élément [data-info] (survol, ou toucher sur téléphone) :
+// l'attribut title met trop de temps à s'afficher dans Safari et jamais au doigt.
+(function () {
+  let bulle = null;
+  const cacher = () => { if (bulle) { bulle.remove(); bulle = null; } };
+  const montrer = el => {
+    cacher();
+    bulle = document.createElement('div');
+    bulle.className = 'info-bulle';
+    bulle.textContent = el.dataset.info;
+    document.body.appendChild(bulle);
+    const r = el.getBoundingClientRect(), b = bulle.getBoundingClientRect();
+    bulle.style.left = Math.max(8, Math.min(r.left + r.width / 2 - b.width / 2, window.innerWidth - b.width - 8)) + 'px';
+    bulle.style.top = (r.top - b.height - 6 < 8 ? r.bottom + 6 : r.top - b.height - 6) + 'px';
+  };
+  document.addEventListener('mouseover', e => { const el = e.target.closest?.('[data-info]'); if (el) montrer(el); });
+  document.addEventListener('mouseout', e => { if (e.target.closest?.('[data-info]')) cacher(); });
+  document.addEventListener('click', e => { const el = e.target.closest?.('[data-info]'); if (el) montrer(el); else cacher(); });
+  document.addEventListener('scroll', cacher, true);
+})();
+
 function todayStr() {
   return formatDate(new Date());
 }
