@@ -6,6 +6,23 @@
 //   route coach-cardio-modele : { modeleId }        (bibliothèque)
 //   route coach-cardio-plan   : { clientId, planId } (fiche › Entraînement)
 
+// Où en est un plan cardio (lu par db.getCardioPlans) : phase en cours = celle de la
+// prochaine séance à faire (la première non cochée après la dernière cochée) ;
+// tout est fait : la dernière phase. Utilisé par fiche › Infos et le résumé de la fiche.
+function avancementCardio(plan) {
+  const phases = [...(plan.cardio_phases || [])].sort((a, b) => a.ordre - b.ordre)
+    .map(ph => ({ ...ph, seances: [...(ph.cardio_seances || [])].sort((a, b) => a.ordre - b.ordre) }));
+  const toutes = phases.flatMap(ph => ph.seances);
+  let prochaine = null;
+  phases.forEach(ph => ph.seances.forEach((s, i) => { if (s.faite) prochaine = null; else if (!prochaine) prochaine = { phase: ph, n: i + 1 }; }));
+  const phase = prochaine ? prochaine.phase : phases[phases.length - 1] || null;
+  return {
+    phases, phase, prochaine,
+    faites: toutes.filter(s => s.faite).length, total: toutes.length,
+    faitesPhase: phase ? phase.seances.filter(s => s.faite).length : 0,
+  };
+}
+
 const CoachCardioPlanPage = {
   cote: 'plan',        // 'modele' | 'plan'
   data: null,          // { id, nom, actif?, phases: [{ id, nom, ordre, seances: [...] }] }

@@ -308,37 +308,28 @@ const CoachClientEditPage = {
       </div>`;
   },
 
-  // Plans cardio en cours : séances cochées « faite » dans le plan, phase par phase
+  // Plans cardio en cours : séances cochées « faite » de la phase en cours seulement
   _cardioHtml() {
     const plans = (this.cardio || []).filter(p => p.actif);
     if (!plans.length) return '';
     const jour = d => new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
     return plans.map(p => {
-      const phases = [...(p.cardio_phases || [])].sort((a, b) => a.ordre - b.ordre)
-        .map(ph => ({ ...ph, seances: [...(ph.cardio_seances || [])].sort((a, b) => a.ordre - b.ordre) }));
-      const toutes = phases.flatMap(ph => ph.seances);
-      const faites = toutes.filter(s => s.faite).length;
-      const max = Math.max(1, ...phases.map(ph => ph.seances.length));
-      // Prochaine séance à faire : la première non cochée après la dernière cochée
-      let prochaine = null;
-      phases.forEach(ph => ph.seances.forEach((s, i) => { if (s.faite) prochaine = null; else if (!prochaine) prochaine = { ph, n: i + 1 }; }));
+      const a = avancementCardio(p);
+      const ph = a.phase;
       return `
         <div class="st-cardio">
           <div class="st-cardio-tete" onclick="Router.navigate('coach-cardio-plan',{clientId:'${this.client.id}',planId:'${p.id}'})">
             <span>🏃 ${escHtml(p.nom)}</span>
-            <span class="st-cardio-info">${faites}/${toutes.length} faite${faites > 1 ? 's' : ''}${prochaine ? ` · prochaine : ${escHtml(prochaine.ph.nom || 'Phase')}, séance ${prochaine.n}` : ''} · Ouvrir ›</span>
+            <span class="st-cardio-info">${a.prochaine ? `prochaine : séance ${a.prochaine.n}` : 'plan terminé'} · ${a.faites}/${a.total} faite${a.faites > 1 ? 's' : ''} sur tout le plan · Ouvrir ›</span>
           </div>
+          ${ph && ph.seances.length ? `
           <div style="overflow-x:auto;">
             <table class="st-table">
-              <tr><th></th>${Array.from({ length: max }, (_, i) => `<th>${i + 1}</th>`).join('')}</tr>
-              ${phases.map(ph => `
-                <tr><th class="st-seance">${escHtml(ph.nom || 'Phase')}</th>${Array.from({ length: max }, (_, i) => {
-                  const s = ph.seances[i];
-                  if (!s) return '<td></td>';
-                  return `<td><span class="st-case ${s.faite ? 'on' : ''}" title="Séance ${i + 1}${s.faite ? ` — faite${s.faite_le ? ' le ' + jour(s.faite_le) : ''}` : ''}"></span></td>`;
-                }).join('')}</tr>`).join('')}
+              <tr><th></th>${ph.seances.map((_, i) => `<th>${i + 1}</th>`).join('')}</tr>
+              <tr><th class="st-seance">${escHtml(ph.nom || 'Phase')}</th>${ph.seances.map((s, i) =>
+                `<td><span class="st-case ${s.faite ? 'on' : ''}" title="Séance ${i + 1}${s.faite ? ` — faite${s.faite_le ? ' le ' + jour(s.faite_le) : ''}` : ''}"></span></td>`).join('')}</tr>
             </table>
-          </div>
+          </div>` : '<div style="font-size:12px;color:var(--gray-light);">Aucune séance.</div>'}
         </div>`;
     }).join('');
   },
