@@ -213,6 +213,78 @@ const db = {
     return json; // { profileId }
   },
 
+  // ── Facturation (gérants seulement : la base refuse les autres) ──────────
+
+  async getFormules() {
+    const { data, error } = await getSupabase()
+      .from('formules').select('*').order('actif', { ascending: false }).order('nom');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Création (sans id) ou modification d'une formule du catalogue
+  async saveFormule(f) {
+    const sb = getSupabase();
+    const champs = { nom: f.nom, prix_mensuel: f.prix_mensuel, duree_mois: f.duree_mois ?? null, actif: f.actif ?? true };
+    const req = f.id ? sb.from('formules').update(champs).eq('id', f.id) : sb.from('formules').insert(champs);
+    const { data, error } = await req.select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getFacturationClient(clientId) {
+    const { data, error } = await getSupabase()
+      .from('facturation_clients').select('*').eq('client_id', clientId).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async saveFacturationClient(clientId, champs) {
+    const { data, error } = await getSupabase()
+      .from('facturation_clients').upsert({ client_id: clientId, ...champs }, { onConflict: 'client_id' })
+      .select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getFacturationsClients() {
+    const { data, error } = await getSupabase().from('facturation_clients').select('*');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Tous les clients (actifs ou non, tous types), pour la facturation du mois
+  async getClientsFacturation() {
+    const { data, error } = await getSupabase()
+      .from('profiles').select('id, prenom, nom, type_client, mode_facturation, actif')
+      .eq('role', 'client').order('prenom');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Coachings qui commencent dans [debut, fin[, par paquets de 1 000
+  async getCoachingsPeriode(debut, fin) {
+    const lignes = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await getSupabase()
+        .from('agenda_creneaux').select('id, client_id, coach_id, debut, fin, en_plus')
+        .eq('type', 'coaching').gte('debut', debut).lt('debut', fin)
+        .order('debut').range(de, de + 999);
+      if (error) throw error;
+      lignes.push(...(data || []));
+      if (!data || data.length < 1000) return lignes;
+    }
+  },
+
+  // Créneaux supprimés dont la séance tombait dans [debut, fin[
+  async getSuppressionsPeriode(debut, fin) {
+    const { data, error } = await getSupabase()
+      .from('agenda_suppressions').select('*')
+      .eq('type', 'coaching').gte('debut', debut).lt('debut', fin).order('debut');
+    if (error) throw error;
+    return data || [];
+  },
+
   // ── Agenda ────────────────────────────────────────────────────────────────
 
   // Créneaux qui chevauchent la période [debut, fin[ (dates ISO)

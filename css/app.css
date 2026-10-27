@@ -1779,3 +1779,45 @@ body.resume-replie .fr-replier { right: 5px; }
   cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
 .plans-barre button:hover { background: var(--gold-light); color: var(--gold); border-color: #BFD3F2; }
 .plans-barre button.on { background: var(--gold-light); color: var(--gold); border: 1.5px solid var(--gold); cursor: default; }
+
+/* ── Facturation (gérants) ─────────────────────────────────────────────── */
+.fo-table, .fa-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fo-table td { padding: 10px 8px; border-top: 1px solid var(--border-solid); vertical-align: middle; }
+.fo-nom { font-weight: 700; }
+.fo-actions { text-align: right; white-space: nowrap; }
+.fo-actions .btn { margin-left: 4px; }
+.fo-retiree td { color: var(--gray-light); }
+.fo-vide { padding: 14px 8px; font-size: 13px; color: var(--gray-light); }
+.fo-sous-titre { margin: 18px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-light); }
+.fo-form { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: end; }
+.fo-form .field { margin-bottom: 0; }
+.fo-form-btns { display: flex; gap: 6px; padding-bottom: 2px; }
+.fo-edition td { background: var(--gold-light); }
+@media (max-width: 700px) { .fo-form { grid-template-columns: 1fr; } }
+.cf-bloc { border: 1px solid var(--border-solid); border-radius: 10px; padding: 12px 14px 4px; margin-bottom: 14px; }
+.cf-bloc.hidden { display: none; }
+.cf-bloc-titre { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.cf-grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 700px) { .cf-grille { grid-template-columns: 1fr; } }
+.cf-aide { font-size: 12px; color: var(--gray-light); margin: 4px 0 10px; }
+.fa-mois { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 16px; font-weight: 700; }
+.fa-totaux { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+.fa-total { background: var(--white); border: 1px solid var(--border-solid); border-radius: 12px; padding: 12px 14px; }
+.fa-total:first-child { border-color: var(--gold); background: var(--gold-light); }
+.fa-total-val { font-size: 20px; font-weight: 800; }
+.fa-total-lib { font-size: 12px; color: var(--gray); margin-top: 2px; }
+@media (max-width: 700px) { .fa-totaux { grid-template-columns: 1fr; } }
+.fa-table th { text-align: left; font-size: 11px; font-weight: 700; color: var(--gray-light); text-transform: uppercase; letter-spacing: .04em; padding: 10px 12px; border-bottom: 1px solid var(--border-solid); }
+.fa-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-solid); vertical-align: top; }
+.fa-table .num { text-align: right; white-space: nowrap; }
+.fa-ligne { cursor: pointer; }
+.fa-ligne:hover td { background: var(--gold-light); }
+.fa-nom { font-weight: 700; }
+.fa-sous { font-size: 11px; color: var(--gray-light); margin-top: 2px; font-weight: 400; }
+.fa-tot { font-weight: 800; }
+.fa-details { margin-top: 14px; }
+.fa-details summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.fa-details[open] summary { margin-bottom: 10px; }
+.fa-acompleter { display: flex; justify-content: space-between; gap: 10px; padding: 8px 4px; border-top: 1px solid var(--border-solid); cursor: pointer; font-size: 13px; }
+.fa-acompleter:hover { background: var(--gold-light); }
+.fo-table td:nth-child(2) { white-space: nowrap; }

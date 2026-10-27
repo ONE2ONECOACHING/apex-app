@@ -120,6 +120,8 @@ Rien ne doit changer pour les clients pendant cette étape.
 
 - Mode de facturation (19 octobre 2026, `sql/2026-10-19_mode_facturation.sql` exécuté) : `profiles.mode_facturation` (`abonnement`, `consommation`, `mixte`, vide = pas encore défini), menu dans fiche › Infos, réservé aux gérants (trigger `protect_profile_role`). `facturation_mixte` suit le mode (trigger `profiles_sync_facturation`) : l'agenda s'en sert pour « inclus / en plus ». Montants à venir avec l'étape 6.
 
+- Étape 6a (27 octobre 2026, branche `etape-6-facturation`, `sql/2026-10-27_facturation.sql`) : tables `formules` (catalogue d'abonnements : nom, prix mensuel, engagement en mois ; `actif = false` = retirée) et `facturation_clients` (une ligne par client : formule, montant mensuel, prix par séance, début, fin d'engagement, note), réservées aux gérants. Le mode reste `profiles.mode_facturation`, déplacé de fiche › Infos vers l'onglet fiche › Facturation (`pages/coach/client-facturation.js`, gérants seulement). Écrans gérants `pages/coach/formules.js` (route `coach-formules`) et `pages/coach/facturation.js` (route `coach-facturation`) : total = abonnement + coachings du mois × prix par séance (consommation : tous ; mixte : « en plus » ; un client inactif ne paie plus l'abonnement), liste « À compléter », créneaux supprimés du mois. Choix de Benjamin : abonnement = montant fixe ; consommation = prix fixe par séance propre au client ; duo sur deux comptes = un créneau chacun, prix déjà partagé. Montants calculés avec les tarifs actuels (pas d'historique figé). Stripe = 6b.
+
 ## Prochaines étapes
 
 6. Formules, facturation, Stripe (en attente : liste des formules et prix, calcul à la consommation, duos). 7. CRM. 8. Version mobile complète des coachs.
