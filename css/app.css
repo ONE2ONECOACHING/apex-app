@@ -1766,3 +1766,10 @@ body.resume-replie .fr-replier { right: 5px; }
 .ss-methode-btn.on { background: var(--gold-light); color: var(--gold); border-color: #BFD3F2; }
 .ss-methode { white-space: pre-wrap; font-size: 14px; line-height: 1.55; color: var(--black); background: var(--gold-light); border: 1px solid #BFD3F2;
   border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; max-height: 320px; overflow-y: auto; }
+/* Plans du client en onglets (fiche duo, plusieurs programmes) : en haut de la grille du studio et du plan cardio */
+.plans-barre { display: flex; gap: 6px; overflow-x: auto; margin: -4px 0 14px; padding-bottom: 2px; }
+.plans-barre button { flex-shrink: 0; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--border-solid);
+  background: var(--white); border-radius: 10px; padding: 7px 14px; font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--gray);
+  cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.plans-barre button:hover { background: var(--gold-light); color: var(--gold); border-color: #BFD3F2; }
+.plans-barre button.on { background: var(--gold-light); color: var(--gold); border: 1.5px solid var(--gold); cursor: default; }

@@ -350,6 +350,28 @@ const FicheResume = {
   },
 };
 
+// Plans d'entraînement du client ouverts en onglets (fiche duo, plusieurs programmes…) :
+// chaque grille du studio des programmes en cours et chaque plan cardio en cours.
+// Renvoie la barre à afficher en haut de la grille ou du plan, vide s'il n'y a qu'un plan.
+async function barrePlansClient(clientId, courantId) {
+  const [progs, cardio] = await Promise.all([
+    db.getClientProgrammesActifs(clientId).catch(() => []),
+    db.getCardioPlans(clientId).catch(() => []),
+  ]);
+  const plans = [];
+  for (const p of progs) {
+    const studio = (p.seances || []).filter(s => s.lieu === 'studio' && !s.cardio).sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+    for (const s of studio) plans.push({ id: s.id, icone: '📋', nom: studio.length > 1 ? `${p.nom} · ${s.nom}` : p.nom,
+      aller: `Router.navigate('coach-seance-studio',{seanceId:'${s.id}',clientId:'${clientId}'})` });
+  }
+  for (const c of cardio.filter(c => c.actif)) plans.push({ id: c.id, icone: '🏃', nom: c.nom,
+    aller: `Router.navigate('coach-cardio-plan',{clientId:'${clientId}',planId:'${c.id}'})` });
+  if (plans.length < 2) return '';
+  return `<div class="plans-barre">${plans.map(p => `
+    <button class="${p.id === courantId ? 'on' : ''}" title="${escHtml(p.nom)}" ${p.id === courantId ? '' : `onclick="${p.aller}"`}>${p.icone} ${escHtml(p.nom)}</button>`).join('')}
+  </div>`;
+}
+
 // Appelé par le routeur à chaque écran : barre d'onglets et résumé sur une fiche
 function afficherFiche(hash) {
   const clientId = Router.getParams().clientId;

@@ -56,7 +56,10 @@ const CoachCardioPlanPage = {
     if (!id) { window.location.hash = this.cote === 'modele' ? '#coach-cardio-modeles' : '#coach-clients'; return; }
     document.getElementById('cpcNav').innerHTML = this.cote === 'modele'
       ? biblioNav('coach-cardio-modeles')
-      : coachClientNav(this.clientId, 'coach-cardio-plan');
+      : coachClientNav(this.clientId, 'coach-cardio-plan') + '<div id="cpcPlans"></div>';
+    if (this.cote === 'plan') barrePlansClient(this.clientId, id).then(html => {
+      if (jeton === this._jeton && document.getElementById('cpcPlans')) document.getElementById('cpcPlans').innerHTML = html;
+    });
     try {
       const data = await db.getCardio(this.cote, id);
       if (jeton !== this._jeton) return;

@@ -30,6 +30,7 @@ const CoachSeanceStudioPage = {
     this.client = null;
     this._timers = {};
     this._voirMethode = false;
+    this._plans = '';
 
     const profile = Router.userProfile;
     if (!profile || profile.role !== 'coach') { window.location.hash = '#coach-clients'; return; }
@@ -44,6 +45,14 @@ const CoachSeanceStudioPage = {
       document.getElementById('ssBack').onclick = () =>
         Router.navigate('coach-client-programme', { clientId });
       this._render();
+      // Autres plans du client (fiche duo…) : onglets pour passer de l'un à l'autre
+      const seanceId = params.seanceId;
+      barrePlansClient(clientId, seanceId).then(html => {
+        if (Router.getParams().seanceId !== seanceId) return;
+        this._plans = html;
+        const el = document.getElementById('ssPlans');
+        if (el) el.innerHTML = html;
+      });
     } catch (e) {
       document.getElementById('ssContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
@@ -158,6 +167,7 @@ const CoachSeanceStudioPage = {
 
     document.getElementById('ssContent').innerHTML = `
       ${coachClientNav(this.client.id, 'coach-client-programme')}
+      <div id="ssPlans">${this._plans || ''}</div>
       <div class="ss-entete">
         <div>
           <div style="font-weight:700;font-size:15px;">${escHtml(prog.nom || '')} · ${escHtml(d.seance.nom)}</div>
