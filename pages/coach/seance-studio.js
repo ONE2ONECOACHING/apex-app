@@ -29,7 +29,7 @@ const CoachSeanceStudioPage = {
     this.data = null;
     this.client = null;
     this._timers = {};
-    this._methode = false;
+    this._voirMethode = false;
 
     const profile = Router.userProfile;
     if (!profile || profile.role !== 'coach') { window.location.hash = '#coach-clients'; return; }
@@ -51,15 +51,15 @@ const CoachSeanceStudioPage = {
 
   // Consignes du programme (texte de méthode du modèle), dépliées au-dessus de la grille
   basculerMethode() {
-    this._methode = !this._methode;
+    this._voirMethode = !this._voirMethode;
     const btn = document.querySelector('.ss-methode-btn');
     const zone = document.querySelector('.ss-methode');
-    if (this._methode && !zone) {
+    if (this._voirMethode && !zone) {
       btn.closest('.ss-entete').insertAdjacentHTML('afterend',
         `<div class="ss-methode">${escHtml(this.data.seance.client_programmes?.consignes || '')}</div>`);
-    } else if (!this._methode) zone?.remove();
-    btn.classList.toggle('on', this._methode);
-    btn.textContent = `📖 Explication de la méthode ${this._methode ? '▴' : '▾'}`;
+    } else if (!this._voirMethode) zone?.remove();
+    btn.classList.toggle('on', this._voirMethode);
+    btn.textContent = `📖 Explication de la méthode ${this._voirMethode ? '▴' : '▾'}`;
   },
 
   // Nombre de semaines affichées : celles de la phase, ou plus si déjà remplies
@@ -167,12 +167,12 @@ const CoachSeanceStudioPage = {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          ${prog.consignes ? `<button class="btn btn-secondary btn-small ss-methode-btn ${this._methode ? 'on' : ''}"
-            onclick="CoachSeanceStudioPage.basculerMethode()">📖 Explication de la méthode ${this._methode ? '▴' : '▾'}</button>` : ''}
+          ${prog.consignes ? `<button class="btn btn-secondary btn-small ss-methode-btn ${this._voirMethode ? 'on' : ''}"
+            onclick="CoachSeanceStudioPage.basculerMethode()">📖 Explication de la méthode ${this._voirMethode ? '▴' : '▾'}</button>` : ''}
           <div id="ssEtat" class="ss-etat"></div>
         </div>
       </div>
-      ${prog.consignes && this._methode ? `<div class="ss-methode">${escHtml(prog.consignes)}</div>` : ''}
+      ${prog.consignes && this._voirMethode ? `<div class="ss-methode">${escHtml(prog.consignes)}</div>` : ''}
       ${d.exercices.length ? `
       <div class="ss-scroll" id="ssScroll">
         <table class="ss-table">
