@@ -1,10 +1,39 @@
 // APEX APP — Router SPA (hash-based)
 
+// Mise à jour automatique : l'app ne recharge pas son code en changeant d'écran, donc
+// un onglet ouvert avant une mise en ligne garde l'ancienne version. Toutes les 5 min
+// (et au retour sur l'onglet), on relit index.html : si un fichier a changé de ?v=,
+// la page se recharge au prochain changement d'écran (jamais pendant une saisie).
+const MiseAJour = {
+  disponible: false,
+  _versions(doc) {
+    return [...doc.querySelectorAll('script[src], link[rel="stylesheet"][href]')]
+      .map(e => e.getAttribute('src') || e.getAttribute('href'))
+      .filter(u => u.includes('?v=')).sort().join('|');
+  },
+  async verifier() {
+    if (this.disponible) return;
+    try {
+      // Sans paramètre dans l'adresse : le service worker ne garde qu'une copie de la page
+      const r = await fetch('./', { cache: 'no-store' });
+      if (!r.ok) return;
+      const enLigne = this._versions(new DOMParser().parseFromString(await r.text(), 'text/html'));
+      if (enLigne && enLigne !== this._charge) this.disponible = true;
+    } catch (_) { /* hors ligne : on réessaiera */ }
+  },
+  demarrer() {
+    this._charge = this._versions(document);
+    setInterval(() => this.verifier(), 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.verifier(); });
+  },
+};
+
 const Router = {
   currentPage: null,
   userProfile: null,
 
   async init() {
+    MiseAJour.demarrer();
     // Attacher le listener AVANT tout return anticipé : sinon après le flux
     // invite/recovery (set-password), les navigations suivantes restent bloquées. #45
     window.addEventListener('hashchange', () => this.route());
@@ -49,6 +78,13 @@ const Router = {
     const fullHash = window.location.hash.slice(1) || 'login';
     const hash = fullHash.split('?')[0];
     this._hashAffiche = window.location.hash;
+
+    // Nouvelle version en ligne : recharger plutôt qu'afficher l'écran avec l'ancien code.
+    // Petit délai : les enregistrements automatiques en attente (0,6 s) partent avant.
+    if (MiseAJour.disponible && !['login', 'set-password', 'reset-password', 'invite'].includes(hash)) {
+      setTimeout(() => window.location.reload(), 800);
+      return;
+    }
 
     // Retirer coach-wide seulement si on quitte les pages coach (évite le flash de layout)
     const coachHashes = ['coach-clients','coach-client-edit','coach-plan-edit','coach-journal','coach-journal-view','coach-habits-edit','coach-bilan-templates','coach-bilan-client','coach-mesure-client','coach-exercices','coach-prog-templates','coach-prog-template-edit','coach-client-programme','coach-training-client'];
