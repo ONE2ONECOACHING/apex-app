@@ -60,7 +60,7 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Écran `pages/coach/agenda.js` (route `coach-agenda`), bloc « Mes coachings du jour » sur le tableau de bord. Glisser-déposer (heure, jour, coach en vue jour, semaine voisine en tenant le créneau contre le bord, avec animation), durée par les bordures haute et basse. Testé par Benjamin sur la preview le 9 octobre 2026.
 - Rendez-vous prospect (`sql/2026-10-12_agenda_prospects.sql`, en production le 12 octobre 2026) : `type = 'prospect'`, `prospect_nom` obligatoire, `prospect_tel`, jamais facturé. Récurrence toutes les 1 à 4 semaines, aussi sur un créneau existant ; le rythme d'une série se déduit de l'écart entre ses deux dernières séances.
 - Récurrences sans fin (19 octobre 2026, `sql/2026-10-19_agenda_series_sans_fin.sql` exécuté) : « Répéter » = rythme seul (1, 2, 3 ou 4 semaines, « tous les mois » = 4 semaines même jour), pas de date de fin. Table `agenda_series` (rythme, active) ; `prolonger_series()` appelée à l'ouverture de l'agenda garde 6 mois d'avance (heure française, index unique `serie_id, debut`). « Ce créneau et les suivants » arrête la série. Les anciennes séries à date de fin gardent « Prolonger la série ».
-- Les tests sur la preview ont laissé des lignes dans `agenda_suppressions` (client « Test Studio ») : à ignorer ou retirer avant la facturation (étape 6).
+- Les lignes de test « Test Studio » d'`agenda_suppressions` ont été retirées le 27 octobre 2026 (`sql/2026-10-27_nettoyage_test_studio.sql` exécuté).
 
 ## Étape 3 — Fiche client et programmes (en production depuis le 12 octobre 2026)
 
@@ -122,7 +122,7 @@ Rien ne doit changer pour les clients pendant cette étape.
 
 ## Prochaines étapes
 
-6. Formules, facturation, Stripe (retirer d'abord les suppressions de test « Test Studio » d'`agenda_suppressions`). 7. CRM. 8. Version mobile complète des coachs.
+6. Formules, facturation, Stripe (en attente : liste des formules et prix, calcul à la consommation, duos). 7. CRM. 8. Version mobile complète des coachs.
 
 ## Dépôt
 
