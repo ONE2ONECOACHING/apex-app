@@ -1762,3 +1762,7 @@ body.resume-replie .fr-replier { right: 5px; }
 .pc-contenu { white-space: pre-wrap; font-size: 14px; line-height: 1.5; background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
 .cpc-onglet[data-phase] { cursor: grab; user-select: none; -webkit-user-select: none; transition: transform .15s ease; }
 .cpc-onglet.cpc-glisse { position: relative; z-index: 2; cursor: grabbing; background: var(--white); box-shadow: 0 6px 18px rgba(0,0,0,.15); transition: none; }
+/* Grille du studio : explication de la méthode (consignes du programme) */
+.ss-methode-btn.on { background: var(--gold-light); color: var(--gold); border-color: #BFD3F2; }
+.ss-methode { white-space: pre-wrap; font-size: 14px; line-height: 1.55; color: var(--black); background: var(--gold-light); border: 1px solid #BFD3F2;
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; max-height: 320px; overflow-y: auto; }
