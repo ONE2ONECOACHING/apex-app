@@ -169,6 +169,14 @@ const CoachSeanceStudioPage = {
           ${this._derniereVide(nb) ? `<button class="ss-sem-retirer" onclick="CoachSeanceStudioPage.retirerSemaine()">Retirer la semaine ${nb}</button>` : ''}
         </th>`;
 
+    // Bandes alternées par superset (bleu clair / blanc) ; un exercice seul compte pour un bloc
+    let bloc = -1;
+    const bandes = d.exercices.map((e, i) => {
+      const prec = d.exercices[i - 1];
+      if (!(e.superset_groupe && prec?.superset_groupe === e.superset_groupe)) bloc++;
+      return bloc % 2 === 0;
+    });
+
     const lignes = d.exercices.map((e, i) => {
       const nom = e.exercices_bdd?.nom || 'Exercice';
       const video = e.exercices_bdd?.youtube_url;
@@ -188,7 +196,7 @@ const CoachSeanceStudioPage = {
           </td>`;
       }).join('');
       return `
-        <tr>
+        <tr class="${bandes[i] ? 'ss-bande' : ''}">
           <th class="ss-exo">
             <div class="ss-exo-outils">
               <button title="Monter" ${i === 0 ? 'disabled' : ''} onclick="CoachSeanceStudioPage.deplacer('${e.id}', -1)">↑</button>

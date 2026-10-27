@@ -1210,6 +1210,8 @@ body.ag-dragging, body.ag-dragging * { cursor: grabbing !important; user-select:
 .ss-faite { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .ss-case { padding: 6px; }
 .ss-case.en-cours { background: rgba(0, 74, 173, 0.03); }
+.ss-bande > th, .ss-bande > td { background: #EAF2FF; }
+.ss-bande > td.ss-case.en-cours { background: #E0ECFF; }
 .ss-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .ss-duo textarea, .ss-remarque { width: 100%; box-sizing: border-box; border: 1px solid var(--border-solid); border-radius: 6px; padding: 5px 6px;
   font-family: var(--font); font-size: 13px; background: var(--white); resize: vertical; }
