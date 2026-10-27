@@ -533,6 +533,14 @@ const db = {
     if (error) throw error;
   },
 
+  // Durée de la phase (grille du studio : « + Ajouter une semaine »)
+  async setNbSemainesProgramme(programmeId, nb) {
+    const { data, error } = await getSupabase()
+      .from('client_programmes').update({ nb_semaines: nb }).eq('id', programmeId).select('id');
+    if (error) throw error;
+    if (!data?.length) throw new Error('Modification non autorisée');
+  },
+
   // Client parti (inactif) ou de retour ; un client inactif ne reçoit plus ses bilans
   async setClientActif(clientId, actif) {
     const sb = getSupabase();

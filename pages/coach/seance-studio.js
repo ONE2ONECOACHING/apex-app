@@ -82,6 +82,42 @@ const CoachSeanceStudioPage = {
     return Math.min(max, 52);
   },
 
+  // Dernière semaine sans rien (ni cochée ni saisie) : on peut la retirer
+  _derniereVide(nb) {
+    const d = this.data;
+    return nb > 1 && !d.semaines.some(s => s.semaine === nb)
+      && !d.saisies.some(s => s.semaine === nb && (s.charge || s.reps || s.remarque));
+  },
+
+  // Une semaine de plus pour la phase (vaut pour toutes les séances du programme)
+  async ajouterSemaine() {
+    const nb = this._nbSemaines();
+    if (nb >= 52) { this._etat('52 semaines au maximum', true); return; }
+    await this._changerNbSemaines(nb + 1);
+  },
+
+  async retirerSemaine() {
+    const nb = this._nbSemaines();
+    if (!this._derniereVide(nb)) return;
+    await this._changerNbSemaines(nb - 1);
+  },
+
+  async _changerNbSemaines(nb) {
+    const prog = this.data.seance.client_programmes;
+    try {
+      await db.setNbSemainesProgramme(prog.id, nb);
+      prog.nb_semaines = nb;
+      // Les cases vides de la dernière semaine retirée ne comptent plus
+      this.data.saisies = this.data.saisies.filter(s => s.semaine <= nb || s.charge || s.reps || s.remarque);
+      this._render();
+      this._etat(`✓ Phase de ${nb} semaine${nb > 1 ? 's' : ''}`);
+      const sc = document.getElementById('ssScroll');
+      if (sc) sc.scrollLeft = sc.scrollWidth;
+    } catch (e) {
+      this._etat('Erreur : ' + e.message, true);
+    }
+  },
+
   // Semaine en cours = première semaine non cochée
   _semaineEnCours() {
     const faites = new Set(this.data.semaines.map(s => s.semaine));
@@ -127,7 +163,11 @@ const CoachSeanceStudioPage = {
             ${c ? `faite le ${date}` : 'faite'}
           </label>
         </th>`;
-    }).join('');
+    }).join('') + `
+        <th class="ss-sem ss-sem-plus">
+          <button class="btn btn-secondary btn-small" onclick="CoachSeanceStudioPage.ajouterSemaine()">+ Ajouter une semaine</button>
+          ${this._derniereVide(nb) ? `<button class="ss-sem-retirer" onclick="CoachSeanceStudioPage.retirerSemaine()">Retirer la semaine ${nb}</button>` : ''}
+        </th>`;
 
     const lignes = d.exercices.map((e, i) => {
       const nom = e.exercices_bdd?.nom || 'Exercice';
@@ -162,6 +202,7 @@ const CoachSeanceStudioPage = {
             ${video ? `<a class="ss-exo-video" href="${escHtml(video)}" target="_blank" rel="noopener">🎥 Vidéo</a>` : ''}
           </th>
           ${cases}
+          <td></td>
         </tr>`;
     }).join('');
 
@@ -189,7 +230,7 @@ const CoachSeanceStudioPage = {
           <thead><tr><th class="ss-exo ss-coin">Exercices</th>${enTetes}</tr></thead>
           <tbody>${lignes}
             <tr><th class="ss-exo"><button class="btn btn-secondary btn-small" style="width:100%;" onclick="CoachSeanceStudioPage.choisirExercice('ajouter')">+ Ajouter un exercice</button></th>
-              ${semaines.map(() => '<td></td>').join('')}</tr>
+              ${semaines.map(() => '<td></td>').join('')}<td></td></tr>
           </tbody>
         </table>
       </div>` : `<div class="empty-state"><div class="empty-text">Aucun exercice dans cette séance.</div>

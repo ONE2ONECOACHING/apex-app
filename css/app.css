@@ -1203,6 +1203,10 @@ body.ag-dragging, body.ag-dragging * { cursor: grabbing !important; user-select:
 .ss-sem { min-width: 210px; padding: 8px 10px; font-size: 13px; font-weight: 700; color: var(--gray); text-align: center; background: #FAFAF8; }
 .ss-sem.en-cours { background: var(--gold-light); color: var(--gold); }
 .ss-sem.faite { color: #059669; }
+.ss-sem.ss-sem-plus { min-width: 170px; vertical-align: middle; }
+.ss-sem-plus .btn { white-space: nowrap; }
+.ss-sem-retirer { display: block; margin: 6px auto 0; background: none; border: none; font-size: 11px; font-weight: 500; color: var(--gray-light); cursor: pointer; text-decoration: underline; }
+.ss-sem-retirer:hover { color: #DC2626; }
 .ss-faite { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .ss-case { padding: 6px; }
 .ss-case.en-cours { background: rgba(0, 74, 173, 0.03); }
