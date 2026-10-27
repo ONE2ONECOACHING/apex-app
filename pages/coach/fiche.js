@@ -10,7 +10,7 @@
 const ECRANS_FICHE = ['coach-client-edit', 'coach-client-programme', 'coach-training-client', 'coach-plan-edit',
   'coach-calcul-nutrition', 'coach-habits-edit', 'coach-journal-suivi', 'coach-journal', 'coach-journal-view',
   'coach-bilan-client', 'coach-mesure-client', 'coach-client-messages', 'coach-client-suivi',
-  'coach-seance-studio', 'coach-programme-archive', 'coach-cardio-plan'];
+  'coach-seance-studio', 'coach-programme-archive', 'coach-cardio-plan', 'coach-client-notifs'];
 
 const FicheOnglets = {
   _cle() { return 'ficheOnglets_' + (Router.userProfile?.id || ''); },
@@ -172,7 +172,7 @@ const FicheResume = {
 
   // Affiche tout de suite la dernière version connue, puis la relit (au plus toutes les 10 s)
   async afficher(clientId, forcer = false) {
-    const el = document.getElementById('ficheResume');
+    const el = document.getElementById('ficheResumeCorps');
     if (!el) return;
     const c = this._cache.get(clientId);
     if (c) { el.innerHTML = c.html; FicheOnglets.nommer(clientId, c.nom); }
@@ -192,9 +192,64 @@ const FicheResume = {
       return;
     }
     this._cache.set(clientId, { le: Date.now(), html, nom });
-    if (Router.getParams().clientId === clientId && document.getElementById('ficheResume')) {
-      document.getElementById('ficheResume').innerHTML = html;
+    if (Router.getParams().clientId === clientId && document.getElementById('ficheResumeCorps')) {
+      document.getElementById('ficheResumeCorps').innerHTML = html;
     }
+  },
+
+  // Flèche ‹ / › : masquer ou sortir le résumé (choix mémorisé dans ce navigateur)
+  _replie() {
+    try { return localStorage.getItem('ficheResumeReplie') === '1'; } catch (_) { return false; }
+  },
+
+  replier(replie = !this._replie()) {
+    try { localStorage.setItem('ficheResumeReplie', replie ? '1' : '0'); } catch (_) {}
+    document.body.classList.toggle('resume-replie', replie);
+    const btn = document.querySelector('#ficheResume .fr-replier');
+    if (btn) {
+      btn.textContent = replie ? '›' : '‹';
+      btn.title = replie ? 'Afficher le résumé' : 'Masquer le résumé';
+    }
+  },
+
+  // Séances au studio (cases « faite » de la grille) : colonnes = semaines du programme
+  // le plus long en cours, lignes = séances au studio ; puis la phase en cours de chaque plan cardio
+  _seancesHtml(progs, semaines, cardio) {
+    const jour = d => new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const table = (colonnes, lignes) => `
+      <div class="fr-grille"><table class="st-table">
+        <tr><th></th>${colonnes.map(k => `<th>${k}</th>`).join('')}</tr>
+        ${lignes.join('')}
+      </table></div>`;
+    let renfo = '';
+    const avecStudio = progs.filter(p => (p.seances || []).some(s => !s.cardio && s.lieu === 'studio'));
+    if (avecStudio.length) {
+      const nbSem = Math.max(...avecStudio.map(p => p.nb_semaines || 4));
+      const numeros = new Map();   // id de séance → n° de séance
+      for (const p of avecStudio) for (const s of p.seances) if (!s.cardio && s.lieu === 'studio') numeros.set(s.id, (s.ordre ?? 0) + 1);
+      const cochees = new Map();   // n° → Map(semaine → date)
+      for (const l of semaines) {
+        const n = numeros.get(l.seance_id);
+        if (!n) continue;
+        if (!cochees.has(n)) cochees.set(n, new Map());
+        cochees.get(n).set(l.semaine, l.faite_le);
+      }
+      const colonnes = Array.from({ length: nbSem }, (_, i) => i + 1);
+      renfo = table(colonnes, [...new Set(numeros.values())].sort((a, b) => a - b).map(n => `
+        <tr><th class="st-seance">Séance ${n}</th>${colonnes.map(k => {
+          const d = cochees.get(n)?.get(k);
+          return `<td><span class="st-case ${d ? 'on' : ''}" ${d ? `data-info="Séance ${n}, semaine ${k} — faite le ${jour(d)}"` : ''}></span></td>`;
+        }).join('')}</tr>`));
+    }
+    const cardioHtml = cardio.filter(p => p.actif).map(p => {
+      const a = avancementCardio(p);
+      if (!a.phase || !a.phase.seances.length) return '';
+      return `<div class="fr-sous" style="margin-top:8px;">🏃 ${escHtml(p.nom)}</div>`
+        + table(a.phase.seances.map((_, i) => i + 1), [`
+          <tr><th class="st-seance">${escHtml(a.phase.nom || 'Phase')}</th>${a.phase.seances.map((s, i) =>
+            `<td><span class="st-case ${s.faite ? 'on' : ''}" data-info="Séance ${i + 1}${s.faite ? ` — faite${s.faite_le ? ' le ' + jour(s.faite_le) : ''}` : ''}"></span></td>`).join('')}</tr>`]);
+    }).join('');
+    return renfo || cardioHtml ? renfo + cardioHtml : '';
   },
 
   // Après un enregistrement dans la fiche ouverte : relire le résumé
@@ -213,7 +268,7 @@ const FicheResume = {
     FicheOnglets.nommer(clientId, nomClient);
     const studioSeul = client.type_client === 'studio';
     const suivi = !studioSeul && (moi.is_gerant || client.coach_referent_id === moi.id);
-    const [prochain, progs, plan, bilans, journal, profil, coachs, cardio] = await Promise.all([
+    const [prochain, progs, plan, bilans, journal, profil, coachs, cardio, actifs, semaines] = await Promise.all([
       client.type_client === 'distance' ? null : db.getProchainCoaching(clientId).catch(() => null),
       db.getCyclesClients(moi.id, true, clientId).catch(() => []),
       suivi ? db.getActivePlan(clientId).catch(() => null) : null,
@@ -222,7 +277,10 @@ const FicheResume = {
       db.getFicheCoach(clientId).catch(() => null),
       db.getCoachs().catch(() => []),
       db.getCardioPlans(clientId).catch(() => []),
+      db.getClientProgrammesActifs(clientId).catch(() => []),
+      db.getSemainesStudioClient(clientId).catch(() => []),
     ]);
+    const seancesHtml = this._seancesHtml(actifs, semaines, cardio);
     const nomCoach = id => coachs.find(x => x.id === id)?.prenom || '';
     const types = { suivi: 'Studio + suivi', distance: 'Suivi à distance', studio: 'Studio sans suivi' };
     const bloc = (titre, contenu) => `<div class="fr-bloc"><div class="fr-titre">${titre}</div><div class="fr-valeur">${contenu}</div></div>`;
@@ -284,6 +342,7 @@ const FicheResume = {
       ${cardioHtml ? bloc('Cardio', cardioHtml) : ''}
       ${suivi ? bloc('Nutrition', planHtml) + bloc('Dernier bilan', bilanHtml) + bloc('Journal de suivi', journalHtml) : ''}
       ${bloc('Profil coaching', profilHtml)}
+      ${seancesHtml ? bloc('Séances au studio', seancesHtml) : ''}
       <div class="fr-actions">
         <button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-client-messages',{clientId:'${clientId}'})">💬 Message</button>
         ${suivi ? `<button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-journal-suivi',{clientId:'${clientId}'})">📋 Journal de suivi</button>` : ''}
@@ -304,7 +363,12 @@ function afficherFiche(hash) {
   }
   const app = document.getElementById('app');
   if (!barre) { barre = document.createElement('div'); barre.id = 'ficheOnglets'; barre.className = 'fiche-onglets'; document.body.insertBefore(barre, app); }
-  if (!resume) { resume = document.createElement('aside'); resume.id = 'ficheResume'; resume.className = 'fiche-resume'; document.body.insertBefore(resume, app); }
+  if (!resume) {
+    resume = document.createElement('aside'); resume.id = 'ficheResume'; resume.className = 'fiche-resume';
+    resume.innerHTML = `<button class="fr-replier" onclick="FicheResume.replier()"></button><div id="ficheResumeCorps"></div>`;
+    document.body.insertBefore(resume, app);
+    FicheResume.replier(FicheResume._replie());
+  }
   document.body.classList.add('fiche-ouverte');
   // depuisSuivi n'est pas gardé : rouvrir l'onglet plus tard ne doit pas remettre la barre « Suivant »
   const { clientId: _, depuisSuivi: __, ...params } = Router.getParams();
@@ -317,7 +381,7 @@ function afficherFiche(hash) {
 ['saveFicheCoach', 'updateProfile', 'upsertPlan', 'updateActivePlanMacros', 'assignProgrammeFromTemplate',
  'deactivateClientProgramme', 'reactiverClientProgramme', 'redemarrerProgramme', 'saveJournalLigne',
  'saveClientProgrammeSeances', 'saveClientProgrammeNom', 'markBilansAsRead', 'saveJournalEntete',
- 'setSeanceLieu', 'setSemaineStudio', 'setClientActif'].forEach(nom => {
+ 'setSeanceLieu', 'setSemaineStudio', 'setClientActif', 'attribuerPlanCardio', 'majCardioRacine', 'majCardioSeance'].forEach(nom => {
   const origine = db[nom];
   if (typeof origine !== 'function') return;
   db[nom] = async function (...args) {

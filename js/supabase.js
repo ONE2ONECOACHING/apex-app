@@ -1777,7 +1777,7 @@ const db = {
     const sb = getSupabase();
     const { data: seance, error } = await sb
       .from('client_prog_seances')
-      .select('*, client_programmes(id, nom, client_id, nb_semaines, date_debut), client_prog_exercices(*, exercices_bdd(nom, youtube_url))')
+      .select('*, client_programmes(id, nom, client_id, nb_semaines, date_debut, consignes), client_prog_exercices(*, exercices_bdd(nom, youtube_url))')
       .eq('id', seanceId)
       .single();
     if (error) throw error;

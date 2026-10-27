@@ -114,7 +114,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation', 'messages'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive', 'coach-suivi', 'coach-cardio-modeles', 'coach-cardio-modele', 'coach-cardio-plan'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive', 'coach-suivi', 'coach-cardio-modeles', 'coach-cardio-modele', 'coach-cardio-plan', 'coach-client-notifs'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash) && hash !== 'set-password') {
         window.location.hash = '#coach-accueil';
@@ -163,6 +163,7 @@ const Router = {
         case 'invite': app.innerHTML = InvitePage.render(); InvitePage.init(); break;
         case 'coach-clients': app.innerHTML = CoachClientsPage.render(); CoachClientsPage.init(); break;
         case 'coach-client-edit': app.innerHTML = CoachClientEditPage.render(); CoachClientEditPage.init(); break;
+        case 'coach-client-notifs': app.innerHTML = CoachClientNotifsPage.render(); CoachClientNotifsPage.init(); break;
         case 'coach-plan-edit': app.innerHTML = CoachPlanEditPage.render(); CoachPlanEditPage.init(); break;
         case 'coach-journal':
         case 'coach-journal-view': app.innerHTML = CoachJournalPage.render(); CoachJournalPage.init(); break;
@@ -368,7 +369,7 @@ const MENU_COACH = [
   { route: 'coach-agenda',          icone: '📅', label: 'Agenda',          ecrans: ['coach-agenda'] },
   { route: 'coach-clients',         icone: '👥', label: 'Clients',         ecrans: ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal',
       'coach-journal-view', 'coach-habits-edit', 'coach-bilan-client', 'coach-mesure-client', 'coach-client-programme',
-      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-client-messages', 'coach-programme-archive', 'coach-cardio-plan'] },
+      'coach-training-client', 'coach-client-suivi', 'coach-seance-studio', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-client-messages', 'coach-programme-archive', 'coach-cardio-plan', 'coach-client-notifs'] },
   { route: 'coach-suivi',           icone: '📋', label: 'Suivi',           ecrans: ['coach-suivi'], compteurSuivi: true },
   { route: 'coach-messagerie',      icone: '💬', label: 'Messagerie',      ecrans: ['coach-messagerie'], compteur: true },
   { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
@@ -424,11 +425,12 @@ function biblioNav(actif) {
 // Chaque onglet n'apparaît que si le coach y a droit (Suivi : référent ou
 // gérant) et selon le type de client (studio sans suivi : ni plan ni suivi).
 const FICHE_ONGLETS = [
-  { cle: 'infos',        label: '👤 Infos',           pages: [['coach-client-edit', 'Infos']] },
-  { cle: 'entrainement', label: '💪 Entraînement',     pages: [['coach-client-programme', 'Programmes'], ['coach-training-client', 'Séances faites']] },
-  { cle: 'plan',         label: '📋 Plan alimentaire', pages: [['coach-plan-edit', 'Plan'], ['coach-calcul-nutrition', 'Calcul (TDEE)'], ['coach-habits-edit', 'Habitudes']] },
-  { cle: 'suivi',        label: '📈 Suivi',            pages: [['coach-journal-suivi', 'Journal de suivi'], ['coach-journal', 'Journal'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
-  { cle: 'messages',     label: '💬 Messages',        pages: [['coach-client-messages', 'Messages']] },
+  { cle: 'infos',        label: 'Infos',              pages: [['coach-client-edit', 'Infos']] },
+  { cle: 'entrainement', label: 'Entraînement',       pages: [['coach-client-programme', 'Programmes'], ['coach-training-client', 'Séances faites']] },
+  { cle: 'plan',         label: 'Plan alimentaire',   pages: [['coach-plan-edit', 'Plan'], ['coach-calcul-nutrition', 'Calcul (TDEE)'], ['coach-habits-edit', 'Habitudes']] },
+  { cle: 'suivi',        label: 'Suivi',              pages: [['coach-journal-suivi', 'Journal de suivi'], ['coach-journal', 'Journal'], ['coach-bilan-client', 'Bilans'], ['coach-mesure-client', 'Mesures']] },
+  { cle: 'messages',     label: 'Messages',           pages: [['coach-client-messages', 'Messages']] },
+  { cle: 'notifs',       label: 'Notifications',      pages: [['coach-client-notifs', 'Notifications']] },
 ];
 const _ficheClients = new Map();   // profils déjà chargés, pour les droits
 let _ficheCoachs = null;           // comptes coach, pour afficher le référent
@@ -439,12 +441,12 @@ function coachClientNav(clientId, activeTab) {
   const groupe = FICHE_ONGLETS.find(g => g.pages.some(([k]) => k === page)) || FICHE_ONGLETS[0];
   const navId = 'ficheNav' + Math.random().toString(36).slice(2, 8);
   setTimeout(() => ajusterFicheNav(navId, clientId), 0);
-  const btn = (k, label, actif, attrs = '') => `<button class="tab${actif ? ' active' : ''}" ${attrs}
+  const btn = (k, label, actif, attrs = '') => `<button class="fm-item${actif ? ' on' : ''}" ${attrs}
       onclick="Router.navigate('${k}',{clientId:'${clientId}'})">${label}</button>`;
   return `
     <div id="${navId}" style="margin-bottom:1.25rem;">
       <div class="fiche-entete" data-entete></div>
-      <div class="tabs">${FICHE_ONGLETS.map(g => btn(g.pages[0][0], g.label, g === groupe, `data-groupe="${g.cle}"`)).join('')}</div>
+      <div class="fiche-menu">${FICHE_ONGLETS.map(g => btn(g.pages[0][0], g.label, g === groupe, `data-groupe="${g.cle}"`)).join('')}</div>
       ${groupe.pages.length > 1 ? `<div class="fiche-sous-onglets">${
         groupe.pages.map(([k, label]) => `<button class="${k === page ? 'on' : ''}"
           onclick="Router.navigate('${k}',{clientId:'${clientId}'})">${label}</button>`).join('')}</div>` : ''}
@@ -461,6 +463,7 @@ async function ajusterFicheNav(navId, clientId) {
     const nav = document.getElementById(navId);
     if (!nav) return;
     nav.querySelector('[data-groupe="plan"]')?.classList.toggle('hidden', studio);
+    nav.querySelector('[data-groupe="notifs"]')?.classList.toggle('hidden', studio);
     nav.querySelector('[data-groupe="suivi"]')?.classList.toggle('hidden', !suivi);
     // Messages : conversation de suivi (référent, gérants) ou Équipe ONE2ONE (tous les
     // coachs) ; seul un client à distance n'a pas de conversation Équipe
