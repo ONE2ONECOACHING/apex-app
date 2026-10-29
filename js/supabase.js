@@ -2123,6 +2123,35 @@ const db = {
     return { sets, notes };
   },
 
+  // Séance commencée (côté client) : gardée dans la base jusqu'à l'enregistrement
+  async getSeanceEnCours(clientId, seanceId) {
+    const { data, error } = await getSupabase()
+      .from('seances_en_cours').select('etat, maj_le')
+      .eq('client_id', clientId).eq('seance_id', seanceId).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async getSeancesEnCours(clientId) {
+    const { data, error } = await getSupabase()
+      .from('seances_en_cours').select('seance_id, maj_le').eq('client_id', clientId);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async saveSeanceEnCours(clientId, seanceId, etat) {
+    const { error } = await getSupabase()
+      .from('seances_en_cours')
+      .upsert({ client_id: clientId, seance_id: seanceId, etat, maj_le: new Date().toISOString() });
+    if (error) throw error;
+  },
+
+  async deleteSeanceEnCours(clientId, seanceId) {
+    const { error } = await getSupabase()
+      .from('seances_en_cours').delete().eq('client_id', clientId).eq('seance_id', seanceId);
+    if (error) throw error;
+  },
+
   async upsertSeanceLog(log) {
     const { data, error } = await getSupabase()
       .from('seances_log')

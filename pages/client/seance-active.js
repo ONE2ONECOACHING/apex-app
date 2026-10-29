@@ -1,1225 +1,895 @@
-﻿// APEX APP — Client : Séance active (entraînement en cours)
+﻿// APEX APP — Client : séance d'entraînement (aperçu, puis séance bloc par bloc)
+// Aperçu : toute la séance d'un coup d'œil (A, B1/B2 pour les supersets).
+// Séance : un bloc par page, on glisse de côté pour passer d'un bloc à l'autre
+// sans rien valider. Chaque série se coche ; le repos se lance tout seul (en
+// superset, après le dernier exercice du tour). Menu ⏱ : repos, chrono, AMRAP,
+// EMOM, Tabata, intervalles.
+// La séance commencée est gardée dans le téléphone et dans la base
+// (seances_en_cours) : le client la reprend même après avoir fermé l'app.
 
 const SeanceActivePage = {
-  _seance:          null,
-  _progId:          null,
-  _exoIdx:          0,
-  _serieIdx:        0,
-  _phase:           'exercice',   // 'exercice' | 'repos' | 'done'
-  _logs:            [],           // [{exercice_id, client_prog_exercice_id, type_effort, sets_data:[]}]
-  _restTimer:       null,
-  _restTotal:       0,
-  _restRemaining:   0,
-  _restStartTime:   0,   // timestamp Date.now() au démarrage du chrono de repos
-  _sessionTimer:    null,
-  _sessionSeconds:  0,
-  _sessionStartTime: 0,  // timestamp Date.now() au démarrage de la séance
-  _amrapCountdownStart: 0, // timestamp démarrage countdown AMRAP
-  _amrapWorkStart:  0,     // timestamp démarrage phase work AMRAP
-  _visibilityHandler: null, // ref pour removeEventListener propre
-  _lastSets:        {}, // { exercice_id: sets_data[] } — dernière séance connue
-  _lastNotes:       {}, // { exercice_id: note_client } — note laissée la séance précédente
-  _noteRessenti:    null, // 'dur' | 'bien' | 'feu' — note obligatoire avant save
-  _effortIdx:       0,   // 0 = effort principal, 1 = 2e effort (Rest-Pause / Drop Set…)
-  _pendingE1:       null, // {reps, charge} de l'effort 1 en attente de combinaison
-  _intraRest:       false, // true pendant le repos intra-série (entre effort 1 et 2)
-  _amrapPhase:      'idle', // 'idle' | 'countdown' | 'work' | 'done'
-  _amrapRemaining:  0,
-  _amrapTotal:      0,
-  _amrapTimer:      null,
-  _audioCtx:        null,
+  _seance:    null,
+  _progId:    null,
+  _exos:      [],
+  _blocs:     [],        // [{ lettre, exos: [index dans _exos] }]
+  _s:         [],        // séries saisies par exercice : [{ reps, kg, fait, e2, e2fait }]
+  _notes:     [],        // note pour le coach, par exercice
+  _lastSets:  {},        // dernière séance connue, par exercice_bdd
+  _lastNotes: {},
+  _vue:       'apercu',  // 'apercu' | 'seance' | 'fin'
+  _bloc:      0,
+  _commencee: false,
+  _secondes:  0,         // durée de la séance (temps passé sur l'écran de séance)
+  _dernierTic: 0,
+  _ressenti:  null,      // 'dur' | 'bien' | 'feu' (obligatoire pour enregistrer)
+  _mt:        null,      // minuteur en cours
+  _pave:      null,
+  _outil:     null,
+  _tic:       null,
+  _envoi:     null,
+  _wake:      null,
+  _audio:     null,
+  _cfg: { repos: 90, amrap: 12, emomTours: 10, emomInt: 60, tabTours: 8, intTravail: 40, intRepos: 20, intTours: 6 },
 
   render() {
-    return `<div id="saWrap" style="min-height:100vh;background:var(--bg);
-      display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);">
-      <div style="display:flex;align-items:center;justify-content:center;flex:1;">
-        <div class="spinner"></div>
-      </div>
-    </div>`;
+    return `<div id="saWrap" class="sa"><div style="display:flex;align-items:center;justify-content:center;flex:1;"><div class="spinner"></div></div></div>`;
   },
 
   async init() {
-    clearInterval(this._sessionTimer);
-    clearInterval(this._restTimer);
-    this._removeBanner();
-
+    this._arreter();
     const profile = Router.userProfile;
     if (!profile || profile.role === 'coach') { window.location.hash = '#entrainement'; return; }
-
     const params = Router.getParams();
     if (!params.seanceId) { window.location.hash = '#entrainement'; return; }
+    const jeton = this._jeton = {};
 
     try {
-      this._seance         = await db.getClientSeance(params.seanceId);
-      this._progId         = params.programmeId || null;
-      this._exoIdx         = 0;
-      this._serieIdx       = 0;
-      this._phase          = 'exercice';
-      this._sessionSeconds = 0;
-      this._noteRessenti   = null;
-      this._effortIdx      = 0;
-      this._pendingE1      = null;
-      this._intraRest      = false;
-      this._amrapPhase     = 'idle';
-      this._amrapRemaining = 0;
-      this._amrapTotal     = 0;
-      clearInterval(this._amrapTimer);
-      this._amrapTimer     = null;
-      if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
-      this._logs = (this._seance.exercices || []).map(ex => ({
-        exercice_id:             ex.exercice_id,
-        client_prog_exercice_id: ex.id,
-        type_effort:             ex.type_effort || 'reps',
-        sets_data:               [],
-        note_client:             null,
-      }));
+      const seance = await db.getClientSeance(params.seanceId);
+      const exos = seance.exercices || [];
+      const [last, distant] = await Promise.all([
+        db.getLastSetsPerExo(profile.id, exos.map(e => e.exercice_id).filter(Boolean)).catch(() => ({ sets: {}, notes: {} })),
+        db.getSeanceEnCours(profile.id, seance.id).catch(() => null),
+      ]);
+      if (jeton !== this._jeton) return;
 
-      // Charger les dernières valeurs + notes par exercice (silencieux si erreur)
-      const exoIds = (this._seance.exercices || []).map(e => e.exercice_id).filter(Boolean);
-      const lastData = await db.getLastSetsPerExo(profile.id, exoIds).catch(() => ({ sets: {}, notes: {} }));
-      this._lastSets  = lastData.sets  || {};
-      this._lastNotes = lastData.notes || {};
+      this._seance    = seance;
+      this._progId    = params.programmeId || seance.programme_id || null;
+      this._exos      = exos;
+      this._lastSets  = last.sets || {};
+      this._lastNotes = last.notes || {};
+      this._vue       = 'apercu';
+      this._bloc      = 0;
+      this._secondes  = 0;
+      this._ressenti  = null;
+      this._mt        = null;
+      this._commencee = false;
 
-      // ── Reprise d'une séance interrompue (brouillon local) ──────────────────
-      const draft = this._loadDraft(this._seance.id, profile.id);
-      if (draft) {
-        const doneSets = draft.logs.reduce((n, l) => n + (l.sets_data?.length || 0), 0);
-        if (confirm(`Reprendre ta séance en cours ?\n\n${doneSets} série(s) déjà enregistrée(s).\n\nOK = reprendre où tu t'étais arrêté\nAnnuler = tout recommencer`)) {
-          // Réinjecter les séries saisies dans la structure actuelle (par exercice)
-          this._logs.forEach(l => {
-            const dl = draft.logs.find(x => x.client_prog_exercice_id === l.client_prog_exercice_id)
-                    || draft.logs.find(x => x.exercice_id === l.exercice_id);
-            if (dl) {
-              l.sets_data   = Array.isArray(dl.sets_data) ? dl.sets_data : [];
-              l.note_client = dl.note_client || null;
-            }
-          });
-          this._sessionSeconds = draft.sessionSeconds || 0;
-          this._noteRessenti   = draft.noteRessenti || null;
-          const resumeIdx = this._firstUnfinishedExo();
-          this._exoIdx    = resumeIdx;
-          const rex       = this._seance.exercices[resumeIdx];
-          const logged    = this._logs[resumeIdx]?.sets_data?.length || 0;
-          this._serieIdx  = Math.max(0, Math.min(logged, this._nbSeries(rex)));
-        } else {
-          this._clearDraft();
-        }
-      }
+      // Blocs : les exercices d'un même superset qui se suivent forment un bloc
+      this._blocs = [];
+      exos.forEach((ex, i) => {
+        const prec = exos[i - 1];
+        if (ex.superset_groupe && prec?.superset_groupe === ex.superset_groupe) this._blocs[this._blocs.length - 1].exos.push(i);
+        else this._blocs.push({ exos: [i] });
+      });
+      this._blocs.forEach((b, i) => { b.lettre = i < 26 ? String.fromCharCode(65 + i) : String(i + 1); });
 
-      this._startSessionTimer();
+      this._s     = exos.map(ex => Array.from({ length: this._nbSeries(ex) }, (_, k) => this._serieVide(ex, k)));
+      this._notes = exos.map(() => '');
 
-      // Recalcule les timers immédiatement au retour en avant-plan
-      if (this._visibilityHandler) document.removeEventListener('visibilitychange', this._visibilityHandler);
-      this._visibilityHandler = () => {
-        if (document.visibilityState !== 'visible') return;
-        // Repos
-        if (this._restTimer && this._restStartTime) {
-          this._restRemaining = Math.max(0, this._restTotal - Math.floor((Date.now() - this._restStartTime) / 1000));
-          const d = document.getElementById('saRestSecs');
-          const b = document.getElementById('saRestBar');
-          if (d) d.textContent = this._fmt(this._restRemaining);
-          if (b) b.style.width = (this._restTotal > 0 ? (this._restRemaining / this._restTotal * 100) : 0).toFixed(1) + '%';
-          if (this._restRemaining <= 0) {
-            clearInterval(this._restTimer);
-            this._restTimer = null; this._restStartTime = 0;
-            this._phase = 'exercice'; this._intraRest = false;
-            this._removeBanner(); this._enableValidateBtn();
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-          }
-        }
-        // AMRAP work
-        if (this._amrapPhase === 'work' && this._amrapWorkStart) {
-          this._amrapRemaining = Math.max(0, this._amrapTotal - Math.floor((Date.now() - this._amrapWorkStart) / 1000));
-          const el = document.getElementById('saAmrapDisplay');
-          if (el) { el.textContent = this._fmt(this._amrapRemaining); el.style.color = this._amrapRemaining <= 10 ? '#ef4444' : this._amrapRemaining <= 60 ? 'var(--gold)' : 'var(--black)'; }
-          const bar = document.getElementById('saAmrapBar');
-          if (bar) bar.style.width = (this._amrapTotal > 0 ? (this._amrapRemaining / this._amrapTotal * 100) : 0).toFixed(1) + '%';
-        }
-      };
-      document.addEventListener('visibilitychange', this._visibilityHandler);
+      // Reprise : la version la plus récente entre le téléphone et la base
+      const local = this._lireLocal(profile.id, seance.id);
+      const etat = [local, distant?.etat].filter(Boolean).sort((a, b) => (b.maj || 0) - (a.maj || 0))[0];
+      if (etat) this._appliquerEtat(etat);
 
-      this._draw();
+      this._dernierTic = Date.now();
+      this._tic = setInterval(() => this._ticTac(), 250);
+      this._surVisibilite = () => { if (document.visibilityState === 'hidden') this._envoyer(true); };
+      document.addEventListener('visibilitychange', this._surVisibilite);
+      this._dessiner();
     } catch (e) {
-      document.getElementById('saWrap').innerHTML =
-        `<div class="alert alert-error" style="margin:2rem;">${e.message}</div>`;
+      document.getElementById('saWrap').innerHTML = `<div class="alert alert-error" style="margin:2rem;">${escHtml(e.message)}</div>`;
     }
   },
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
+  // ── Données d'un exercice ───────────────────────────────────────────────────
 
-  _startSessionTimer() {
-    this._sessionStartTime = Date.now() - this._sessionSeconds * 1000;
-    this._sessionTimer = setInterval(() => {
-      this._sessionSeconds = Math.floor((Date.now() - this._sessionStartTime) / 1000);
-      const el = document.getElementById('saTimer');
-      if (el) el.textContent = this._fmt(this._sessionSeconds);
-    }, 1000);
-  },
-
-  _fmt(secs) {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-  },
-
-  _exo()    { return this._seance?.exercices?.[this._exoIdx] || null; },
+  _type(ex) { return ex.type_effort || 'reps'; },
 
   _nbSeries(ex) {
-    if (!ex) return 1;
-    if ((ex.type_effort || 'reps') === 'reps' && ex.series_data?.length) return ex.series_data.length;
+    if (this._type(ex) === 'reps' && ex.series_data?.length) return ex.series_data.length;
     return ex.series || 1;
   },
 
-  _target(ex, k) {
-    if ((ex.type_effort || 'reps') === 'reps' && ex.series_data?.[k]) {
-      return { reps: ex.series_data[k].reps || '10', charge: ex.series_data[k].charge || '' };
-    }
-    return { reps: ex.reps_cible || '10', charge: ex.charge_cible || '' };
+  _cible(ex, k) {
+    if (this._type(ex) === 'reps' && ex.series_data?.[k]) return { reps: ex.series_data[k].reps || '10', charge: ex.series_data[k].charge || '' };
+    return { reps: ex.reps_cible || (this._type(ex) === 'reps' ? '10' : ''), charge: ex.charge_cible || '' };
   },
 
-  // ── Rendu principal ──────────────────────────────────────────────────────────
-
-  _draw() {
-    const wrap = document.getElementById('saWrap');
-    if (!wrap) return;
-    if (this._phase === 'done') { this._drawDone(wrap); return; }
-    // Both 'exercice' and 'repos' phases show the exercise view.
-    // The rest timer is an independent floating banner.
-    this._drawExo(wrap);
+  _serieVide(ex, k) {
+    const c = this._cible(ex, k);
+    return { reps: this._type(ex) === 'amrap' ? '' : String(c.reps ?? ''), kg: '', fait: false, e2: ex.reps_secondaire || '', e2fait: false };
   },
 
-  _header() {
-    const ex   = this._exo();
-    const nbEx  = this._seance?.exercices?.length || 1;
-    const nbSer = this._nbSeries(ex);
-    const done  = this._exoIdx * nbSer + this._serieIdx;
-    const total = nbEx * nbSer;
-    const pct   = total > 0 ? (done / total * 100).toFixed(1) : 0;
-    return `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;
-                  background:var(--card-bg);border-bottom:1px solid var(--border);">
-        <button onclick="SeanceActivePage._quit()"
-          style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);padding:4px 8px;">←</button>
-        <div style="font-size:12px;font-weight:600;color:var(--gray-muted);text-align:center;">${this._seance?.nom || ''}</div>
-        <div id="saTimer" style="font-size:14px;font-weight:700;color:var(--gold);min-width:44px;text-align:right;">
-          ${this._fmt(this._sessionSeconds)}
-        </div>
-      </div>
-      <div style="height:3px;background:var(--border-solid);">
-        <div style="height:100%;background:var(--gold);width:${pct}%;transition:width .4s;"></div>
-      </div>`;
+  // Charge proposée : celle de la série d'avant (cette séance), sinon la dernière fois, sinon celle du coach
+  _kgConseil(i, k) {
+    const ex = this._exos[i];
+    const avant = this._s[i].slice(0, k).reverse().find(s => s.kg !== '');
+    if (avant) return avant.kg;
+    const last = this._lastSets[ex.exercice_id] || [];
+    const v = last[k]?.charge || last[0]?.charge || this._cible(ex, k).charge || '';
+    return /^\d+([.,]\d+)?$/.test(String(v).trim()) ? String(v).trim().replace('.', ',') : '';
   },
 
-  // Returns HTML for the all-series grid (reps mode only)
-  _renderSeriesGrid(ex, nbSer, prevSets) {
-    const lastExoSets = this._lastSets[ex.exercice_id] || [];
-
-    // Ligne "Dernière séance" si données disponibles
-    const lastHint = lastExoSets.length > 0 ? (() => {
-      const parts = lastExoSets.map((s, i) => {
-        const ch = s.charge ? ` · ${s.charge}kg` : '';
-        return `S${i + 1}: ${s.reps}${ch}`;
-      }).join(' &nbsp;');
-      return `<div style="font-size:11px;color:var(--gray-muted);background:var(--card-bg);
-                border-radius:8px;padding:6px 10px;margin-bottom:4px;">
-        📅 Dernière séance : ${parts}
-      </div>`;
-    })() : '';
-
-    const rows = Array.from({ length: nbSer }, (_, k) => {
-      const tgt       = this._target(ex, k);
-      const logged    = prevSets[k];
-      const isDone    = k < this._serieIdx;
-      const isCurrent = k === this._serieIdx;
-
-      // Charge pré-remplie : la charge déjà saisie cette séance (report) >
-      // dernière séance série k > série 0 > cible coach
-      const prevSessionCharge = prevSets.length ? prevSets[prevSets.length - 1]?.charge : null;
-      const lastCharge = (prevSessionCharge != null && prevSessionCharge !== '')
-        ? prevSessionCharge
-        : (lastExoSets[k]?.charge ?? lastExoSets[0]?.charge ?? tgt.charge ?? '');
-
-      if (isDone) {
-        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
-                            background:var(--card-bg);border-radius:10px;">
-          <div style="font-size:13px;color:#10b981;font-weight:700;width:22px;text-align:center;">✓</div>
-          <div style="font-size:12px;font-weight:700;color:var(--gray);min-width:24px;">S${k + 1}</div>
-          <div style="font-size:14px;color:var(--gray);">
-            ${logged?.reps || tgt.reps} reps${logged?.charge ? ' · ' + logged.charge + ' kg' : ''}
-          </div>
-        </div>`;
-      }
-
-      if (isCurrent) {
-        const isE2       = !!ex.reps_secondaire && this._effortIdx === 1;
-        const repsVal    = isE2 ? (ex.reps_secondaire || 'max') : tgt.reps;
-        const chargeVal  = isE2 ? (this._pendingE1?.charge ?? lastCharge) : lastCharge;
-        const serieLabel = ex.reps_secondaire
-          ? `Série ${k + 1} · Effort ${this._effortIdx + 1} / 2`
-          : `Série ${k + 1}`;
-        return `<div style="padding:10px 12px;background:var(--gold-bg,#fffbeb);border-radius:10px;
-                            border:2px solid var(--gold);">
-          <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:8px;">${serieLabel}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div>
-              <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;
-                          letter-spacing:.5px;margin-bottom:4px;">${isE2 ? 'Reps (2e effort)' : 'Reps'}</div>
-              <input id="saReps" type="number" inputmode="numeric" min="0" value="${repsVal}"
-                style="width:100%;height:54px;text-align:center;font-size:26px;font-weight:800;
-                       border:2px solid var(--border-solid);border-radius:10px;
-                       background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
-            </div>
-            <div>
-              <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;
-                          letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
-              <input id="saCharge" type="text" inputmode="decimal"
-                value="${chargeVal}" placeholder="0"
-                style="width:100%;height:54px;text-align:center;font-size:26px;font-weight:800;
-                       border:2px solid var(--border-solid);border-radius:10px;
-                       background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
-            </div>
-          </div>
-        </div>`;
-      }
-
-      // Upcoming — affiche la charge dernière séance en grisé
-      const upcomingCharge = lastExoSets[k]?.charge ?? lastExoSets[0]?.charge ?? tgt.charge ?? '';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
-                          background:var(--card-bg);border-radius:10px;opacity:0.38;">
-        <div style="font-size:12px;font-weight:700;color:var(--gray-muted);min-width:24px;">S${k + 1}</div>
-        <div style="font-size:14px;color:var(--gray-muted);">
-          ${tgt.reps} reps${upcomingCharge ? ' · ' + upcomingCharge + ' kg' : ''}
-        </div>
-      </div>`;
-    }).join('');
-
-    return lastHint + rows;
+  _videoId(ex) {
+    const url = ex.exercices_bdd?.youtube_url || '';
+    return (url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/) || [])[1] || null;
   },
 
-  _drawExo(wrap) {
-    const ex = this._exo();
-    if (!ex) { this._phase = 'done'; this._drawDone(wrap); return; }
-
-    const nom      = ex.exercices_bdd?.nom || '?';
-    const muscle   = ex.exercices_bdd?.muscle_principal || '';
-    const ytUrl    = ex.exercices_bdd?.youtube_url || null;
-    const ytId     = ytUrl ? (ytUrl.match(/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/) || [])[1] : null;
-    const effort   = ex.type_effort || 'reps';
-    const nbSer    = this._nbSeries(ex);
-    const nbEx     = this._seance.exercices.length;
-    const target   = this._target(ex, this._serieIdx);
-    const prevSets = this._logs[this._exoIdx]?.sets_data || [];
-    const isLast   = this._serieIdx + 1 >= nbSer && this._exoIdx + 1 >= nbEx;
-
-    // Button state
-    const inRest      = this._phase === 'repos';
-    const amrapIdle   = effort === 'amrap' && this._amrapPhase === 'idle';
-    const amrapActive = effort === 'amrap' && (this._amrapPhase === 'countdown' || this._amrapPhase === 'work');
-    const btnText     = inRest      ? '⏳ Récupération…'
-                      : amrapActive ? '⏱ AMRAP en cours…'
-                      : this._effortIdx === 1 ? '✓ Effort 2 validé'
-                      : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
-
-    // Effort label for Objectif card
-    const hasE2 = effort === 'reps' && !!ex.reps_secondaire;
-    const effortLabel = effort === 'amrap' ? `AMRAP ${target.reps}`
-                      : effort === 'temps' ? `⏱ ${target.reps}`
-                      : effort === 'distance' ? `📏 ${target.reps}`
-                      : hasE2 && this._effortIdx === 1
-                        ? `Effort 2 / 2 — ${ex.reps_secondaire} reps`
-                      : hasE2
-                        ? `Effort 1 / 2 — ${target.reps} reps${target.charge ? ' · ' + target.charge + ' kg' : ''}`
-                      : `${target.reps} reps${target.charge ? ' · ' + target.charge + ' kg' : ''}`;
-
-
-    wrap.innerHTML = `
-      ${this._header()}
-
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 0;">
-        <button onclick="SeanceActivePage._prevExo()"
-          ${this._exoIdx === 0 ? 'disabled' : ''}
-          style="width:34px;height:34px;border-radius:50%;border:1px solid var(--border-solid);
-                 background:var(--card-bg);font-size:18px;cursor:pointer;flex-shrink:0;
-                 color:${this._exoIdx === 0 ? 'var(--gray-muted)' : 'var(--black)'};
-                 display:flex;align-items:center;justify-content:center;">‹</button>
-        <div style="flex:1;text-align:center;font-size:12px;color:var(--gray-muted);">
-          Exercice <b style="color:var(--black);">${this._exoIdx + 1} / ${nbEx}</b>
-          &nbsp;·&nbsp;
-          Série <b style="color:var(--black);">${this._serieIdx + 1} / ${nbSer}</b>
-        </div>
-        <button onclick="SeanceActivePage._nextExo()"
-          ${this._exoIdx >= nbEx - 1 ? 'disabled' : ''}
-          style="width:34px;height:34px;border-radius:50%;border:1px solid var(--border-solid);
-                 background:var(--card-bg);font-size:18px;cursor:pointer;flex-shrink:0;
-                 color:${this._exoIdx >= nbEx - 1 ? 'var(--gray-muted)' : 'var(--black)'};
-                 display:flex;align-items:center;justify-content:center;">›</button>
-      </div>
-
-      <div style="padding:10px 16px 0;">
-
-        <div style="font-size:22px;font-weight:800;color:var(--black);line-height:1.2;margin-bottom:6px;">${nom}</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          ${muscle ? `<span style="font-size:11px;padding:2px 10px;border-radius:12px;
-            background:var(--gold-bg,#fffbeb);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
-          ${ex.superset_groupe ? (() => {
-            const ssColors = ['#F59E0B','#3B82F6','#10B981','#EC4899','#8B5CF6','#F97316'];
-            const c = ssColors[(ex.superset_groupe.charCodeAt(0) - 65) % ssColors.length];
-            return `<span style="font-size:11px;padding:2px 10px;border-radius:12px;
-              background:${c}22;color:${c};font-weight:700;">🔗 Superset</span>`;
-          })() : ''}
-        </div>
-        ${ex.notes?.trim() ? `
-          <div style="margin-top:8px;padding:8px 12px;background:var(--gold-bg,#fffbeb);
-               border-left:3px solid var(--gold);border-radius:6px;
-               font-size:13px;color:var(--gold);font-style:italic;line-height:1.4;">
-            💬 ${ex.notes.trim()}
-          </div>` : ''}
-
-        ${ytId ? `
-        <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:10px;
-                    overflow:hidden;background:#000;margin-top:10px;">
-          <iframe src="https://www.youtube.com/embed/${ytId}?rel=0"
-            frameborder="0" loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-            style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
-          </iframe>
-        </div>` : ''}
-
-        <!-- Objectif + récup -->
-        <div style="margin-top:14px;padding:10px 14px;background:var(--card-bg);border-radius:12px;
-                    border-left:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <div>
-            <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Objectif</div>
-            <div style="font-size:15px;font-weight:700;color:var(--black);">${effortLabel}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Récup</div>
-            <div style="font-size:14px;font-weight:700;color:var(--gray);">${(ex.repos_secondes ?? 90) === 0 ? '🔗 Enchaîner' : '💤 ' + (ex.repos_secondes ?? 90) + ' s'}</div>
-          </div>
-        </div>
-
-        <!-- Saisie reps : grille toutes séries -->
-        ${effort === 'reps' ? `
-          <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;">
-            ${this._renderSeriesGrid(ex, nbSer, prevSets)}
-          </div>
-        ` : effort === 'amrap' ? `
-        <!-- AMRAP : timer interactif -->
-          ${this._renderAmrapSection(ex)}
-        ` : `
-        <!-- Saisie non-reps : charge + résultat + notes -->
-          <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
-            ${(this._lastSets[ex.exercice_id]||[]).length > 0 ? `
-            <div style="font-size:11px;color:var(--gray-muted);background:var(--card-bg);
-                border-radius:8px;padding:6px 10px;">
-              📅 Dernière séance : ${(this._lastSets[ex.exercice_id]||[]).map((s,i)=>`S${i+1}: ${s.reps}${s.charge?' · '+s.charge+'kg':''}`).join(' &nbsp;')}
-            </div>` : ''}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <div>
-                <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
-                <input id="saCharge" type="text" inputmode="decimal"
-                  value="${this._lastSets[ex.exercice_id]?.[0]?.charge ?? target.charge ?? ''}" placeholder="0"
-                  style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
-                         border:2px solid var(--border-solid);border-radius:12px;
-                         background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
-              </div>
-              <div>
-                <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Reps / score</div>
-                <input id="saReps" type="number" inputmode="numeric" min="0" placeholder="—"
-                  style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
-                         border:2px solid var(--border-solid);border-radius:12px;
-                         background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
-              </div>
-            </div>
-            <div>
-              <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Notes pour ton coach (optionnel)</div>
-              <input id="saNote" type="text" placeholder="ex : sensations, technique…"
-                style="width:100%;height:48px;padding:0 14px;border:2px solid var(--border-solid);
-                       border-radius:12px;background:var(--white);color:var(--black);
-                       font-family:var(--font);font-size:15px;box-sizing:border-box;">
-            </div>
-          </div>
-        `}
-
-      </div>
-
-      <!-- Note client par exercice -->
-      <div style="padding:0 16px 10px;">
-        ${(() => {
-          const prevNote = this._lastNotes[ex?.exercice_id];
-          return prevNote ? `
-            <div style="font-size:11px;color:var(--gray-muted);background:var(--gold-light);
-                border:1px solid var(--gold-border);border-radius:10px;
-                padding:7px 12px;margin-bottom:6px;line-height:1.5;">
-              💬 <span style="color:var(--gold);font-weight:600;">Ta note sem. passée :</span>
-              <span style="color:var(--black);">${escHtml(prevNote)}</span>
-            </div>` : '';
-        })()}
-        <input id="saClientNote" type="text"
-          value="${escHtml(this._logs[this._exoIdx]?.note_client || '')}"
-          placeholder="💬 Note pour ton coach (optionnel)"
-          oninput="SeanceActivePage._syncNote()"
-          style="width:100%;height:44px;padding:0 14px;
-                 border:1.5px solid var(--border-solid);border-radius:12px;
-                 background:var(--card-bg);color:var(--black);
-                 font-family:var(--font);font-size:14px;box-sizing:border-box;">
-      </div>
-
-      <!-- Boutons -->
-      <div style="padding:16px;margin-top:auto;">
-        ${amrapIdle ? `
-        <button onclick="SeanceActivePage._startAmrap()"
-          style="width:100%;height:58px;background:var(--gold);color:#fff;
-                 border:none;border-radius:16px;font-size:20px;font-weight:700;
-                 cursor:pointer;font-family:var(--font);">
-          ▶ Démarrer
-        </button>
-        ` : `
-        <button id="saValidateBtn" onclick="SeanceActivePage._validate()"
-          ${(inRest || amrapActive) ? 'disabled' : ''}
-          style="width:100%;height:58px;
-                 background:${(inRest || amrapActive) ? 'var(--border-solid)' : 'var(--gold)'};
-                 color:${(inRest || amrapActive) ? 'var(--gray-muted)' : '#fff'};
-                 border:none;border-radius:16px;font-size:18px;font-weight:700;
-                 cursor:${(inRest || amrapActive) ? 'default' : 'pointer'};font-family:var(--font);">
-          ${btnText}
-        </button>
-        `}
-        <button onclick="SeanceActivePage._finishEarly()"
-          style="width:100%;height:44px;background:none;
-                 border:1.5px solid var(--border-solid);border-radius:12px;
-                 color:var(--gray);font-size:13px;font-weight:600;cursor:pointer;
-                 margin-top:8px;font-family:var(--font);">
-          🏁 Terminer & enregistrer maintenant
-        </button>
-        <div style="text-align:center;font-size:11px;color:var(--gray-muted);margin-top:6px;line-height:1.4;">
-          Tu peux t'arrêter à tout moment : tes séries validées sont enregistrées.
-        </div>
-      </div>`;
+  _prescription(ex) {
+    const te = this._type(ex), nb = this._nbSeries(ex);
+    if (te === 'amrap') return `AMRAP ${ex.reps_cible || ''}`.trim();
+    if (te !== 'reps') return `${nb} × ${ex.reps_cible || '?'}`;
+    const reps = Array.from({ length: nb }, (_, k) => this._cible(ex, k).reps);
+    return `${nb} × ${new Set(reps).size === 1 ? reps[0] : reps.join('/')}${ex.reps_secondaire ? ` + ${ex.reps_secondaire}` : ''}`;
   },
 
-  _drawDone(wrap) {
-    clearInterval(this._sessionTimer);
-    clearInterval(this._restTimer);
-    this._removeBanner();
-    const totalSets = this._logs.reduce((a, l) => a + l.sets_data.length, 0);
-
-    const notes = [
-      { key: 'dur',  emoji: '😓', label: 'Difficile' },
-      { key: 'bien', emoji: '😊', label: 'Bien'      },
-      { key: 'feu',  emoji: '🤩', label: 'En feu !'  },
-    ];
-
-    wrap.innerHTML = `
-      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
-                  justify-content:center;padding:32px 20px;text-align:center;">
-        <div id="saTrophyWrap" style="position:relative;display:inline-block;margin-bottom:12px;">
-          <div style="font-size:64px;" class="trophy-anim">🏆</div>
-        </div>
-        <div style="font-size:26px;font-weight:800;color:var(--black);margin-bottom:6px;">Séance terminée !</div>
-        <div style="font-size:14px;color:var(--gray-muted);margin-bottom:24px;">${this._seance?.nom || ''}</div>
-
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:340px;margin-bottom:32px;">
-          ${[
-            { val: this._fmt(this._sessionSeconds), lbl: 'Durée' },
-            { val: this._seance?.exercices?.length || 0, lbl: 'Exercices' },
-            { val: totalSets, lbl: 'Séries' },
-          ].map(c => `
-            <div style="background:var(--card-bg);border-radius:14px;padding:16px 8px;">
-              <div style="font-size:22px;font-weight:800;color:var(--gold);">${c.val}</div>
-              <div style="font-size:11px;color:var(--gray-muted);margin-top:3px;">${c.lbl}</div>
-            </div>`).join('')}
-        </div>
-
-        <!-- Note de séance obligatoire -->
-        <div style="width:100%;max-width:340px;margin-bottom:28px;">
-          <div style="font-size:15px;font-weight:700;color:var(--black);margin-bottom:14px;">
-            Comment s'est passée ta séance ?
-          </div>
-          <div style="display:flex;gap:10px;justify-content:center;">
-            ${notes.map(n => `
-              <button id="saNote_${n.key}" onclick="SeanceActivePage._selectNote('${n.key}')"
-                style="flex:1;padding:14px 8px;border-radius:14px;border:2px solid var(--border-solid);
-                       background:var(--card-bg);cursor:pointer;transition:all .15s;
-                       font-family:var(--font);">
-                <div style="font-size:32px;margin-bottom:4px;">${n.emoji}</div>
-                <div style="font-size:11px;font-weight:600;color:var(--gray);">${n.label}</div>
-              </button>`).join('')}
-          </div>
-        </div>
-
-        <button id="saSaveBtn" onclick="SeanceActivePage._save()" disabled
-          style="width:100%;max-width:340px;height:58px;
-                 background:var(--border-solid);color:var(--gray-muted);
-                 border:none;border-radius:16px;font-size:17px;font-weight:700;
-                 cursor:default;font-family:var(--font);margin-bottom:10px;transition:all .2s;">
-          ✓ Enregistrer la séance
-        </button>
-        <button onclick="SeanceActivePage._quit()"
-          style="background:none;border:none;color:var(--gray-muted);font-size:13px;
-                 cursor:pointer;font-family:var(--font);">
-          Abandonner sans enregistrer
-        </button>
-      </div>`;
-    // Confetti après rendu
-    setTimeout(() => launchConfetti(document.getElementById('saTrophyWrap')), 200);
+  _chargeTxt(ex) {
+    const c = this._cible(ex, 0).charge;
+    if (!c) return '';
+    return /^\d+([.,]\d+)?$/.test(String(c).trim()) ? `${String(c).trim().replace('.', ',')} kg` : String(c);
   },
 
-  _selectNote(key) {
-    this._noteRessenti = key;
-    this._persistDraft();
-    const notes = ['dur', 'bien', 'feu'];
-    notes.forEach(k => {
-      const btn = document.getElementById('saNote_' + k);
-      if (!btn) return;
-      if (k === key) {
-        btn.style.borderColor = 'var(--gold)';
-        btn.style.background  = 'var(--gold-bg,#fffbeb)';
-        btn.style.transform   = 'scale(1.06)';
-      } else {
-        btn.style.borderColor = 'var(--border-solid)';
-        btn.style.background  = 'var(--card-bg)';
-        btn.style.transform   = 'scale(1)';
-      }
+  _reposTxt(s) {
+    if (!s) return 'enchaîner';
+    return s >= 60 ? `${Math.floor(s / 60)} min${s % 60 ? ' ' + String(s % 60).padStart(2, '0') : ''}` : `${s} s`;
+  },
+
+  _derniereFois(ex) {
+    const sets = this._lastSets[ex.exercice_id] || [];
+    if (!sets.length) return '';
+    const reps = sets.map(s => s.reps);
+    const ch = [...new Set(sets.map(s => s.charge).filter(Boolean).map(c => String(c).replace('.', ',')))];
+    return (new Set(reps).size === 1 ? `${reps.length} × ${reps[0]}` : reps.join(' / ')) + (ch.length ? ` @ ${ch.join('/')} kg` : '');
+  },
+
+  _fmt(s) { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; },
+
+  _lettreExo(b, i) { return b.exos.length > 1 ? b.lettre + (b.exos.indexOf(i) + 1) : b.lettre; },
+  _blocDe(i) { return this._blocs.find(b => b.exos.includes(i)); },
+  _blocFait(b) { return b.exos.every(i => this._s[i].every(s => s.fait)); },
+  _exoFait(i) { return this._s[i].every(s => s.fait); },
+  _seriesFaites() { return this._s.reduce((n, l) => n + l.filter(s => s.fait).length, 0); },
+  _premierBlocNonFini() { const i = this._blocs.findIndex(b => !this._blocFait(b)); return i < 0 ? 0 : i; },
+
+  _totaux() {
+    let reps = 0, kg = 0;
+    this._exos.forEach((ex, i) => {
+      if (this._type(ex) !== 'reps') return;
+      this._s[i].forEach(s => {
+        if (!s.fait) return;
+        const r = (parseInt(s.reps) || 0) + (s.e2fait ? parseInt(s.e2) || 0 : 0);
+        reps += r;
+        kg += r * (parseFloat(String(s.kg).replace(',', '.')) || 0);
+      });
     });
-    // Activer le bouton save
-    const saveBtn = document.getElementById('saSaveBtn');
-    if (saveBtn) {
-      saveBtn.disabled          = false;
-      saveBtn.style.background  = 'var(--gold)';
-      saveBtn.style.color       = '#fff';
-      saveBtn.style.cursor      = 'pointer';
-    }
+    return { reps, kg: Math.round(kg) };
   },
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
+  // ── Séance gardée (téléphone + base) ────────────────────────────────────────
 
-  // Lit la charge en normalisant la virgule décimale (clavier FR) → point
-  _readCharge() {
-    const raw = document.getElementById('saCharge')?.value || '';
-    return raw.trim().replace(',', '.');
+  _cleLocale(clientId, seanceId) { return `apex_seance_v2_${clientId}_${seanceId}`; },
+
+  _lireLocal(clientId, seanceId) {
+    try {
+      const v2 = localStorage.getItem(this._cleLocale(clientId, seanceId));
+      if (v2) return JSON.parse(v2);
+      // Ancien brouillon (écran d'avant) : séries validées dans sets_data
+      const v1 = JSON.parse(localStorage.getItem(`apex_seance_draft_${clientId}_${seanceId}`) || 'null');
+      if (!v1?.logs) return null;
+      const exos = {};
+      v1.logs.forEach(l => {
+        const ex = this._exos.find(e => e.id === l.client_prog_exercice_id) || this._exos.find(e => e.exercice_id === l.exercice_id);
+        if (!ex) return;
+        const series = (l.sets_data || []).map(sd => {
+          const [r1, r2] = String(sd.reps ?? '').split('→');
+          return { reps: r1, kg: sd.charge ? String(sd.charge).replace('.', ',') : '', fait: true, e2: r2 ?? (ex.reps_secondaire || ''), e2fait: r2 != null };
+        });
+        exos[ex.id] = { series, note: l.note_client || '' };
+      });
+      return { v: 2, maj: v1.savedAt || 0, secondes: v1.sessionSeconds || 0, ressenti: v1.noteRessenti || null, exos };
+    } catch (_) { return null; }
   },
 
-  _validate() {
-    this._syncNote();
-    const ex = this._exo();
-    if (!ex) return;
-    const effort = ex.type_effort || 'reps';
+  _appliquerEtat(etat) {
+    let donnees = false;
+    this._exos.forEach((ex, i) => {
+      const e = etat.exos?.[ex.id];
+      if (!e) return;
+      const series = (e.series || []).map(s => ({ reps: s.reps ?? '', kg: s.kg ?? '', fait: !!s.fait, e2: s.e2 ?? '', e2fait: !!s.e2fait }));
+      // Les séries pas encore saisies gardent la prescription du coach
+      for (let k = series.length; k < this._s[i].length; k++) series.push(this._s[i][k]);
+      if (series.length) this._s[i] = series;
+      this._notes[i] = e.note || '';
+      if (series.some(s => s.fait) || this._notes[i]) donnees = true;
+    });
+    this._secondes = etat.secondes || 0;
+    this._ressenti = etat.ressenti || null;
+    this._commencee = donnees;
+  },
 
-    // Exercice déjà entièrement loggé (revenu dessus en lecture) → ne rien pousser
-    if (effort === 'reps' && this._serieIdx >= this._nbSeries(ex)) {
-      this._nextExo();
-      return;
-    }
+  _etat() {
+    const exos = {};
+    this._exos.forEach((ex, i) => { exos[ex.id] = { series: this._s[i], note: this._notes[i] }; });
+    return { v: 2, maj: Date.now(), secondes: Math.round(this._secondes), ressenti: this._ressenti, exos };
+  },
 
-    // Reset phase AMRAP après validation du score
-    if (effort === 'amrap' && this._amrapPhase === 'done') this._amrapPhase = 'idle';
+  // Écrit tout de suite dans le téléphone, et dans la base un peu après (ou tout de suite si `maintenant`)
+  _garder() {
+    this._commencee = true;
+    const p = Router.userProfile;
+    try { localStorage.setItem(this._cleLocale(p.id, this._seance.id), JSON.stringify(this._etat())); } catch (_) {}
+    clearTimeout(this._envoi);
+    this._envoi = setTimeout(() => this._envoyer(true), 1500);
+  },
 
-    // ── Logique 2e effort (Rest-Pause, Drop Set, Iso Régressif…) ────────────
-    if (effort === 'reps' && ex.reps_secondaire && this._effortIdx === 0) {
-      // Sauvegarder effort 1, démarrer repos intra-série
-      this._pendingE1 = {
-        reps:   document.getElementById('saReps')?.value   || '0',
-        charge: this._readCharge(),
-      };
-      this._effortIdx = 1;
-      this._intraRest = true;
-      this._startRest(ex.repos_intra_sec || 10);
-      return;
-    }
-    // ────────────────────────────────────────────────────────────────────────
+  _envoyer(maintenant) {
+    if (!maintenant || !this._commencee || !this._seance) return;
+    clearTimeout(this._envoi);
+    this._envoi = null;
+    const p = Router.userProfile;
+    if (!p) return;
+    const etat = this._etat();
+    try { localStorage.setItem(this._cleLocale(p.id, this._seance.id), JSON.stringify(etat)); } catch (_) {}
+    db.saveSeanceEnCours(p.id, this._seance.id, etat).catch(() => {});   // hors réseau : le téléphone garde la séance
+  },
 
-    let set;
-    if (effort === 'reps') {
-      const reps   = document.getElementById('saReps')?.value   || '0';
-      const charge = this._readCharge();
-      if (this._effortIdx === 1 && this._pendingE1) {
-        // Combiner effort 1 + effort 2
-        set = { reps: (this._pendingE1.reps || '0') + '→' + reps, charge: this._pendingE1.charge };
-        this._effortIdx = 0;
-        this._pendingE1 = null;
+  async _oublier() {
+    const p = Router.userProfile;
+    clearTimeout(this._envoi);
+    this._envoi = null;
+    this._commencee = false;
+    try {
+      localStorage.removeItem(this._cleLocale(p.id, this._seance.id));
+      localStorage.removeItem(`apex_seance_draft_${p.id}_${this._seance.id}`);
+    } catch (_) {}
+    await db.deleteSeanceEnCours(p.id, this._seance.id).catch(() => {});
+  },
+
+  // ── Horloge (durée, minuteur) ───────────────────────────────────────────────
+
+  _ticTac() {
+    if (!(location.hash || '').startsWith('#seance-active')) { this._quitterEcran(); return; }
+    const now = Date.now();
+    const delta = now - this._dernierTic;
+    this._dernierTic = now;
+    if (this._vue === 'seance' && delta < 10 * 60000) this._secondes += delta / 1000;
+    if (!this._mt) return;
+    const p = this._mt.phases[this._mt.i];
+    if (!p.monte && this._restant() <= 0) {
+      if (this._mt.i < this._mt.phases.length - 1) {
+        this._mt.i++;
+        this._mt.debutPhase = now;
+        this._bip(this._mt.phases[this._mt.i].travail ? 990 : 660);
       } else {
-        set = { reps, charge };
+        this._bip(990, 600);
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        toast(this._mt.type === 'repos' ? 'Repos terminé : à toi !' : 'Minuteur terminé', 'info');
+        this._mt = null;
+        if (document.getElementById('saMtActif')) this._fermerFeuille();
       }
-    } else {
-      const score = document.getElementById('saReps')?.value || '';
-      const note  = document.getElementById('saNote')?.value || '';
-      set = {
-        reps:   [score, note].filter(Boolean).join(' — ') || ex.reps_cible || '',
-        charge: this._readCharge(),
-      };
     }
-
-    this._logs[this._exoIdx].sets_data.push(set);
-    // Sauvegarde immédiate : la série validée ne peut plus être perdue
-    this._persistDraft();
-
-    const exos    = this._seance.exercices;
-    const nbSer   = this._nbSeries(ex);
-    const nbEx    = exos.length;
-    const lastSer = this._serieIdx + 1 >= nbSer;
-    const lastExo = this._exoIdx + 1 >= nbEx;
-
-    // ── Logique superset ────────────────────────────────────────────────────
-    const group = ex.superset_groupe;
-    if (group) {
-      const nextExo     = exos[this._exoIdx + 1];
-      const nextInGroup = nextExo?.superset_groupe === group;
-
-      if (nextInGroup) {
-        // Enchaîner directement avec le suivant du superset — pas de repos
-        this._exoIdx++;
-        // _serieIdx inchangé : même round
-        this._phase = 'exercice';
-        this._draw();
-        return;
-      }
-
-      // Dernier exercice du groupe pour ce round — trouver le premier du groupe
-      let firstIdx = this._exoIdx;
-      while (firstIdx > 0 && exos[firstIdx - 1]?.superset_groupe === group) firstIdx--;
-
-      if (lastSer) {
-        // Tous les rounds terminés → exercice suivant hors groupe
-        if (lastExo) { this._phase = 'done'; this._draw(); return; }
-        this._exoIdx   = this._exoIdx + 1;
-        this._serieIdx = 0;
-      } else {
-        // Prochain round → revenir au premier du groupe, série suivante
-        this._exoIdx   = firstIdx;
-        this._serieIdx++;
-      }
-
-      this._startRest(ex.repos_secondes ?? 90);
-      return;
-    }
-    // ────────────────────────────────────────────────────────────────────────
-
-    // Exercice normal
-    if (lastSer && lastExo) { this._phase = 'done'; this._draw(); return; }
-    if (lastSer) { this._exoIdx++; this._serieIdx = 0; }
-    else         { this._serieIdx++; }
-    this._startRest(ex.repos_secondes ?? 90);
+    this._majBas();
+    if (document.getElementById('saMtActif')) this._feuilleMinuteurActif();
   },
 
-  _startRest(secs) {
-    // Repos à 0 (superset / enchaînement) → pas de minuteur, on enchaîne direct
-    if (!secs || secs <= 0) {
-      this._phase     = 'exercice';
-      this._intraRest = false;
-      this._removeBanner();
-      this._draw();
-      this._enableValidateBtn();
-      return;
-    }
-
-    this._phase          = 'repos';
-    this._restTotal      = secs;
-    this._restRemaining  = secs;
-
-    // Show the next exercise/series with the validate button disabled
-    this._draw();
-
-    // Inject the floating rest banner and start the countdown
-    this._startRestBanner();
+  _quitterEcran() {
+    this._envoyer(true);
+    this._arreter();
   },
 
-  _startRestBanner() {
-    this._removeBanner();
+  _arreter() {
+    clearInterval(this._tic);
+    this._tic = null;
+    if (this._surVisibilite) document.removeEventListener('visibilitychange', this._surVisibilite);
+    this._surVisibilite = null;
+    this._wake?.release?.().catch(() => {});
+    this._wake = null;
+    document.getElementById('saVoile')?.remove();
+  },
 
-    // Extra bottom padding so content isn't hidden behind the banner
-    const wrap = document.getElementById('saWrap');
-    if (wrap) wrap.style.paddingBottom = '120px';
+  async _garderEcranAllume() {
+    try { if ('wakeLock' in navigator && !this._wake) this._wake = await navigator.wakeLock.request('screen'); } catch (_) {}
+  },
 
-    const banner = document.createElement('div');
-    banner.id = 'saRestBanner';
-    banner.style.cssText = [
-      'position:fixed;bottom:0;left:0;right:0;z-index:1000;',
-      'background:rgba(12,12,12,0.96);',
-      'backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);',
-      'border-top:1px solid rgba(255,255,255,0.07);',
-      'padding:12px 16px calc(14px + env(safe-area-inset-bottom));',
-    ].join('');
+  _bip(f = 880, ms = 180) {
+    try {
+      this._audio = this._audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = this._audio.createOscillator(), g = this._audio.createGain();
+      o.frequency.value = f; g.gain.value = 0.3;
+      o.connect(g); g.connect(this._audio.destination);
+      o.start(); o.stop(this._audio.currentTime + ms / 1000);
+    } catch (_) {}
+  },
 
-    banner.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:22px;line-height:1;">💤</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;
-                      letter-spacing:.8px;margin-bottom:1px;">${this._intraRest
-            ? `Repos intra-série · Effort 2 : ${this._exo()?.reps_secondaire || '?'} reps`
-            : `Récupération · Prochain : ${(() => {
-                const exos = this._seance?.exercices || [];
-                const next = exos[this._exoIdx];
-                return next?.exercices_bdd?.nom || '—';
-              })()}`
-          }</div>
-          <div id="saRestSecs" style="font-size:30px;font-weight:900;color:#fff;
-                                      font-family:var(--font);line-height:1.1;">
-            ${this._fmt(this._restRemaining)}
-          </div>
+  // ── Écrans ──────────────────────────────────────────────────────────────────
+
+  _dessiner() {
+    if (this._vue === 'seance') return this._dessinerSeance();
+    if (this._vue === 'fin') return this._dessinerFin();
+    this._dessinerApercu();
+  },
+
+  _dessinerApercu() {
+    const nf = this._seriesFaites();
+    const s = this._seance;
+    document.getElementById('saWrap').innerHTML = `
+      <div class="sa-ap-tete">
+        <button class="sa-icone" aria-label="Retour" onclick="SeanceActivePage._retour()">←</button>
+        <div style="min-width:0;">
+          <div class="sa-ap-nom">${escHtml(s.nom || 'Séance')}</div>
+          <div class="sa-ap-meta">${this._exos.length} exercice${this._exos.length > 1 ? 's' : ''}</div>
         </div>
-        <button onclick="SeanceActivePage._skipRest()"
-          style="padding:10px 20px;background:rgba(255,255,255,0.1);
-                 border:1.5px solid rgba(255,255,255,0.18);border-radius:12px;
-                 font-size:14px;font-weight:600;cursor:pointer;color:#fff;
-                 font-family:var(--font);white-space:nowrap;flex-shrink:0;">
-          ⏭ Passer
-        </button>
       </div>
-      <div style="margin-top:9px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;">
-        <div id="saRestBar" style="height:100%;background:var(--gold);border-radius:2px;
-             transition:width 1s linear;width:100%;"></div>
-      </div>`;
-
-    document.body.appendChild(banner);
-
-    this._restStartTime = Date.now();
-    clearInterval(this._restTimer);
-    this._restTimer = setInterval(() => {
-      this._restRemaining = Math.max(0, this._restTotal - Math.floor((Date.now() - this._restStartTime) / 1000));
-      const d = document.getElementById('saRestSecs');
-      const b = document.getElementById('saRestBar');
-      if (d) d.textContent = this._fmt(this._restRemaining);
-      if (b) b.style.width = (this._restTotal > 0
-        ? (this._restRemaining / this._restTotal * 100) : 0).toFixed(1) + '%';
-
-      if (this._restRemaining <= 0) {
-        clearInterval(this._restTimer);
-        this._restTimer     = null;
-        this._restStartTime = 0;
-        this._phase     = 'exercice';
-        this._intraRest = false;
-        this._removeBanner();
-        this._enableValidateBtn();
-        if (navigator.vibrate && Router.currentPage === 'seance-active') navigator.vibrate([200, 100, 200]);
-      }
-    }, 1000);
-  },
-
-  _removeBanner() {
-    document.getElementById('saRestBanner')?.remove();
-    const wrap = document.getElementById('saWrap');
-    if (wrap) wrap.style.paddingBottom = '';
-  },
-
-  _enableValidateBtn() {
-    const btn = document.getElementById('saValidateBtn');
-    if (!btn) return;
-    btn.disabled = false;
-    btn.style.background = 'var(--gold)';
-    btn.style.color = '#fff';
-    btn.style.cursor = 'pointer';
-    const ex   = this._exo();
-    const isLast = ex
-      ? (this._serieIdx + 1 >= this._nbSeries(ex) && this._exoIdx + 1 >= (this._seance?.exercices?.length || 1))
-      : true;
-    btn.textContent = this._effortIdx === 1 ? '✓ Effort 2 validé'
-                    : isLast ? '🏁 Terminer la séance' : '✓ Série validée';
-  },
-
-  // ── AMRAP Timer ─────────────────────────────────────────────────────────────
-
-  _parseAmrapSecs(val) {
-    if (!val) return 300;
-    const colon = String(val).match(/^(\d+):(\d+)$/);
-    if (colon) return parseInt(colon[1]) * 60 + parseInt(colon[2]);
-    const m = String(val).match(/(\d+)\s*(?:min|m)/i);
-    if (m) return parseInt(m[1]) * 60;
-    const n = parseInt(val);
-    return isNaN(n) ? 300 : n;
-  },
-
-  _beep(freq = 880, ms = 180, vol = 0.4) {
-    try {
-      const ctx = this._audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      if (ctx.state === 'suspended') ctx.resume();
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(vol, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ms / 1000);
-      osc.start(); osc.stop(ctx.currentTime + ms / 1000);
-    } catch (_) {}
-  },
-
-  _speak(text) {
-    try {
-      window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.lang = 'fr-FR'; utt.rate = 0.95; utt.volume = 1;
-      window.speechSynthesis.speak(utt);
-    } catch (_) {}
-  },
-
-  _renderAmrapSection(ex) {
-    const totalSecs = this._parseAmrapSecs(ex.reps_cible);
-    const phase     = this._amrapPhase;
-
-    if (phase === 'idle') {
-      const lastSets = this._lastSets[ex.exercice_id] || [];
-      return `
-        <div style="text-align:center;padding:28px 0 12px;">
-          <div style="font-size:64px;font-weight:900;color:var(--black);
-                      font-variant-numeric:tabular-nums;letter-spacing:-2px;line-height:1;">
-            ${this._fmt(totalSecs)}
-          </div>
-          <div style="font-size:12px;color:var(--gray-muted);margin-top:6px;">Durée de travail</div>
-        </div>
-        ${lastSets.length > 0 ? `
-        <div style="font-size:11px;color:var(--gray-muted);background:var(--card-bg);
-            border-radius:8px;padding:6px 10px;margin-bottom:8px;">
-          📅 Dernière séance : ${lastSets.map(s => `${s.reps}${s.charge ? ' · ' + s.charge + 'kg' : ''}`).join(' &nbsp;')}
-        </div>` : ''}`;
-    }
-
-    if (phase === 'countdown') {
-      return `
-        <div style="text-align:center;padding:20px 0 12px;">
-          <div style="font-size:12px;color:var(--gray-muted);margin-bottom:8px;text-transform:uppercase;
-                      letter-spacing:.8px;font-weight:600;">Prépare-toi…</div>
-          <div id="saAmrapDisplay" style="font-size:110px;font-weight:900;color:var(--gold);
-                      font-variant-numeric:tabular-nums;line-height:1;">
-            ${this._amrapRemaining}
-          </div>
-        </div>`;
-    }
-
-    if (phase === 'work') {
-      const pct   = this._amrapTotal > 0 ? (this._amrapRemaining / this._amrapTotal * 100).toFixed(1) : 0;
-      const color = this._amrapRemaining <= 10 ? '#ef4444'
-                  : this._amrapRemaining <= 60 ? 'var(--gold)' : 'var(--black)';
-      return `
-        <div style="text-align:center;padding:16px 0 12px;">
-          <div id="saAmrapDisplay" style="font-size:80px;font-weight:900;color:${color};
-                      font-variant-numeric:tabular-nums;letter-spacing:-3px;line-height:1;
-                      transition:color .3s;">
-            ${this._fmt(this._amrapRemaining)}
-          </div>
-          <div style="margin:10px 0 4px;height:5px;background:var(--border-solid);border-radius:3px;overflow:hidden;">
-            <div id="saAmrapBar" style="height:100%;background:var(--gold);border-radius:3px;
-                 width:${pct}%;transition:width 1s linear;"></div>
-          </div>
-          <div style="font-size:11px;color:var(--gray-muted);">Temps restant</div>
-        </div>`;
-    }
-
-    // done — afficher les inputs de score
-    const lastSets = this._lastSets[ex.exercice_id] || [];
-    return `
-      <div style="text-align:center;padding:12px 0 4px;">
-        <div style="font-size:44px;margin-bottom:4px;">🔥</div>
-        <div style="font-size:15px;font-weight:700;color:var(--black);">Temps écoulé !</div>
-        <div style="font-size:12px;color:var(--gray-muted);margin-bottom:14px;">Note ton score</div>
+      <div class="sa-ap-corps">
+        ${this._commencee ? `
+          <div class="sa-reprise">⏸ <div><b>Séance commencée</b> · ${nf} série${nf > 1 ? 's' : ''} faite${nf > 1 ? 's' : ''}. Tu reprends là où tu t'es arrêté.
+            <button class="sa-lien" onclick="SeanceActivePage._recommencer()">Recommencer à zéro</button></div></div>` : ''}
+        ${s.notes_coach ? `<div class="sa-consigne">📌 ${escHtml(s.notes_coach)}</div>` : ''}
+        ${this._exos.length ? this._blocs.map(b => `
+          <div class="sa-ap-bloc">
+            ${b.exos.length > 1 ? '<div class="sa-ap-bloc-titre">Superset</div>' : ''}
+            ${b.exos.map((i, n) => {
+              const ex = this._exos[i];
+              return `${n ? '<div class="sa-lien-ss"></div>' : ''}
+                <button class="sa-ap-exo" onclick="SeanceActivePage._ouvrirSeance(${this._blocs.indexOf(b)})">
+                  <div class="sa-lettre ${this._exoFait(i) ? 'fait' : ''}">${this._lettreExo(b, i)}</div>
+                  <div style="min-width:0;">
+                    <div class="sa-ap-exo-nom">${escHtml(ex.exercices_bdd?.nom || 'Exercice')}</div>
+                    <div class="sa-ap-exo-pres">${escHtml(this._prescription(ex))}</div>
+                    ${this._chargeTxt(ex) ? `<div class="sa-ap-exo-plus">${escHtml(this._chargeTxt(ex))}</div>` : ''}
+                  </div>
+                </button>`;
+            }).join('')}
+          </div>`).join('') : '<div class="sa-vide">Aucun exercice dans cette séance.</div>'}
       </div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
-        ${lastSets.length > 0 ? `
-        <div style="font-size:11px;color:var(--gray-muted);background:var(--card-bg);
-            border-radius:8px;padding:6px 10px;">
-          📅 Dernière séance : ${lastSets.map((s,i)=>`S${i+1}: ${s.reps}${s.charge?' · '+s.charge+'kg':''}`).join(' &nbsp;')}
-        </div>` : ''}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div>
-            <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Reps total</div>
-            <input id="saReps" type="number" inputmode="numeric" min="0" placeholder="—"
-              style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
-                     border:2px solid var(--border-solid);border-radius:12px;
-                     background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
-          </div>
-          <div>
-            <div style="font-size:9px;color:var(--gray-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Charge (kg)</div>
-            <input id="saCharge" type="text" inputmode="decimal"
-              value="${lastSets[0]?.charge ?? ''}" placeholder="0"
-              style="width:100%;height:58px;text-align:center;font-size:26px;font-weight:800;
-                     border:2px solid var(--border-solid);border-radius:12px;
-                     background:var(--white);color:var(--black);font-family:var(--font);box-sizing:border-box;">
-          </div>
+      ${this._exos.length ? `<div class="sa-bas-fixe">
+        <button class="sa-btn-plein" onclick="SeanceActivePage._ouvrirSeance(${this._commencee ? this._premierBlocNonFini() : 0})">
+          ${this._commencee ? '▶ Reprendre la séance' : '▶ Démarrer la séance'}</button>
+      </div>` : ''}`;
+  },
+
+  _retour() {
+    this._envoyer(true);
+    window.location.hash = '#entrainement';
+  },
+
+  _recommencer() {
+    if (!confirm('Recommencer la séance à zéro ?\nLes séries déjà cochées seront effacées.')) return;
+    this._oublier();
+    this._s = this._exos.map(ex => Array.from({ length: this._nbSeries(ex) }, (_, k) => this._serieVide(ex, k)));
+    this._notes = this._exos.map(() => '');
+    this._secondes = 0;
+    this._ressenti = null;
+    this._dessinerApercu();
+  },
+
+  _ouvrirSeance(bi) {
+    this._vue = 'seance';
+    this._bloc = bi;
+    this._dernierTic = Date.now();
+    this._garderEcranAllume();
+    this._dessinerSeance();
+    requestAnimationFrame(() => { const p = document.getElementById('saPiste'); if (p) p.scrollLeft = bi * p.clientWidth; });
+  },
+
+  _fermerSeance() {
+    this._fermerFeuille();
+    this._envoyer(true);
+    this._vue = 'apercu';
+    this._dessinerApercu();
+  },
+
+  _dessinerSeance() {
+    document.getElementById('saWrap').innerHTML = `
+      <div class="sa-haut">
+        <div class="sa-haut-ligne">
+          <button class="sa-icone" aria-label="Fermer (la séance est gardée)" onclick="SeanceActivePage._fermerSeance()">⌄</button>
+          <div class="sa-points" id="saPoints"></div>
+          <button class="sa-icone" aria-label="Minuteurs" onclick="SeanceActivePage._ouvrirMinuteurs()">⏱</button>
         </div>
+        <div class="sa-totaux" id="saTotaux"></div>
+      </div>
+      <div class="sa-piste" id="saPiste">
+        ${this._blocs.map((b, bi) => `<section class="sa-page" data-bloc="${bi}">${this._htmlBloc(b)}</section>`).join('')}
+      </div>
+      <div class="sa-bas" id="saBas"></div>`;
+    this._majHaut();
+    this._majBas();
+    let fin;
+    document.getElementById('saPiste').addEventListener('scroll', () => {
+      clearTimeout(fin);
+      fin = setTimeout(() => {
+        const p = document.getElementById('saPiste');
+        if (!p) return;
+        const i = Math.round(p.scrollLeft / p.clientWidth);
+        if (i !== this._bloc) { this._bloc = i; this._majHaut(); this._majBas(); }
+      }, 90);
+    });
+  },
+
+  _htmlBloc(b) {
+    const ss = b.exos.length > 1;
+    return `<div class="sa-page-bloc">Bloc ${b.lettre}${ss ? ' · superset, enchaîne les exercices' : ''}</div>` +
+      b.exos.map(i => {
+        const ex = this._exos[i], te = this._type(ex), vid = this._videoId(ex);
+        const derniere = this._derniereFois(ex), noteAvant = this._lastNotes[ex.exercice_id];
+        const chrono = (te === 'amrap' || te === 'temps') && ex.reps_cible;
+        return `
+          <div class="sa-exo">
+            <div class="sa-exo-tete"><div class="sa-exo-nom">${escHtml(ex.exercices_bdd?.nom || 'Exercice')}</div>${ss ? `<span class="sa-ss-tag">${this._lettreExo(b, i)}</span>` : ''}</div>
+            <div class="sa-infos">
+              ${vid ? `<button class="sa-vignette" style="background-image:url('https://img.youtube.com/vi/${vid}/mqdefault.jpg')" aria-label="Voir la vidéo" onclick="SeanceActivePage._ouvrirVideo(${i})"><span>▶</span></button>`
+                    : '<div class="sa-vignette vide"><span>Pas de vidéo</span></div>'}
+              <div class="sa-fiche">
+                <div class="sa-fiche-l">Objectif <b>${escHtml(this._prescription(ex))}</b></div>
+                <div class="sa-fiche-l">Charge <b>${escHtml(this._chargeTxt(ex) || '—')}</b></div>
+                <div class="sa-fiche-l">Dernière fois <b>${escHtml(derniere || '—')}</b></div>
+                <div class="sa-fiche-l">Repos <b>${escHtml(this._reposTxt(ex.repos_secondes ?? 90))}</b></div>
+              </div>
+            </div>
+            ${ex.notes?.trim() ? `<div class="sa-consigne-exo"><b>Consigne du coach :</b> ${escHtml(ex.notes.trim())}</div>` : ''}
+            ${ex.reps_secondaire ? `<div class="sa-consigne-exo"><b>2e effort :</b> après chaque série, pause de ${ex.repos_intra_sec || 10} s puis ${escHtml(ex.reps_secondaire)} reps.</div>` : ''}
+            ${chrono ? `<button class="sa-btn-chrono" onclick="SeanceActivePage._chronoExo(${i})">▶ Lancer le minuteur · ${escHtml(ex.reps_cible)}</button>` : ''}
+            <div class="sa-series" id="saSeries${i}">${this._htmlSeries(i)}</div>
+            <div class="sa-plus-moins">
+              <button class="sa-rond" aria-label="Retirer une série" onclick="SeanceActivePage._changerSeries(${i}, -1)"
+                ${this._s[i].length <= 1 || this._s[i][this._s[i].length - 1].fait ? 'disabled' : ''}>−</button>
+              <span>Série</span>
+              <button class="sa-rond" aria-label="Ajouter une série" onclick="SeanceActivePage._changerSeries(${i}, 1)">+</button>
+            </div>
+            ${noteAvant ? `<div class="sa-note-avant">Ta note la dernière fois : ${escHtml(noteAvant)}</div>` : ''}
+            <input class="sa-note" placeholder="Note pour ton coach…" value="${escHtml(this._notes[i])}"
+              oninput="SeanceActivePage._noter(${i}, this.value)">
+          </div>`;
+      }).join('');
+  },
+
+  _htmlSeries(i) {
+    const ex = this._exos[i], te = this._type(ex);
+    const col = { reps: 'Reps', temps: 'Durée', amrap: 'Score', distance: 'Distance' }[te] || 'Reps';
+    return `<div class="sa-series-tete"><span>#</span><span>${col}</span><span>Kg</span><span></span></div>` +
+      this._s[i].map((s, k) => {
+        const conseil = this._kgConseil(i, k);
+        return `
+          <div class="sa-serie ${s.fait ? 'faite' : ''}">
+            <span class="sa-serie-n">${k + 1}</span>
+            <button class="sa-case ${s.reps === '' ? 'vide' : ''}" onclick="SeanceActivePage._ouvrirPave(${i}, ${k}, 'reps')">${escHtml(s.reps === '' ? (te === 'amrap' ? 'score' : '—') : s.reps)}</button>
+            <button class="sa-case ${s.kg === '' ? 'vide' : ''}" onclick="SeanceActivePage._ouvrirPave(${i}, ${k}, 'kg')">${escHtml(s.kg === '' ? conseil : s.kg)}</button>
+            <button class="sa-coche ${s.fait ? 'on' : ''}" aria-label="Série ${k + 1} faite" onclick="SeanceActivePage._cocher(${i}, ${k})">✓</button>
+          </div>
+          ${te === 'reps' && ex.reps_secondaire ? `
+          <div class="sa-e2">
+            <span></span>
+            <div class="sa-e2-lib">↳ 2e effort
+              <button class="sa-e2-val" onclick="SeanceActivePage._ouvrirPave(${i}, ${k}, 'e2')">${escHtml(s.e2 || '—')}</button> reps</div>
+            <button class="sa-coche petite ${s.e2fait ? 'on' : ''}" aria-label="2e effort de la série ${k + 1} fait" onclick="SeanceActivePage._cocherE2(${i}, ${k})">✓</button>
+          </div>` : ''}`;
+      }).join('');
+  },
+
+  _majSeries(i) {
+    const el = document.getElementById('saSeries' + i);
+    if (el) el.innerHTML = this._htmlSeries(i);
+    this._majHaut();
+  },
+
+  _majBloc(i) {
+    const bi = this._blocs.indexOf(this._blocDe(i));
+    const sec = document.querySelector(`.sa-page[data-bloc="${bi}"]`);
+    if (sec) sec.innerHTML = this._htmlBloc(this._blocs[bi]);
+    this._majHaut();
+  },
+
+  _majHaut() {
+    const pts = document.getElementById('saPoints');
+    if (!pts) return;
+    pts.innerHTML = this._blocs.map((b, i) =>
+      `<button class="sa-point ${i === this._bloc ? 'ici' : ''} ${this._blocFait(b) ? 'fait' : ''}" aria-label="Bloc ${b.lettre}" onclick="SeanceActivePage._allerBloc(${i})"></button>`).join('');
+    const t = this._totaux();
+    document.getElementById('saTotaux').innerHTML = `<span><b>${t.reps}</b>reps</span><span><b>${t.kg}</b>kg soulevés</span>`;
+  },
+
+  _allerBloc(i) {
+    const p = document.getElementById('saPiste');
+    if (!p) return;
+    i = Math.max(0, Math.min(this._blocs.length - 1, i));
+    p.scrollTo({ left: i * p.clientWidth, behavior: 'smooth' });
+  },
+
+  _majBas() {
+    const bas = document.getElementById('saBas');
+    if (!bas) return;
+    const dernier = this._bloc >= this._blocs.length - 1;
+    let centre = `<button class="sa-minut" onclick="SeanceActivePage._ouvrirMinuteurs()">⏱ Minuteur</button>`;
+    if (this._mt) {
+      const p = this._mt.phases[this._mt.i], r = this._restant();
+      const frac = p.monte ? (r % 60) / 60 : Math.max(0, r / p.dur);
+      const C = 2 * Math.PI * 28;
+      centre = `<button class="sa-anneau-btn" aria-label="Ouvrir le minuteur" onclick="SeanceActivePage._feuilleMinuteurActif()">
+        <div class="sa-anneau"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" style="stroke:var(--border-solid)" stroke-width="6"/>
+          <circle cx="32" cy="32" r="28" fill="none" class="${p.travail ? 'travail' : 'repos'}" stroke-width="6" stroke-linecap="round"
+            stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - frac)).toFixed(1)}"/></svg>
+          <div class="t">${this._fmt(r)}</div></div>
+        <div class="sa-anneau-lib">${escHtml(this._mt.lib)}</div></button>`;
+    }
+    bas.innerHTML = `
+      <button class="sa-nav" onclick="SeanceActivePage._allerBloc(${this._bloc - 1})" ${this._bloc === 0 ? 'disabled' : ''}><span class="fl">←</span>Précédent</button>
+      <div>${centre}</div>
+      ${dernier ? `<button class="sa-nav fin" onclick="SeanceActivePage._terminer()"><span class="fl">✓</span>Terminer</button>`
+                : `<button class="sa-nav" onclick="SeanceActivePage._allerBloc(${this._bloc + 1})"><span class="fl">→</span>Suivant</button>`}`;
+  },
+
+  // ── Saisie ──────────────────────────────────────────────────────────────────
+
+  _noter(i, v) {
+    this._notes[i] = v;
+    this._garder();
+  },
+
+  _changerSeries(i, d) {
+    const l = this._s[i];
+    if (d > 0) l.push({ ...this._serieVide(this._exos[i], l.length), kg: l[l.length - 1]?.kg || '' });
+    else if (l.length > 1 && !l[l.length - 1].fait) l.pop();
+    this._garder();
+    this._majBloc(i);
+  },
+
+  // Cocher une série : pause du 2e effort s'il y en a un, sinon repos
+  _cocher(i, k) {
+    const s = this._s[i][k], ex = this._exos[i];
+    s.fait = !s.fait;
+    if (!s.fait) s.e2fait = false;
+    if (s.fait && s.kg === '') s.kg = this._kgConseil(i, k);
+    this._garder();
+    this._majSeries(i);
+    if (!s.fait) return;
+    this._bip(0, 1);   // débloque le son sur iPhone (il faut un geste du client)
+    if (this._type(ex) === 'reps' && ex.reps_secondaire && !s.e2fait) {
+      this._lancerMinuteur({ type: 'repos', lib: 'Pause 2e effort', phases: [{ nom: 'Pause avant le 2e effort', dur: ex.repos_intra_sec || 10 }] });
+      return;
+    }
+    this._reposApres(i);
+  },
+
+  _cocherE2(i, k) {
+    const s = this._s[i][k];
+    s.e2fait = !s.e2fait;
+    if (s.e2fait && !s.fait) { s.fait = true; if (s.kg === '') s.kg = this._kgConseil(i, k); }
+    this._garder();
+    this._majSeries(i);
+    if (s.e2fait) this._reposApres(i);
+  },
+
+  _reposApres(i) {
+    const b = this._blocDe(i), ex = this._exos[i];
+    if (b.exos.length > 1 && b.exos[b.exos.length - 1] !== i) {
+      const suiv = this._exos[b.exos[b.exos.indexOf(i) + 1]];
+      toast('Enchaîne : ' + escHtml(suiv.exercices_bdd?.nom || 'exercice suivant'), 'info', 1800);
+      return;
+    }
+    if (this._blocFait(b)) toast(`Bloc ${b.lettre} terminé 💪`, 'success', 1800);
+    const repos = ex.repos_secondes ?? 90;
+    if (repos > 0) this._lancerMinuteur({ type: 'repos', lib: 'Repos', phases: [{ nom: 'Repos', dur: repos }] });
+  },
+
+  _chronoExo(i) {
+    const ex = this._exos[i];
+    const dur = this._enSecondes(ex.reps_cible);
+    this._lancerMinuteur({ type: 'effort', lib: this._type(ex) === 'amrap' ? 'AMRAP' : 'Effort', phases: [{ nom: ex.exercices_bdd?.nom || 'Effort', dur, travail: true }] });
+    this._feuilleMinuteurActif();
+  },
+
+  _enSecondes(val) {
+    const v = String(val || '');
+    const mmss = v.match(/^(\d+):(\d{1,2})$/);
+    if (mmss) return parseInt(mmss[1]) * 60 + parseInt(mmss[2]);
+    const min = v.match(/(\d+)\s*(?:min|m)\b/i);
+    if (min) return parseInt(min[1]) * 60;
+    const n = parseInt(v);
+    return isNaN(n) ? 300 : (/s\b|sec/i.test(v) ? n : n * 60);
+  },
+
+  // ── Pavé numérique ──────────────────────────────────────────────────────────
+
+  _ouvrirPave(i, k, champ) {
+    const s = this._s[i][k];
+    this._pave = { i, k, champ, val: String(champ === 'kg' ? s.kg : champ === 'e2' ? s.e2 : s.reps), neuf: true };
+    this._feuillePave();
+  },
+
+  _feuillePave() {
+    const { i, k, champ } = this._pave;
+    const ex = this._exos[i], te = this._type(ex);
+    const kg = champ === 'kg';
+    const unite = kg ? 'kg' : champ === 'e2' ? 'reps' : { temps: 'durée', distance: 'distance', amrap: 'score' }[te] || 'reps';
+    const sep = kg || te === 'distance' ? ',' : te === 'temps' && champ === 'reps' ? ':' : '';
+    const conseil = kg ? this._kgConseil(i, k) : '';
+    const s = this._s[i][k];
+    const touche = n => `<button class="sa-touche" onclick="SeanceActivePage._taper('${n}')">${n}</button>`;
+    this._feuille(`
+      <div class="sa-f-titre"><div style="min-width:0;"><h2>${escHtml(ex.exercices_bdd?.nom || 'Exercice')}</h2>
+        <div class="sa-f-sous">Série ${k + 1}${champ === 'e2' ? ' · 2e effort' : ''}</div></div>
+        <button class="sa-icone" aria-label="Fermer" onclick="SeanceActivePage._fermerFeuille()">⌄</button></div>
+      <div class="sa-pave-val"><span class="v">${escHtml(this._pave.val || '0')}</span><span class="sa-unite">${unite}</span></div>
+      <div class="sa-pave">
+        ${touche(1)}${touche(2)}${touche(3)}
+        <button class="sa-act bleu" onclick="SeanceActivePage._validerPave(true)">${champ === 'e2' ? (s.e2fait ? 'OK' : 'Valider le<br>2e effort') : (s.fait ? 'OK' : 'Valider<br>la série')}</button>
+        ${touche(4)}${touche(5)}${touche(6)}
+        <button class="sa-act clair" onclick="SeanceActivePage._validerPave(false)">OK</button>
+        ${touche(7)}${touche(8)}${touche(9)}
+        ${conseil ? `<button class="sa-act gris" onclick="SeanceActivePage._pave.val='${escJs(conseil)}';SeanceActivePage._pave.neuf=false;SeanceActivePage._feuillePave()">Comme avant<br>${escHtml(conseil)} kg</button>` : '<span></span>'}
+        ${sep ? touche(sep) : '<span></span>'}${touche(0)}
+        <button class="sa-touche" aria-label="Effacer" onclick="SeanceActivePage._effacer()">⌫</button><span></span>
+      </div>`);
+  },
+
+  _taper(c) {
+    const p = this._pave;
+    if (p.neuf) { p.val = ''; p.neuf = false; }
+    if (p.val.length < 7) p.val += c;
+    this._feuillePave();
+  },
+
+  _effacer() {
+    const p = this._pave;
+    p.val = p.neuf ? '' : p.val.slice(0, -1);
+    p.neuf = false;
+    this._feuillePave();
+  },
+
+  _validerPave(etCocher) {
+    const { i, k, champ, val } = this._pave;
+    const s = this._s[i][k];
+    s[champ] = val;
+    this._fermerFeuille();
+    this._garder();
+    this._majSeries(i);
+    if (!etCocher) return;
+    if (champ === 'e2') { if (!s.e2fait) this._cocherE2(i, k); }
+    else if (!s.fait) this._cocher(i, k);
+  },
+
+  // ── Minuteurs ───────────────────────────────────────────────────────────────
+
+  _OUTILS: [
+    ['repos', '💤', 'Repos', 'Compte à rebours'],
+    ['chrono', '⏱', 'Chronomètre', 'Le temps qui passe'],
+    ['amrap', '🔥', 'AMRAP', 'Max de tours en un temps'],
+    ['emom', '🔁', 'EMOM', 'Un départ chaque minute'],
+    ['tabata', '⚡', 'Tabata', '20 s / 10 s'],
+    ['intervalles', '🎛', 'Intervalles', 'Travail / repos réglables'],
+  ],
+
+  _ouvrirMinuteurs() {
+    if (this._mt) return this._feuilleMinuteurActif();
+    this._feuille(`
+      <div class="sa-f-titre"><h2>Minuteurs</h2><button class="sa-icone" aria-label="Fermer" onclick="SeanceActivePage._fermerFeuille()">⌄</button></div>
+      <div class="sa-f-sous">Le repos se lance tout seul quand tu coches une série, avec le temps prévu par ton coach.</div>
+      <div class="sa-outils">${this._OUTILS.map(([k, ic, n, d]) => `
+        <button class="sa-outil" onclick="SeanceActivePage._reglerOutil('${k}')"><div class="ic">${ic}</div><div class="n">${n}</div><div class="d">${d}</div></button>`).join('')}</div>`);
+  },
+
+  _pas(cle, d, min, max) {
+    this._cfg[cle] = Math.max(min, Math.min(max, this._cfg[cle] + d));
+    this._reglerOutil(this._outil);
+  },
+
+  _reglerOutil(k) {
+    this._outil = k;
+    const titre = this._OUTILS.find(o => o[0] === k)[2];
+    const sec = v => this._fmt(v), mn = v => v + ' min', fois = v => '× ' + v;
+    const ligne = (lib, sous, cle, d, min, max, aff) => `
+      <div class="sa-reglage"><div class="lib">${lib}${sous ? `<small>${sous}</small>` : ''}</div>
+        <div class="sa-pas"><button aria-label="Moins" onclick="SeanceActivePage._pas('${cle}', ${-d}, ${min}, ${max})">−</button>
+          <span class="v">${aff(this._cfg[cle])}</span>
+          <button aria-label="Plus" onclick="SeanceActivePage._pas('${cle}', ${d}, ${min}, ${max})">+</button></div></div>`;
+    let corps = '';
+    if (k === 'repos') corps = `<div class="sa-rapides">${[30, 45, 60, 90, 120, 180].map(s => `<button class="sa-rapide" onclick="SeanceActivePage._cfg.repos=${s};SeanceActivePage._demarrer('repos')">${this._fmt(s)}</button>`).join('')}</div>`
+      + ligne('Durée', 'Réglage libre', 'repos', 15, 15, 600, sec);
+    if (k === 'chrono') corps = '<div class="sa-f-sous" style="margin-block:10px;">Compte le temps jusqu\'à ce que tu l\'arrêtes.</div>';
+    if (k === 'amrap') corps = ligne('Durée', 'Le plus de tours possible', 'amrap', 1, 1, 60, mn);
+    if (k === 'emom') corps = ligne('Nombre de tours', '', 'emomTours', 1, 1, 60, fois) + ligne('Un départ toutes les', '', 'emomInt', 15, 15, 300, sec);
+    if (k === 'tabata') corps = ligne('Tours', '20 s de travail, 10 s de repos', 'tabTours', 1, 1, 20, fois);
+    if (k === 'intervalles') corps = ligne('Travail', '', 'intTravail', 5, 5, 600, sec) + ligne('Repos', '', 'intRepos', 5, 0, 600, sec) + ligne('Tours', '', 'intTours', 1, 1, 50, fois);
+    this._feuille(`
+      <div class="sa-f-titre"><div><button class="sa-retour-outils" onclick="SeanceActivePage._ouvrirMinuteurs()">‹ Minuteurs</button><h2>${titre}</h2></div>
+        <button class="sa-icone" aria-label="Fermer" onclick="SeanceActivePage._fermerFeuille()">⌄</button></div>
+      ${corps}
+      <button class="sa-btn-plein vert" style="margin-top:14px;" onclick="SeanceActivePage._demarrer('${k}')">▶ Démarrer</button>`);
+  },
+
+  _demarrer(k) {
+    const c = this._cfg, lib = this._OUTILS.find(o => o[0] === k)[2];
+    let phases = [];
+    if (k === 'repos') phases = [{ nom: 'Repos', dur: c.repos }];
+    if (k === 'chrono') phases = [{ nom: 'Chronomètre', dur: 0, monte: true }];
+    if (k === 'amrap') phases = [{ nom: 'AMRAP', dur: c.amrap * 60, travail: true }];
+    if (k === 'emom') phases = Array.from({ length: c.emomTours }, (_, n) => ({ nom: `Tour ${n + 1} / ${c.emomTours}`, dur: c.emomInt, travail: true }));
+    if (k === 'tabata') for (let n = 0; n < c.tabTours; n++) phases.push({ nom: `Travail · tour ${n + 1} / ${c.tabTours}`, dur: 20, travail: true }, { nom: `Repos · tour ${n + 1} / ${c.tabTours}`, dur: 10 });
+    if (k === 'intervalles') for (let n = 0; n < c.intTours; n++) {
+      phases.push({ nom: `Travail · tour ${n + 1} / ${c.intTours}`, dur: c.intTravail, travail: true });
+      if (c.intRepos) phases.push({ nom: `Repos · tour ${n + 1} / ${c.intTours}`, dur: c.intRepos });
+    }
+    this._lancerMinuteur({ type: k, lib, phases });
+    if (k !== 'repos') this._feuilleMinuteurActif();
+  },
+
+  _lancerMinuteur(m) {
+    this._mt = { ...m, i: 0, debutPhase: Date.now(), pauseA: null };
+    this._bip(660);
+    this._fermerFeuille();
+    this._majBas();
+  },
+
+  _restant() {
+    const p = this._mt.phases[this._mt.i];
+    const ecoule = ((this._mt.pauseA || Date.now()) - this._mt.debutPhase) / 1000;
+    return p.monte ? ecoule : p.dur - ecoule;
+  },
+
+  _feuilleMinuteurActif() {
+    const mt = this._mt;
+    if (!mt) return this._fermerFeuille();
+    const p = mt.phases[mt.i], r = this._restant();
+    const frac = p.monte ? 0 : Math.max(0, 1 - r / p.dur);
+    const html = `<div id="saMtActif">
+      <div class="sa-f-titre"><h2>${escHtml(mt.lib)}</h2><button class="sa-icone" aria-label="Réduire" onclick="SeanceActivePage._fermerFeuille()">⌄</button></div>
+      <div class="sa-phase ${p.travail ? 'travail' : 'repos'}">${escHtml(p.nom)}</div>
+      <div class="sa-grand-temps">${this._fmt(r)}</div>
+      ${p.monte ? '' : `<div class="sa-barre"><div style="width:${(frac * 100).toFixed(1)}%"></div></div>`}
+      <div class="sa-ligne-btn">
+        ${p.monte ? '' : '<button class="gris" onclick="SeanceActivePage._ajouter(15)">+15 s</button>'}
+        <button class="clair" onclick="SeanceActivePage._pauseMinuteur()">${mt.pauseA ? '▶ Reprendre' : '⏸ Pause'}</button>
+        <button class="noir" onclick="SeanceActivePage._stopMinuteur()">${mt.type === 'repos' ? 'Passer' : 'Arrêter'}</button>
+      </div></div>`;
+    const ex = document.getElementById('saMtActif');
+    if (ex) ex.outerHTML = html; else this._feuille(html);
+  },
+
+  _ajouter(s) { if (this._mt) { this._mt.debutPhase += s * 1000; this._feuilleMinuteurActif(); this._majBas(); } },
+
+  _pauseMinuteur() {
+    const mt = this._mt;
+    if (!mt) return;
+    if (mt.pauseA) { mt.debutPhase += Date.now() - mt.pauseA; mt.pauseA = null; }
+    else mt.pauseA = Date.now();
+    this._feuilleMinuteurActif();
+  },
+
+  _stopMinuteur() {
+    this._mt = null;
+    this._fermerFeuille();
+    this._majBas();
+  },
+
+  // ── Vidéo ───────────────────────────────────────────────────────────────────
+
+  _ouvrirVideo(i) {
+    const ex = this._exos[i], vid = this._videoId(ex);
+    if (!vid) return;
+    this._feuille(`
+      <div class="sa-f-titre"><h2>${escHtml(ex.exercices_bdd?.nom || 'Exercice')}</h2>
+        <button class="sa-icone" aria-label="Fermer" onclick="SeanceActivePage._fermerFeuille()">⌄</button></div>
+      <div class="sa-video"><iframe src="https://www.youtube.com/embed/${vid}?rel=0&playsinline=1&autoplay=1" frameborder="0"
+        allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+      ${ex.notes?.trim() ? `<div class="sa-consigne-exo"><b>Consigne du coach :</b> ${escHtml(ex.notes.trim())}</div>` : ''}`);
+  },
+
+  // ── Feuille (fenêtre qui monte du bas) ──────────────────────────────────────
+
+  _feuille(html) {
+    let v = document.getElementById('saVoile');
+    if (!v) {
+      v = document.createElement('div');
+      v.id = 'saVoile';
+      v.className = 'sa-voile';
+      v.onclick = e => { if (e.target === v) this._fermerFeuille(); };
+      document.getElementById('saWrap').appendChild(v);
+    }
+    // Feuille déjà ouverte : on remplace son contenu sans rejouer l'animation
+    const f = v.querySelector('.sa-feuille');
+    if (f) f.innerHTML = `<div class="sa-poignee"></div>${html}`;
+    else v.innerHTML = `<div class="sa-feuille"><div class="sa-poignee"></div>${html}</div>`;
+  },
+
+  _fermerFeuille() {
+    document.getElementById('saVoile')?.remove();
+    this._pave = null;
+  },
+
+  // ── Fin de séance ───────────────────────────────────────────────────────────
+
+  _terminer() {
+    this._fermerFeuille();
+    this._envoyer(true);
+    this._vue = 'fin';
+    this._dessinerFin();
+    setTimeout(() => { const t = document.getElementById('saTrophee'); if (t && typeof launchConfetti === 'function') launchConfetti(t); }, 200);
+  },
+
+  _dessinerFin() {
+    const t = this._totaux(), nf = this._seriesFaites(), tot = this._s.reduce((n, l) => n + l.length, 0);
+    const ressentis = [['dur', '😓', 'Difficile'], ['bien', '😊', 'Bien'], ['feu', '🤩', 'En feu !']];
+    document.getElementById('saWrap').innerHTML = `
+      <div class="sa-ap-corps" style="padding-top:28px;">
+        <div style="text-align:center;"><div id="saTrophee" style="display:inline-block;position:relative;font-size:56px;">🏆</div>
+          <div class="sa-ap-nom" style="margin-top:4px;">Séance terminée !</div>
+          <div class="sa-ap-meta">${escHtml(this._seance.nom || '')}</div></div>
+        ${nf < tot ? `<div class="sa-reprise">⚠️ <div><b>${tot - nf} série${tot - nf > 1 ? 's' : ''} pas cochée${tot - nf > 1 ? 's' : ''}.</b> Tu peux revenir les faire, ou enregistrer quand même : seules les séries cochées comptent.</div></div>` : ''}
+        <div class="sa-stats">
+          <div class="sa-stat"><b>${nf}/${tot}</b><span>Séries</span></div>
+          <div class="sa-stat"><b>${t.kg}</b><span>kg soulevés</span></div>
+          <div class="sa-stat"><b>${this._fmt(this._secondes)}</b><span>Durée</span></div>
+        </div>
+        <div class="sa-ap-bloc-titre" style="margin-top:22px;">Comment s'est passée ta séance ?</div>
+        <div class="sa-ressentis">${ressentis.map(([k, e, l]) => `
+          <button class="sa-ressenti ${this._ressenti === k ? 'on' : ''}" onclick="SeanceActivePage._choisirRessenti('${k}')"><span class="e">${e}</span>${l}</button>`).join('')}</div>
+        <button class="sa-lien" style="display:block;margin:22px auto 0;" onclick="SeanceActivePage._abandonner()">Abandonner sans enregistrer</button>
+      </div>
+      <div class="sa-bas-fixe" style="display:flex;gap:10px;">
+        <button class="sa-btn-plein gris" style="flex:0 0 34%;" onclick="SeanceActivePage._ouvrirSeance(SeanceActivePage._premierBlocNonFini())">‹ Revenir</button>
+        <button class="sa-btn-plein" id="saEnregistrer" ${this._ressenti ? '' : 'disabled'} onclick="SeanceActivePage._enregistrer()">
+          ${this._ressenti ? '✓ Enregistrer la séance' : 'Choisis ton ressenti'}</button>
       </div>`;
   },
 
-  _startAmrap() {
-    const ex = this._exo();
-    if (!ex || this._amrapPhase !== 'idle') return;
-    clearInterval(this._amrapTimer);
-
-    // Débloque l'audio iOS depuis le geste utilisateur (clic bouton)
-    try {
-      if (!this._audioCtx) {
-        this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (this._audioCtx.state === 'suspended') this._audioCtx.resume();
-    } catch (_) {}
-
-    // Débloque la synthèse vocale iOS (doit être appelé dans un geste utilisateur)
-    try {
-      const unlock = new SpeechSynthesisUtterance('');
-      unlock.volume = 0;
-      window.speechSynthesis.speak(unlock);
-    } catch (_) {}
-
-    this._amrapTotal          = this._parseAmrapSecs(ex.reps_cible);
-    this._amrapRemaining      = 10;
-    this._amrapPhase          = 'countdown';
-    this._amrapCountdownStart = Date.now();
-    this._draw();
-    this._amrapTimer = setInterval(() => this._tickAmrap(), 1000);
+  _choisirRessenti(k) {
+    this._ressenti = k;
+    this._garder();
+    this._dessinerFin();
   },
 
-  _tickAmrap() {
-    if (this._amrapPhase === 'countdown') {
-      const prev = this._amrapRemaining;
-      this._amrapRemaining = Math.max(0, 10 - Math.floor((Date.now() - this._amrapCountdownStart) / 1000));
-      const el = document.getElementById('saAmrapDisplay');
-      if (this._amrapRemaining > 0) {
-        if (el) el.textContent = this._amrapRemaining;
-        if (this._amrapRemaining <= 3 && this._amrapRemaining < prev) this._beep(880, 180);
-      } else {
-        // GO — transition vers work
-        this._beep(1100, 350);
-        this._amrapPhase    = 'work';
-        this._amrapWorkStart = Date.now();
-        this._amrapRemaining = this._amrapTotal;
-        this._draw();
-      }
-
-    } else if (this._amrapPhase === 'work') {
-      const prev = this._amrapRemaining;
-      this._amrapRemaining = Math.max(0, this._amrapTotal - Math.floor((Date.now() - this._amrapWorkStart) / 1000));
-
-      // Mises à jour DOM directes (pas de re-render complet)
-      const el  = document.getElementById('saAmrapDisplay');
-      const bar = document.getElementById('saAmrapBar');
-      if (el) {
-        el.textContent   = this._fmt(this._amrapRemaining);
-        el.style.color   = this._amrapRemaining <= 10 ? '#ef4444'
-                         : this._amrapRemaining <= 60 ? 'var(--gold)' : 'var(--black)';
-      }
-      if (bar) bar.style.width = (this._amrapTotal > 0
-        ? (this._amrapRemaining / this._amrapTotal * 100) : 0).toFixed(1) + '%';
-
-      // Ambiance warning ≤10s — fond rouge pulse
-      setAmrapWarning(this._amrapRemaining <= 10 && this._amrapRemaining > 0);
-
-      // Annonces vocales — déclencher si on vient de passer sous le seuil
-      if (prev > 60 && this._amrapRemaining <= 60) this._speak('1 minute');
-      if (prev > 10 && this._amrapRemaining <= 10) this._speak('10 secondes');
-
-      // Bips finaux — seulement au passage exact (évite répétitions si background)
-      if (this._amrapRemaining <= 3 && this._amrapRemaining > 0 && this._amrapRemaining < prev) this._beep(880, 180);
-
-      // Fin
-      if (this._amrapRemaining <= 0) {
-        clearInterval(this._amrapTimer);
-        this._amrapTimer = null;
-        this._amrapPhase = 'done';
-        this._beep(1100, 500);
-        setTimeout(() => this._beep(1100, 500), 550);
-        setTimeout(() => this._beep(1300, 700), 1100);
-        if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500]);
-        this._draw();
-      }
-    }
+  async _abandonner() {
+    if (!confirm('Abandonner la séance ?\nTes séries cochées ne seront pas enregistrées.')) return;
+    await this._oublier();
+    this._arreter();
+    window.location.hash = '#entrainement';
   },
 
-  _syncNote() {
-    const el = document.getElementById('saClientNote');
-    if (el && this._logs[this._exoIdx] !== undefined) {
-      const val = el.value.trim() || null;
-      if (val !== this._logs[this._exoIdx].note_client) {
-        this._logs[this._exoIdx].note_client = val;
-        this._persistDraft();
-      }
-    }
-  },
-
-  _skipRest() {
-    clearInterval(this._restTimer);
-    this._restTimer     = null;
-    this._restStartTime = 0;
-    this._restRemaining = 0;
-    this._phase         = 'exercice';
-    this._intraRest     = false;
-    this._removeBanner();
-    this._enableValidateBtn();
-  },
-
-  _skipExo() {
-    const exos = this._seance.exercices;
-    if (this._exoIdx >= exos.length - 1) return; // dernier exo, rien à reporter
-
-    clearInterval(this._restTimer);
-    this._removeBanner();
-
-    // Déplacer l'exercice courant et son log à la fin
-    const [skippedExo] = exos.splice(this._exoIdx, 1);
-    const [skippedLog] = this._logs.splice(this._exoIdx, 1);
-    skippedLog.sets_data = []; // reset les séries partielles
-    exos.push(skippedExo);
-    this._logs.push(skippedLog);
-
-    // _exoIdx reste le même (pointe maintenant sur le suivant)
-    this._serieIdx = 0;
-    this._phase    = 'exercice';
-    this._draw();
-  },
-
-  async _save() {
-    if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
-    const btn = document.getElementById('saSaveBtn');
+  async _enregistrer() {
+    if (!this._seriesFaites() && !confirm('Aucune série cochée. Enregistrer quand même la séance ?')) return;
+    const btn = document.getElementById('saEnregistrer');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement…'; }
     try {
-      const profile = Router.userProfile;
-      const now     = new Date();
-      const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-
+      const p = Router.userProfile;
+      const d = new Date();
       const log = await db.upsertSeanceLog({
-        client_id:      profile.id,
-        programme_id:   this._progId || this._seance.programme_id || null,
+        client_id:      p.id,
+        programme_id:   this._progId,
         seance_id:      this._seance.id,
         nom_seance:     this._seance.nom,
-        date_seance:    dateStr,
-        duree_secondes: this._sessionSeconds,
-        note_ressenti:  this._noteRessenti,
+        date_seance:    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+        duree_secondes: Math.round(this._secondes),
+        note_ressenti:  this._ressenti,
       });
-
-      await db.saveSeanceSets(log.id, this._logs);
-      this._clearDraft();
+      // Même format qu'avant : une série = { reps, charge } ; 2e effort noté « 5→8 »
+      await db.saveSeanceSets(log.id, this._exos.map((ex, i) => ({
+        exercice_id:             ex.exercice_id,
+        client_prog_exercice_id: ex.id,
+        type_effort:             this._type(ex),
+        note_client:             this._notes[i].trim() || null,
+        sets_data: this._s[i].filter(s => s.fait).map(s => ({
+          reps:   s.e2fait ? `${s.reps}→${s.e2}` : s.reps,
+          charge: String(s.kg).trim().replace(',', '.'),
+        })),
+      })));
+      await this._oublier();
+      this._arreter();
       toast('💪 Séance enregistrée !', 'success');
       setTimeout(() => { window.location.hash = '#entrainement'; }, 600);
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistrer la séance'; }
-      toast('Erreur : ' + e.message, 'error');
+      toast('Erreur : ' + escHtml(e.message), 'error');
     }
-  },
-
-  // ── Brouillon local : ne jamais perdre une séance en cours ────────────────
-  // Sauvegarde après chaque série validée. Si le client ferme l'appli avant la
-  // fin, il peut reprendre là où il s'était arrêté à la réouverture.
-  _draftKey(seanceId, clientId) {
-    return `apex_seance_draft_${clientId || ''}_${seanceId || ''}`;
-  },
-
-  // Premier exercice dont toutes les séries ne sont pas encore validées
-  _firstUnfinishedExo() {
-    const exos = this._seance?.exercices || [];
-    for (let i = 0; i < exos.length; i++) {
-      const logged = this._logs[i]?.sets_data?.length || 0;
-      if (logged < this._nbSeries(exos[i])) return i;
-    }
-    return Math.max(0, exos.length - 1);
-  },
-
-  _persistDraft() {
-    try {
-      if (!this._seance || this._phase === 'done') return;
-      const profile = Router.userProfile;
-      if (!profile) return;
-      // Ne rien écrire tant qu'aucune série n'a été validée
-      const totalSets = this._logs.reduce((n, l) => n + (l.sets_data?.length || 0), 0);
-      if (totalSets === 0) return;
-      const draft = {
-        v: 1,
-        seanceId:       this._seance.id,
-        clientId:       profile.id,
-        savedAt:        Date.now(),
-        exoIdx:         this._exoIdx,
-        serieIdx:       this._serieIdx,
-        sessionSeconds: this._sessionSeconds,
-        noteRessenti:   this._noteRessenti,
-        logs: this._logs.map(l => ({
-          client_prog_exercice_id: l.client_prog_exercice_id,
-          exercice_id:             l.exercice_id,
-          sets_data:               l.sets_data,
-          note_client:             l.note_client,
-        })),
-      };
-      localStorage.setItem(this._draftKey(this._seance.id, profile.id), JSON.stringify(draft));
-    } catch (_) { /* quota / mode privé : on ignore */ }
-  },
-
-  _clearDraft() {
-    try {
-      const profile = Router.userProfile;
-      if (this._seance && profile) {
-        localStorage.removeItem(this._draftKey(this._seance.id, profile.id));
-      }
-    } catch (_) {}
-  },
-
-  _loadDraft(seanceId, clientId) {
-    try {
-      const raw = localStorage.getItem(this._draftKey(seanceId, clientId));
-      if (!raw) return null;
-      const d = JSON.parse(raw);
-      const total = (d.logs || []).reduce((n, l) => n + (l.sets_data?.length || 0), 0);
-      return total > 0 ? d : null;
-    } catch (_) { return null; }
-  },
-
-  _goToExo(idx) {
-    this._syncNote();
-    clearInterval(this._restTimer);
-    clearInterval(this._amrapTimer);
-    this._amrapTimer = null;
-    this._amrapPhase = 'idle';
-    // Réinitialiser l'état 2e effort (sinon corruption du set de l'exo suivant)
-    this._effortIdx = 0;
-    this._pendingE1 = null;
-    this._intraRest = false;
-    if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
-    this._removeBanner();
-    const ex = this._seance.exercices[idx];
-    if (!ex) return;
-    this._exoIdx   = idx;
-    const logged   = this._logs[idx]?.sets_data?.length || 0;
-    const maxSer   = this._nbSeries(ex);
-    // Si toutes les séries sont déjà loggées → pas de série "courante" (lecture seule)
-    this._serieIdx = Math.max(0, Math.min(logged, maxSer));
-    this._phase    = 'exercice';
-    this._draw();
-  },
-
-  _prevExo() {
-    if (this._exoIdx <= 0) return;
-    this._goToExo(this._exoIdx - 1);
-  },
-
-  _nextExo() {
-    if (this._exoIdx >= (this._seance?.exercices?.length || 1) - 1) return;
-    this._goToExo(this._exoIdx + 1);
-  },
-
-  _finishEarly() {
-    this._syncNote();
-    if (!confirm('Terminer la séance maintenant ?\nSeules les séries déjà validées seront enregistrées.')) return;
-    clearInterval(this._restTimer);
-    clearInterval(this._sessionTimer);
-    clearInterval(this._amrapTimer);
-    this._amrapTimer = null;
-    this._amrapPhase = 'idle';
-    this._removeBanner();
-    this._phase = 'done';
-    this._draw();
-  },
-
-  _quit() {
-    if (!confirm('Abandonner la séance ? Ta progression ne sera pas enregistrée.')) return;
-    this._clearDraft();
-    if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
-    clearInterval(this._sessionTimer);
-    clearInterval(this._restTimer);
-    clearInterval(this._amrapTimer);
-    this._amrapTimer = null;
-    this._removeBanner();
-    this._seance        = null;
-    this._logs          = [];
-    this._phase         = 'exercice';
-    this._sessionSeconds = 0;
-    this._noteRessenti  = null;
-    window.location.hash = '#entrainement';
   },
 };
