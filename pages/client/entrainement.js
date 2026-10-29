@@ -378,7 +378,6 @@ const EntrainementPage = {
   },
 
   _seanceCard(seance) {
-    const exos     = seance.exercices || [];
     const jourLabel = seance.jour > 0
       ? `<span style="font-size:11px;color:var(--gray-muted);margin-left:6px;">· ${this._jours[(seance.jour - 1) % 7]}</span>`
       : '';
@@ -474,79 +473,17 @@ const EntrainementPage = {
         </div>`;
     }
 
+    // Carte réduite au nom : le détail est dans l'aperçu de la séance (seance-active.js)
     return `
-      <div class="card" style="margin-bottom:0.75rem;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="card" style="margin-bottom:0.75rem;cursor:pointer;"
+        onclick="EntrainementPage._startSeance('${seance.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
           <div style="font-weight:700;font-size:15px;">${seance.nom}${jourLabel}</div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button class="btn btn-primary btn-small" style="font-size:12px;"
-              onclick="EntrainementPage._startSeance('${seance.id}')">
-              ${this._enCours?.has(seance.id) ? '⏸ Reprendre' : '▶ Ouvrir'}
-            </button>
-          </div>
+          <button class="btn btn-primary btn-small" style="font-size:12px;flex-shrink:0;">
+            ${this._enCours?.has(seance.id) ? '⏸ Reprendre' : '▶ Démarrer'}
+          </button>
         </div>
-        ${seance.notes_coach ? `
-          <div style="font-size:12px;color:var(--gold);background:var(--gold-bg,#fffbeb);
-               border-left:3px solid var(--gold);padding:6px 10px;border-radius:4px;margin-bottom:10px;">
-            📌 ${seance.notes_coach}
-          </div>` : ''}
-        <div style="display:flex;flex-direction:column;gap:0;">
-          ${exos.map((e, i) => this._exoRow(e, exos, i)).join('')}
-        </div>
-        ${exos.length === 0
-          ? '<div style="font-size:13px;color:var(--gray-muted);">Aucun exercice.</div>'
-          : ''}
       </div>`;
-  },
-
-  _ssColor(group) {
-    const colors = ['#F59E0B','#3B82F6','#10B981','#EC4899','#8B5CF6','#F97316'];
-    return group ? colors[(group.charCodeAt(0) - 65) % colors.length] : null;
-  },
-
-  _exoRow(e, exos, i) {
-    const nom    = e.exercices_bdd?.nom || '—';
-    const series = e.series || 3;
-    // Reps réelles dérivées de series_data (reps_cible peut être obsolète)
-    const sd     = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
-    // Ne pas dédupliquer : [10,10,8] doit rester '10/10/8' (ne pas masquer le vrai schéma). #33
-    const repsS  = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : null;
-    const reps   = repsS || e.reps_cible || '10';
-    const charge = e.charge_cible ? ` · ${e.charge_cible} kg` : '';
-    const te     = e.type_effort || 'reps';
-    const label  = te === 'amrap'    ? `AMRAP ${e.reps_cible || reps}`
-                 : te === 'temps'    ? `${series}×${e.reps_cible}`
-                 : te === 'distance' ? `${series}×${e.reps_cible}`
-                 : `${series}×${reps}${charge}`;
-
-    const ssGroup  = e.superset_groupe;
-    const ssColor  = this._ssColor(ssGroup);
-    const nextInSS = ssGroup && exos && i < exos.length - 1 && exos[i + 1]?.superset_groupe === ssGroup;
-    const ssBadge  = ssGroup
-      ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;
-           background:${ssColor}22;color:${ssColor};margin-left:5px;vertical-align:middle;">SS</span>`
-      : '';
-    const rowStyle = ssGroup
-      ? `border-left:3px solid ${ssColor};padding-left:8px;`
-      : '';
-
-    const notes = e.notes?.trim();
-    return `
-      <div style="padding:7px 0;border-bottom:${nextInSS ? 'none' : '1px solid var(--border)'};${rowStyle}">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="flex:1;font-size:13px;font-weight:500;color:var(--black);">${nom}${ssBadge}</div>
-          <div style="font-size:12px;color:var(--gray-muted);white-space:nowrap;">${label}</div>
-        </div>
-        ${notes ? `
-          <div style="font-size:12px;color:var(--gold);margin-top:3px;font-style:italic;">
-            💬 ${notes}
-          </div>` : ''}
-      </div>
-      ${nextInSS ? `
-        <div style="text-align:center;font-size:10px;font-weight:700;color:${ssColor};
-             padding:2px 0;letter-spacing:.05em;">
-          🔗 superset
-        </div>` : ''}`;
   },
 
   _openConsignes(progId) {
