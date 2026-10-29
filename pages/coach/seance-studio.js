@@ -134,6 +134,8 @@ const CoachSeanceStudioPage = {
     if (te === 'amrap') parts.push(`Max de reps en ${e.reps_cible || '?'}`);
     else if (te === 'temps' || te === 'distance') parts.push(e.series > 1 ? `${e.series} × ${e.reps_cible}` : (e.reps_cible || ''));
     else parts.push(`${e.series || 1} × ${reps}`);
+    if (te === 'reps' && e.reps_secondaire)
+      parts.push(`2e effort : ${e.reps_secondaire} reps${e.repos_intra_sec ? ` après ${e.repos_intra_sec} s` : ''}`);
     if (e.charge_cible) parts.push(e.charge_cible);
     if (e.repos_secondes) {
       const r = e.repos_secondes;
@@ -414,6 +416,10 @@ const CoachSeanceStudioPage = {
             <div class="field"><label class="field-label">Charge cible</label><input class="input" id="ssmCharge" value="${escHtml(e.charge_cible || '')}"></div>
             <div class="field"><label class="field-label">Repos (secondes)</label><input class="input" type="number" min="0" step="15" id="ssmRepos" value="${e.repos_secondes ?? 90}"></div>
           </div>
+          <div class="field-row" style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px;">
+            <div class="field"><label class="field-label">2e effort (reps, vide = aucun)</label><input class="input" id="ssmReps2" value="${escHtml(e.reps_secondaire || '')}" placeholder="max, 6…"></div>
+            <div class="field"><label class="field-label">Pause avant (s)</label><input class="input" type="number" min="0" max="300" id="ssmReposIntra" value="${e.repos_intra_sec ?? ''}"></div>
+          </div>
           <div class="field"><label class="field-label">Notes</label>
             <textarea class="input" id="ssmNotes" rows="2" style="height:auto;" placeholder="Objectif 40-60 reps, tempo…">${escHtml(e.notes || '')}</textarea>
           </div>
@@ -432,6 +438,9 @@ const CoachSeanceStudioPage = {
     const patch = {
       type_effort: te, series, charge_cible: charge || null,
       repos_secondes: parseInt(v('ssmRepos')) || 0, notes: v('ssmNotes') || null,
+      // 2e effort (Rest-Pause, Drop Set…) : seulement en séries × reps
+      reps_secondaire: te === 'reps' ? (v('ssmReps2') || null) : null,
+      repos_intra_sec: te === 'reps' && v('ssmReps2') ? (parseInt(v('ssmReposIntra')) || null) : null,
     };
     if (te === 'reps') {
       // « 8/8/6 » = une valeur par série ; « 10 » = la même pour toutes
