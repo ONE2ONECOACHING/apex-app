@@ -42,7 +42,7 @@ Application du studio ONE2ONE (Saint-Estève, près de Perpignan). Côté client
 ## Séance côté client (29 octobre 2026, branche `seance-client`)
 
 - Nouvel écran `pages/client/seance-active.js` (inspiré de TrainHeroic, le look sera repris lors de la refonte de toute l'app) : aperçu de la séance (blocs A, B1/B2 pour les supersets), puis un bloc par page qu'on glisse de côté sans rien valider ; séries cochées une par une, pavé numérique (« Valider la série », « Comme avant »), repos automatique (en superset après le dernier exercice du tour), 2e effort sous chaque série, vidéo YouTube dans une fenêtre, note pour le coach, menu ⏱ (repos, chrono, AMRAP, EMOM, Tabata, intervalles). Enregistrement au même format qu'avant (`seances_log_sets.sets_data` = `{reps, charge}`, 2e effort « 5→8 »).
-- Séance commencée gardée dans le téléphone (`localStorage`, clé `apex_seance_v2_…`) et dans la base (`seances_en_cours`, `sql/2026-10-29_seances_en_cours.sql`, client seulement) ; à l'ouverture, la version la plus récente l'emporte. Effacée à l'enregistrement. Liste Entraînement : « ⏸ Reprendre ».
+- Séance commencée gardée dans le téléphone (`localStorage`, clé `apex_seance_v2_…`) et dans la base (`seances_en_cours`, `sql/2026-10-29_seances_en_cours.sql` exécuté le 29 octobre 2026, client seulement) ; à l'ouverture, la version la plus récente l'emporte. Effacée à l'enregistrement. Liste Entraînement : « ⏸ Reprendre ».
 
 ## Étape 1 — Fondations (terminée, en production)
 
