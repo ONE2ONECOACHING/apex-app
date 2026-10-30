@@ -719,6 +719,15 @@ const CoachProgTemplateEditPage = {
               ? (() => { const [mn, sc] = this._parseMinSec(ex.reps_cible); return `
                   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                      <input id="exser_${si}_${ei}" type="number" min="1" max="20"
+                        value="${ex.series || 1}" title="Nombre de séries"
+                        style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
+                               border-radius:6px;background:var(--card-bg);color:var(--black);
+                               font-size:12px;padding:0;font-family:var(--font);">
+                      <span style="font-size:9px;color:var(--gray-muted);">séries</span>
+                    </div>
+                    <span style="font-size:13px;color:var(--gray-muted);margin-bottom:12px;">×</span>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
                       <input id="exmin_${si}_${ei}" type="number" min="0" max="99"
                         value="${mn}"
                         style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
@@ -737,7 +746,6 @@ const CoachProgTemplateEditPage = {
                     </div>
                     <!-- champ hidden pour sync reps_cible -->
                     <input id="exreps_${si}_${ei}" type="hidden" value="${ex.reps_cible}">
-                    <input id="exser_${si}_${ei}" type="hidden" value="${ex.series}">
                   </div>
                   <!-- Récup -->
                   <div style="display:flex;gap:5px;align-items:center;margin-top:5px;">
@@ -751,12 +759,17 @@ const CoachProgTemplateEditPage = {
                   </div>`; })()
               /* ── MODE DISTANCE : valeur seule ── */
               : `<div style="display:flex;gap:5px;align-items:center;">
+                  <input id="exser_${si}_${ei}" type="number" min="1" max="20"
+                        value="${ex.series || 1}" title="Nombre de séries"
+                        style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
+                               border-radius:6px;background:var(--card-bg);color:var(--black);
+                               font-size:12px;padding:0;font-family:var(--font);">
+                  <span style="font-size:11px;color:var(--gray-muted);">séries ×</span>
                   <input id="exreps_${si}_${ei}" type="text"
                     value="${ex.reps_cible}" placeholder="ex: 100m"
                     style="width:80px;height:30px;text-align:center;border:1px solid var(--border-solid);
                            border-radius:6px;background:var(--card-bg);color:var(--black);
                            font-size:12px;padding:0 4px;font-family:var(--font);">
-                  <input id="exser_${si}_${ei}" type="hidden" value="${ex.series}">
                 </div>
                 <div style="display:flex;gap:5px;align-items:center;margin-top:5px;">
                   <span style="font-size:14px;">💤</span>
