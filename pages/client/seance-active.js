@@ -281,7 +281,7 @@ const SeanceActivePage = {
     if (this._vue === 'seance' && delta < 10 * 60000) this._secondes += delta / 1000;
     if (!this._mt) return;
     const mt = this._mt, p = mt.phases[mt.i];
-    if (mt.annonces && !p.monte) this._annoncer(mt, p);
+    if ((mt.annonces || mt.type === 'repos') && !p.monte) this._annoncer(mt, p);
     if (!p.monte && this._restant() <= 0) {
       if (mt.i < mt.phases.length - 1) {
         mt.i++;
@@ -290,8 +290,9 @@ const SeanceActivePage = {
         if (mt.annonces) { this._bip(1320, 700); this._dire('Go'); }
         else this._bip(mt.phases[mt.i].travail ? 990 : 660);
       } else {
-        this._bip(mt.annonces ? 1320 : 990, mt.annonces ? 900 : 600);
+        this._bip(mt.annonces ? 1320 : 1180, mt.annonces ? 900 : 800);
         if (mt.annonces) this._dire('Stop');
+        else if (mt.type === 'repos') this._dire("C'est reparti");
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         toast(mt.type === 'repos' ? 'Repos terminé : à toi !' : 'Terminé : note ton score', 'info');
         this._finAmrap(mt);
@@ -324,21 +325,25 @@ const SeanceActivePage = {
 
   _bip(f = 880, ms = 180) {
     try {
+      // iPhone : jouer même quand le téléphone est en mode silencieux (Safari 17 et plus)
+      if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback';
       this._audio = this._audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (this._audio.state !== 'running') this._audio.resume();   // iPhone le met en veille après un moment
       const o = this._audio.createOscillator(), g = this._audio.createGain();
-      o.frequency.value = f; g.gain.value = 0.3;
+      o.frequency.value = f; g.gain.value = 0.6;
       o.connect(g); g.connect(this._audio.destination);
       o.start(); o.stop(this._audio.currentTime + ms / 1000);
     } catch (_) {}
   },
 
   // Annonces des efforts minutés : 3, 2, 1 avant le départ et avant la fin,
-  // mi-temps (1 min et plus), dernière minute (plus de 2 min)
+  // mi-temps (1 min et plus), dernière minute (plus de 2 min).
+  // Repos : seulement 3 bips avant la fin (puis un bip long et « C'est reparti »).
   _annoncer(mt, p) {
     const s = Math.ceil(this._restant());
     if (s === mt.seconde) return;
     mt.seconde = s;
-    if (s >= 1 && s <= 3) { this._bip(880, 150); this._dire(String(s)); return; }
+    if (s >= 1 && s <= 3) { this._bip(880, 150); if (mt.annonces) this._dire(String(s)); return; }
     if (!p.travail) return;
     if (p.dur >= 60 && s === Math.round(p.dur / 2)) {
       this._bip(990, 150); setTimeout(() => this._bip(990, 150), 250);
