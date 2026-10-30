@@ -337,7 +337,7 @@ const CoachProgTemplateEditPage = {
           ${this.seances.map((s, si) => this._renderSeanceCol(s, si)).join('')}
 
           <!-- Bouton ajouter séance -->
-          <div style="flex-shrink:0;width:200px;">
+          <div style="flex-shrink:0;width:170px;">
             <button class="btn btn-ghost"
               style="width:100%;height:68px;border:2px dashed var(--border-solid);
                      font-size:14px;color:var(--gray);border-radius:12px;"
@@ -352,7 +352,7 @@ const CoachProgTemplateEditPage = {
   _renderSeanceCol(s, si) {
     const isCardio = !!s.cardio;
     return `
-      <div data-col="${si}" data-cardio="${isCardio ? 1 : 0}" style="flex:1 1 290px;min-width:290px;background:var(--card-bg);
+      <div data-col="${si}" data-cardio="${isCardio ? 1 : 0}" style="flex:1 1 360px;min-width:360px;background:var(--card-bg);
                   border-radius:14px;padding:12px;border:1px solid ${isCardio ? '#EF4444' : 'var(--border-solid)'};">
         <!-- En-tête -->
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
@@ -599,7 +599,7 @@ const CoachProgTemplateEditPage = {
           ${effort === k ? 'checked' : ''}
           onchange="CoachProgTemplateEditPage._syncFromDOM();CoachProgTemplateEditPage.renderContent();"
           style="display:none;">
-        <span style="display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;
+        <span style="display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;white-space:nowrap;font-weight:600;
           border:1px solid var(--border-solid);cursor:pointer;
           background:${effort===k?'var(--gold)':'var(--card-bg)'};
           color:${effort===k?'#fff':'var(--gray)'};
@@ -618,7 +618,9 @@ const CoachProgTemplateEditPage = {
           <div style="flex:1;min-width:0;">
             <!-- Nom + badge superset + lien YT + actions -->
             <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;">
-              <div style="flex:1;min-width:0;font-weight:600;font-size:13px;line-height:1.3;">
+              <div style="flex:1;min-width:0;font-weight:600;font-size:13px;line-height:1.3;
+                          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                title="${escHtml(ex.exercice?.nom || '')}">
                 ${escHtml(ex.exercice?.nom || '?')}${groupBadge}
                 ${ytUrl ? `<a href="${escHtml(ytUrl)}" target="_blank"
                   style="font-size:10px;color:#FF0000;text-decoration:none;margin-left:6px;">▶ YT</a>` : ''}
@@ -632,7 +634,7 @@ const CoachProgTemplateEditPage = {
             </div>
 
             <!-- Modalité -->
-            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
+            <div style="display:flex;gap:4px;flex-wrap:nowrap;margin-bottom:6px;">
               ${effortBtns}
             </div>
 
