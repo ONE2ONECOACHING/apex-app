@@ -1918,3 +1918,7 @@ body.resume-replie .fr-replier { right: 5px; }
 .sa-ressenti { border: 2px solid var(--border-solid); background: var(--white); border-radius: 14px; padding: 12px 6px; font-size: 13px; font-weight: 700; }
 .sa-ressenti .e { display: block; font-size: 28px; margin-bottom: 2px; }
 .sa-ressenti.on { border-color: var(--gold); background: var(--gold-light); }
+
+/* Éditeur de programmes : petits boutons de l'en-tête d'un exercice (note, remplacer, supprimer) */
+.pte-mini { flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border-solid); background: var(--white); color: var(--gray); font-size: 12px; line-height: 1; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.pte-mini:hover { border-color: var(--gold); background: var(--accent-bg); }

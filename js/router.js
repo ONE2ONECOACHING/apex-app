@@ -178,7 +178,7 @@ const Router = {
     if (typeof afficherFiche === 'function') afficherFiche(hash);
     // Écrans qui utilisent toute la largeur (les formulaires gardent une largeur limitée)
     document.body.classList.toggle('coach-plein', ['coach-agenda', 'coach-accueil', 'coach-messagerie',
-      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi', 'coach-client-messages', 'coach-cardio-plan', 'coach-cardio-modele'].includes(hash));
+      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi', 'coach-client-messages', 'coach-cardio-plan', 'coach-cardio-modele', 'coach-prog-template-edit'].includes(hash));
 
     // Charger la page avec transition
     this.currentPage = hash;

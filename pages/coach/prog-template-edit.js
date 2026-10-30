@@ -337,7 +337,7 @@ const CoachProgTemplateEditPage = {
           ${this.seances.map((s, si) => this._renderSeanceCol(s, si)).join('')}
 
           <!-- Bouton ajouter séance -->
-          <div style="flex-shrink:0;width:240px;">
+          <div style="flex-shrink:0;width:200px;">
             <button class="btn btn-ghost"
               style="width:100%;height:68px;border:2px dashed var(--border-solid);
                      font-size:14px;color:var(--gray);border-radius:12px;"
@@ -352,7 +352,7 @@ const CoachProgTemplateEditPage = {
   _renderSeanceCol(s, si) {
     const isCardio = !!s.cardio;
     return `
-      <div data-col="${si}" data-cardio="${isCardio ? 1 : 0}" style="flex-shrink:0;width:290px;background:var(--card-bg);
+      <div data-col="${si}" data-cardio="${isCardio ? 1 : 0}" style="flex:1 1 290px;min-width:290px;background:var(--card-bg);
                   border-radius:14px;padding:12px;border:1px solid ${isCardio ? '#EF4444' : 'var(--border-solid)'};">
         <!-- En-tête -->
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
@@ -372,14 +372,15 @@ const CoachProgTemplateEditPage = {
             onclick="CoachProgTemplateEditPage.removeSeance(${si})">×</button>
         </div>
 
-        <!-- Toggle Cardio -->
-        <label style="display:flex;align-items:center;gap:7px;margin-bottom:10px;cursor:pointer;
+        <!-- Ancienne séance cardio (remplacée par les plans cardio) : la case reste
+             seulement pour celles qui existent déjà, pour pouvoir les décocher -->
+        ${isCardio ? `<label style="display:flex;align-items:center;gap:7px;margin-bottom:10px;cursor:pointer;
                       font-size:12px;font-weight:600;color:${isCardio ? '#EF4444' : 'var(--gray)'};">
           <input type="checkbox" id="scardio_${si}" ${isCardio ? 'checked' : ''}
             onchange="CoachProgTemplateEditPage._toggleCardio(${si})"
             style="width:16px;height:16px;accent-color:#EF4444;">
           🏃 Séance cardio (progression par semaine)
-        </label>
+        </label>` : ''}
 
         ${isCardio
           ? this._renderCardioBlocks(s, si)
@@ -615,15 +616,23 @@ const CoachProgTemplateEditPage = {
           <span class="dd-poignee" title="Glisser pour déplacer l'exercice (aussi vers une autre séance)"
             onpointerdown="CoachProgTemplateEditPage._ddDebut(event,'ex',${si},${ei})">⠿</span>
           <div style="flex:1;min-width:0;">
-            <!-- Nom + badge superset + lien YT -->
-            <div style="font-weight:600;font-size:13px;line-height:1.3;margin-bottom:6px;">
-              ${ex.exercice?.nom || '?'}${groupBadge}
-              ${ytUrl ? `<a href="${ytUrl}" target="_blank"
-                style="font-size:10px;color:#FF0000;text-decoration:none;margin-left:6px;">▶ YT</a>` : ''}
+            <!-- Nom + badge superset + lien YT + actions -->
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;">
+              <div style="flex:1;min-width:0;font-weight:600;font-size:13px;line-height:1.3;">
+                ${escHtml(ex.exercice?.nom || '?')}${groupBadge}
+                ${ytUrl ? `<a href="${escHtml(ytUrl)}" target="_blank"
+                  style="font-size:10px;color:#FF0000;text-decoration:none;margin-left:6px;">▶ YT</a>` : ''}
+              </div>
+              <button class="pte-mini" title="Ajouter une note"
+                onclick="var n=document.getElementById('exnote_${si}_${ei}');n.style.display='block';n.focus();">📝</button>
+              <button class="pte-mini" title="Remplacer l'exercice"
+                onclick="CoachProgTemplateEditPage.openSwapPicker(${si},${ei})">↔</button>
+              <button class="pte-mini" title="Supprimer"
+                onclick="CoachProgTemplateEditPage.removeExo(${si},${ei})">×</button>
             </div>
 
             <!-- Modalité -->
-            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
               ${effortBtns}
             </div>
 
@@ -670,10 +679,8 @@ const CoachProgTemplateEditPage = {
                         style="padding:1px 8px;border-radius:6px;border:1px dashed var(--border-solid);
                                background:transparent;color:var(--gray);font-size:11px;cursor:pointer;
                                font-family:var(--font);">+ Série</button>
-                    </div>
-                    <!-- 2e effort optionnel (Rest-Pause, Drop Set, Iso Régressif…) -->
-                    <div style="margin-top:7px;">
-                      <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+                      <!-- 2e effort optionnel (Rest-Pause, Drop Set, Iso Régressif…) -->
+                      <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;
                                     font-size:10px;color:var(--gray-muted);user-select:none;">
                         <input type="checkbox" id="exreps2check_${si}_${ei}"
                           ${ex.reps_secondaire ? 'checked' : ''}
@@ -681,6 +688,8 @@ const CoachProgTemplateEditPage = {
                           style="accent-color:var(--gold);cursor:pointer;">
                         2e effort
                       </label>
+                    </div>
+                    <div>
                       <div id="exreps2zone_${si}_${ei}"
                         style="display:${ex.reps_secondaire ? 'flex' : 'none'};gap:5px;align-items:center;
                                margin-top:5px;flex-wrap:wrap;padding:5px 8px;border-radius:7px;
@@ -771,17 +780,10 @@ const CoachProgTemplateEditPage = {
             <input id="exnote_${si}_${ei}" type="text"
               value="${(ex.notes||'').replace(/"/g,'&quot;')}"
               placeholder="Note pour cet exercice…"
-              style="width:100%;margin-top:5px;height:26px;border:1px solid var(--border-solid);
+              style="display:${ex.notes ? 'block' : 'none'};width:100%;margin-top:5px;height:26px;border:1px solid var(--border-solid);
                      border-radius:6px;background:var(--card-bg);color:var(--black);
                      font-size:11px;padding:0 6px;font-family:var(--font);
                      color:var(--gray);">
-          </div>
-          <!-- Actions exercice -->
-          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;margin-top:2px;">
-            <button class="icon-btn" title="Remplacer l'exercice"
-              onclick="CoachProgTemplateEditPage.openSwapPicker(${si},${ei})">↔</button>
-            <button class="icon-btn" title="Supprimer"
-              onclick="CoachProgTemplateEditPage.removeExo(${si},${ei})">×</button>
           </div>
         </div>
       </div>`;
