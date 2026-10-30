@@ -89,9 +89,8 @@ const CoachProgTemplateEditPage = {
       repos_secondes:  ex.repos_secondes ?? 90,
       superset_groupe: ex.superset_groupe || null,
       notes:           ex.notes || '',
-      series_data:     ex.series_data || (te === 'reps'
-        ? Array.from({length: ex.series ?? 3}, () => ({reps: ex.reps_cible || '10', charge: ex.charge_cible || ''}))
-        : null),
+      series_data:     this._seriesValides({ ...ex, type_effort: te })
+        || Array.from({length: ex.series ?? 3}, () => ({reps: ex.reps_cible || (te === 'reps' ? '10' : ''), charge: ex.charge_cible || ''})),
       reps_secondaire: ex.reps_secondaire || null,
       repos_intra_sec: ex.repos_intra_sec ?? null,
     };
@@ -219,21 +218,27 @@ const CoachProgTemplateEditPage = {
         const effortEl = document.querySelector(`input[name="effort_${si}_${ei}"]:checked`);
         if (effortEl) ex.type_effort = effortEl.value;
 
-        // 2. Données par série (mode reps — inputs indexés)
+        // 2. Données par série (tous les types : reps, durée « M:SS », distance — inputs indexés)
+        const valeurSerie = k => {
+          const mn = document.getElementById(`exmin_${si}_${ei}_${k}`);
+          if (mn) {
+            const sc = document.getElementById(`exsec_${si}_${ei}_${k}`);
+            return (parseInt(mn.value) || 0) + ':' + String(parseInt(sc?.value) || 0).padStart(2, '0');
+          }
+          const r = document.getElementById(`exreps_${si}_${ei}_${k}`);
+          return r ? (r.value.trim() || (ex.type_effort === 'reps' ? '10' : '')) : null;
+        };
         const newSeriesData = [];
         let k = 0;
-        while (document.getElementById(`exreps_${si}_${ei}_${k}`)) {
-          newSeriesData.push({
-            reps:   document.getElementById(`exreps_${si}_${ei}_${k}`).value || '10',
-            charge: (document.getElementById(`excharge_${si}_${ei}_${k}`) || {}).value || '',
-          });
-          k++;
+        for (let v = valeurSerie(0); v !== null; v = valeurSerie(++k)) {
+          newSeriesData.push({ reps: v, charge: (document.getElementById(`excharge_${si}_${ei}_${k}`) || {}).value || '' });
         }
         if (newSeriesData.length > 0) {
           ex.series_data = newSeriesData;
           ex.series = newSeriesData.length;
           // Garder reps_cible cohérent avec la 1ère série (sinon valeur figée obsolète)
-          ex.reps_cible = newSeriesData[0].reps || '10';
+          ex.reps_cible = newSeriesData[0].reps || (ex.type_effort === 'reps' ? '10' : '');
+          if (ex.type_effort !== 'reps') ex.charge_cible = newSeriesData[0].charge || '';
         }
 
         // 3. Champs non-indexés (modes non-reps)
@@ -256,16 +261,6 @@ const CoachProgTemplateEditPage = {
         if (exReps2)      ex.reps_secondaire = exReps2.value.trim() || null;
         if (exReposIntra) ex.repos_intra_sec = parseInt(exReposIntra.value) || null;
 
-        // 4. Pour temps/amrap : combiner min + sec en "M:SS"
-        if (ex.type_effort === 'temps' || ex.type_effort === 'amrap') {
-          const minEl = document.getElementById(`exmin_${si}_${ei}`);
-          const secEl = document.getElementById(`exsec_${si}_${ei}`);
-          if (minEl && secEl) {
-            const m  = parseInt(minEl.value) || 0;
-            const s2 = parseInt(secEl.value) || 0;
-            ex.reps_cible = m + ':' + String(s2).padStart(2, '0');
-          }
-        }
       });
     });
   },
@@ -573,6 +568,15 @@ const CoachProgTemplateEditPage = {
     }
   },
 
+  // Valeurs par série enregistrées. Hors reps, on ne s'y fie que si elles vont avec
+  // le nombre de séries et la 1re valeur (sinon : restes d'un ancien type « reps »).
+  _seriesValides(ex) {
+    const sd = ex.series_data;
+    if (!Array.isArray(sd) || !sd.length) return null;
+    if ((ex.type_effort || 'reps') === 'reps') return sd;
+    return sd.length === (ex.series || 1) && String(sd[0]?.reps ?? '') === String(ex.reps_cible ?? '') ? sd : null;
+  },
+
   _parseMinSec(val) {
     if (!val) return [0, 0];
     const colon = String(val).match(/^(\d+):(\d+)$/);
@@ -597,7 +601,7 @@ const CoachProgTemplateEditPage = {
       return `<label style="cursor:pointer;">
         <input type="radio" name="effort_${si}_${ei}" value="${k}"
           ${effort === k ? 'checked' : ''}
-          onchange="CoachProgTemplateEditPage._syncFromDOM();CoachProgTemplateEditPage.renderContent();"
+          onchange="CoachProgTemplateEditPage._changerType(${si},${ei})"
           style="display:none;">
         <span style="display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;white-space:nowrap;font-weight:600;
           border:1px solid var(--border-solid);cursor:pointer;
@@ -638,24 +642,37 @@ const CoachProgTemplateEditPage = {
               ${effortBtns}
             </div>
 
-            ${effort === 'reps'
-              /* ── MODE REPS : séries individuelles ── */
-              ? (() => {
-                  const serArr = (ex.series_data && ex.series_data.length > 0)
-                    ? ex.series_data
-                    : Array.from({length: ex.series || 3}, () => ({reps: ex.reps_cible || '10', charge: ex.charge_cible || ''}));
+            ${(() => {
+                  /* ── Séries individuelles, pour tous les types (reps, durée, AMRAP, distance) ── */
+
+                  const serArr = this._seriesValides(ex)
+                    || Array.from({length: ex.series || 3}, () => ({reps: ex.reps_cible || (effort === 'reps' ? '10' : ''), charge: ex.charge_cible || ''}));
+                  const champ = (sv, k) => {
+                    const st = `height:28px;text-align:center;border:1px solid var(--border-solid);
+                                border-radius:6px;background:var(--card-bg);color:var(--black);
+                                font-size:12px;padding:0;font-family:var(--font);`;
+                    if (effort === 'temps' || effort === 'amrap') {
+                      const [mn, sc] = this._parseMinSec(sv.reps);
+                      return `${effort === 'amrap' ? '<span style="font-size:10px;color:var(--gray-muted);">AMRAP</span>' : ''}
+                        <input id="exmin_${si}_${ei}_${k}" type="number" min="0" max="99" value="${mn}" title="Minutes" style="width:38px;${st}">
+                        <span style="font-size:12px;font-weight:700;color:var(--gray-muted);">:</span>
+                        <input id="exsec_${si}_${ei}_${k}" type="number" min="0" max="59" value="${String(sc).padStart(2, '0')}" title="Secondes" style="width:38px;${st}">
+                        <span style="font-size:11px;color:var(--gray-muted);">à</span>`;
+                    }
+                    if (effort === 'distance') return `
+                        <input id="exreps_${si}_${ei}_${k}" type="text" value="${escHtml(sv.reps || '')}" placeholder="500 m" style="width:64px;${st}">
+                        <span style="font-size:11px;color:var(--gray-muted);">à</span>`;
+                    return `
+                        <input id="exreps_${si}_${ei}_${k}" type="text" value="${escHtml(sv.reps || '')}" placeholder="reps" style="width:40px;${st}">
+                        <span style="font-size:11px;color:var(--gray-muted);">reps à</span>`;
+                  };
                   return `<div>
                     ${serArr.map((sv, k) => `
                       <div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;">
                         <span style="font-size:10px;color:var(--gray-muted);min-width:14px;text-align:right;">${k + 1}.</span>
-                        <input id="exreps_${si}_${ei}_${k}" type="text"
-                          value="${sv.reps}" placeholder="reps"
-                          style="width:40px;height:28px;text-align:center;border:1px solid var(--border-solid);
-                                 border-radius:6px;background:var(--card-bg);color:var(--black);
-                                 font-size:12px;padding:0;font-family:var(--font);">
-                        <span style="font-size:11px;color:var(--gray-muted);">reps à</span>
+                        ${champ(sv, k)}
                         <input id="excharge_${si}_${ei}_${k}" type="text"
-                          value="${sv.charge || ''}" placeholder="kg"
+                          value="${escHtml(sv.charge || '')}" placeholder="kg"
                           style="width:44px;height:28px;text-align:center;border:1px solid var(--border-solid);
                                  border-radius:6px;background:var(--card-bg);color:var(--black);
                                  font-size:12px;padding:0 2px;font-family:var(--font);">
@@ -681,19 +698,19 @@ const CoachProgTemplateEditPage = {
                         style="padding:1px 8px;border-radius:6px;border:1px dashed var(--border-solid);
                                background:transparent;color:var(--gray);font-size:11px;cursor:pointer;
                                font-family:var(--font);">+ Série</button>
-                      <!-- 2e effort optionnel (Rest-Pause, Drop Set, Iso Régressif…) -->
-                      <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;
+                      <!-- 2e effort optionnel (Rest-Pause, Drop Set, Iso Régressif…) : seulement en reps -->
+                      ${effort === 'reps' ? `<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;
                                     font-size:10px;color:var(--gray-muted);user-select:none;">
                         <input type="checkbox" id="exreps2check_${si}_${ei}"
                           ${ex.reps_secondaire ? 'checked' : ''}
                           onchange="var z=document.getElementById('exreps2zone_${si}_${ei}');z.style.display=this.checked?'flex':'none';if(!this.checked){document.getElementById('exreps2_${si}_${ei}').value='';document.getElementById('exrepos_intra_${si}_${ei}').value='';}"
                           style="accent-color:var(--gold);cursor:pointer;">
                         2e effort
-                      </label>
+                      </label>` : ''}
                     </div>
                     <div>
                       <div id="exreps2zone_${si}_${ei}"
-                        style="display:${ex.reps_secondaire ? 'flex' : 'none'};gap:5px;align-items:center;
+                        style="display:${effort === 'reps' && ex.reps_secondaire ? 'flex' : 'none'};gap:5px;align-items:center;
                                margin-top:5px;flex-wrap:wrap;padding:5px 8px;border-radius:7px;
                                background:var(--card-bg);border:1px dashed var(--border-solid);">
                         <span style="font-size:10px;color:var(--gray-muted);flex-shrink:0;">→</span>
@@ -713,83 +730,7 @@ const CoachProgTemplateEditPage = {
                       </div>
                     </div>
                   </div>`;
-                })()
-              /* ── MODE TEMPS / AMRAP : min + sec ── */
-              : (effort === 'temps' || effort === 'amrap')
-              ? (() => { const [mn, sc] = this._parseMinSec(ex.reps_cible); return `
-                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                      <input id="exser_${si}_${ei}" type="number" min="1" max="20"
-                        value="${ex.series || 1}" title="Nombre de séries"
-                        style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
-                               border-radius:6px;background:var(--card-bg);color:var(--black);
-                               font-size:12px;padding:0;font-family:var(--font);">
-                      <span style="font-size:9px;color:var(--gray-muted);">séries</span>
-                    </div>
-                    <span style="font-size:13px;color:var(--gray-muted);margin-bottom:12px;">×</span>
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                      <input id="exmin_${si}_${ei}" type="number" min="0" max="99"
-                        value="${mn}"
-                        style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
-                               border-radius:6px;background:var(--card-bg);color:var(--black);
-                               font-size:12px;padding:0;font-family:var(--font);">
-                      <span style="font-size:9px;color:var(--gray-muted);">min</span>
-                    </div>
-                    <span style="font-size:14px;font-weight:700;color:var(--gray-muted);margin-bottom:12px;">:</span>
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                      <input id="exsec_${si}_${ei}" type="number" min="0" max="59"
-                        value="${sc}"
-                        style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
-                               border-radius:6px;background:var(--card-bg);color:var(--black);
-                               font-size:12px;padding:0;font-family:var(--font);">
-                      <span style="font-size:9px;color:var(--gray-muted);">sec</span>
-                    </div>
-                    <!-- champ hidden pour sync reps_cible -->
-                    <input id="exreps_${si}_${ei}" type="hidden" value="${ex.reps_cible}">
-                  </div>
-                  <!-- Récup -->
-                  <div style="display:flex;gap:5px;align-items:center;margin-top:5px;">
-                    <span style="font-size:14px;">💤</span>
-                    <input id="exrest_${si}_${ei}" type="number" min="0" max="600"
-                      value="${ex.repos_secondes}" title="Repos (s)"
-                      style="width:50px;height:26px;text-align:center;border:1px solid var(--border-solid);
-                             border-radius:6px;background:var(--card-bg);color:var(--black);
-                             font-size:12px;padding:0;font-family:var(--font);">
-                    <span style="font-size:11px;color:var(--gray-muted);">s</span>
-                  </div>`; })()
-              /* ── MODE DISTANCE : valeur seule ── */
-              : `<div style="display:flex;gap:5px;align-items:center;">
-                  <input id="exser_${si}_${ei}" type="number" min="1" max="20"
-                        value="${ex.series || 1}" title="Nombre de séries"
-                        style="width:46px;height:30px;text-align:center;border:1px solid var(--border-solid);
-                               border-radius:6px;background:var(--card-bg);color:var(--black);
-                               font-size:12px;padding:0;font-family:var(--font);">
-                  <span style="font-size:11px;color:var(--gray-muted);">séries ×</span>
-                  <input id="exreps_${si}_${ei}" type="text"
-                    value="${ex.reps_cible}" placeholder="ex: 100m"
-                    style="width:80px;height:30px;text-align:center;border:1px solid var(--border-solid);
-                           border-radius:6px;background:var(--card-bg);color:var(--black);
-                           font-size:12px;padding:0 4px;font-family:var(--font);">
-                </div>
-                <div style="display:flex;gap:5px;align-items:center;margin-top:5px;">
-                  <span style="font-size:14px;">💤</span>
-                  <input id="exrest_${si}_${ei}" type="number" min="0" max="600"
-                    value="${ex.repos_secondes}" title="Repos (s)"
-                    style="width:50px;height:26px;text-align:center;border:1px solid var(--border-solid);
-                           border-radius:6px;background:var(--card-bg);color:var(--black);
-                           font-size:12px;padding:0;font-family:var(--font);">
-                  <span style="font-size:11px;color:var(--gray-muted);">s</span>
-                </div>`
-            }
-
-            ${effort !== 'reps' ? `
-            <!-- Charge cible (modes non-reps) -->
-            <input id="excharge_${si}_${ei}" type="text"
-              value="${ex.charge_cible}"
-              placeholder="Charge cible (ex : 60 kg, BW+10)"
-              style="width:100%;margin-top:5px;height:26px;border:1px solid var(--border-solid);
-                     border-radius:6px;background:var(--card-bg);color:var(--black);
-                     font-size:11px;padding:0 6px;font-family:var(--font);">` : ''}
+                })()}
 
             <!-- Note par exercice -->
             <input id="exnote_${si}_${ei}" type="text"
@@ -1011,6 +952,23 @@ const CoachProgTemplateEditPage = {
     this.seances[si].exercices.splice(ei, 1);
     // Nettoyer un éventuel superset devenu orphelin (1 seul membre restant). #41
     this._normalizeSupersets(this.seances[si].exercices);
+    this.renderContent();
+  },
+
+  // Changement de type (reps, durée, AMRAP, distance) : les valeurs des séries
+  // de l'ancien type n'ont plus de sens, on met une valeur de départ
+  _changerType(si, ei) {
+    const ex = this.seances[si].exercices[ei];
+    const avant = ex.type_effort || 'reps';
+    this._syncFromDOM();
+    const apres = ex.type_effort || 'reps';
+    const duree = t => t === 'temps' || t === 'amrap';
+    if (avant !== apres && !(duree(avant) && duree(apres))) {
+      const depart = { reps: '10', temps: '0:30', amrap: '5:00', distance: '' }[apres];
+      (ex.series_data || []).forEach(x => { x.reps = depart; });
+      if (apres === 'amrap' && ex.series_data?.length > 1) { ex.series_data = ex.series_data.slice(0, 1); ex.series = 1; }
+      ex.reps_cible = depart;
+    }
     this.renderContent();
   },
 

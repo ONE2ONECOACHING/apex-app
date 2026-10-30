@@ -26,7 +26,8 @@ const SeanceActivePage = {
   _dernierTic: 0,
   _ressenti:  null,      // 'dur' | 'bien' | 'feu' (obligatoire pour enregistrer)
   _mt:        null,      // minuteur en cours
-  _amrapFait: new Set(), // blocs dont l'AMRAP est terminé (le bouton du bas passe à « Récup »)
+  _amrapNb: {},           // bloc → nombre d'AMRAP faits (un par série)
+  _amrapAttente: new Set(), // blocs dont un AMRAP vient de finir : « Récup » avant le suivant
   _pave:      null,
   _tic:       null,
   _envoi:     null,
@@ -60,7 +61,8 @@ const SeanceActivePage = {
       this._lastSets  = last.sets || {};
       this._lastNotes = last.notes || {};
       this._vue       = 'apercu';
-      this._amrapFait = new Set();
+      this._amrapNb = {};
+      this._amrapAttente = new Set();
       this._bloc      = 0;
       this._secondes  = 0;
       this._ressenti  = null;
@@ -98,13 +100,23 @@ const SeanceActivePage = {
 
   _type(ex) { return ex.type_effort || 'reps'; },
 
+  // Valeurs par série du coach. Hors reps (durée, AMRAP, distance), seulement si elles
+  // vont avec le nombre de séries et la 1re valeur (sinon : restes d'un ancien type « reps »).
+  _sd(ex) {
+    const sd = ex.series_data;
+    if (!Array.isArray(sd) || !sd.length) return null;
+    if (this._type(ex) === 'reps') return sd;
+    return sd.length === (ex.series || 1) && String(sd[0]?.reps ?? '') === String(ex.reps_cible ?? '') ? sd : null;
+  },
+
   _nbSeries(ex) {
-    if (this._type(ex) === 'reps' && ex.series_data?.length) return ex.series_data.length;
-    return ex.series || 1;
+    const sd = this._sd(ex);
+    return sd ? sd.length : (ex.series || 1);
   },
 
   _cible(ex, k) {
-    if (this._type(ex) === 'reps' && ex.series_data?.[k]) return { reps: ex.series_data[k].reps || '10', charge: ex.series_data[k].charge || '' };
+    const sd = this._sd(ex);
+    if (sd?.[k]) return { reps: sd[k].reps || (this._type(ex) === 'reps' ? '10' : ''), charge: sd[k].charge || '' };
     return { reps: ex.reps_cible || (this._type(ex) === 'reps' ? '10' : ''), charge: ex.charge_cible || '' };
   },
 
@@ -130,9 +142,10 @@ const SeanceActivePage = {
 
   _prescription(ex) {
     const te = this._type(ex), nb = this._nbSeries(ex);
-    if (te === 'amrap') return `AMRAP ${ex.reps_cible || ''}`.trim();
-    if (te !== 'reps') return `${nb} × ${ex.reps_cible || '?'}`;
-    const reps = Array.from({ length: nb }, (_, k) => this._cible(ex, k).reps);
+    const reps = Array.from({ length: nb }, (_, k) => this._cible(ex, k).reps || '?');
+    const memes = new Set(reps).size === 1;
+    if (te === 'amrap') return nb === 1 ? `AMRAP ${reps[0]}` : `${nb} AMRAP de ${memes ? reps[0] : reps.join(' / ')}`;
+    if (te !== 'reps') return `${nb} × ${memes ? reps[0] : reps.join(' / ')}`;
     return `${nb} × ${new Set(reps).size === 1 ? reps[0] : reps.join('/')}${ex.reps_secondaire ? ` + ${ex.reps_secondaire}` : ''}`;
   },
 
@@ -281,7 +294,7 @@ const SeanceActivePage = {
         if (mt.annonces) this._dire('Stop');
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         toast(mt.type === 'repos' ? 'Repos terminé : à toi !' : 'Terminé : note ton score', 'info');
-        if (mt.bloc != null) this._amrapFait.add(mt.bloc);
+        this._finAmrap(mt);
         this._mt = null;
         if (document.getElementById('saMtActif')) this._fermerFeuille();
       }
@@ -457,7 +470,7 @@ const SeanceActivePage = {
     const ss = b.exos.length > 1;
     const amrap = this._amrapDuBloc(b);
     return `<div class="sa-page-bloc">Bloc ${b.lettre}${ss ? ' · superset, enchaîne les exercices' : ''}</div>` +
-      (amrap !== undefined ? `<div class="sa-amrap-info">♾ AMRAP ${escHtml(this._exos[amrap].reps_cible)} : le plus de reps possible. Appuie sur « Démarrer » en bas.</div>` : '') +
+      (amrap !== undefined ? `<div class="sa-amrap-info">♾ ${escHtml(this._prescription(this._exos[amrap]))} : le plus de reps possible. Appuie sur « Démarrer » en bas.</div>` : '') +
       b.exos.map(i => {
         const ex = this._exos[i], te = this._type(ex), vid = this._videoId(ex);
         const derniere = this._derniereFois(ex), noteAvant = this._lastNotes[ex.exercice_id];
@@ -477,7 +490,7 @@ const SeanceActivePage = {
             </div>
             ${ex.notes?.trim() ? `<div class="sa-consigne-exo"><b>Consigne du coach :</b> ${escHtml(ex.notes.trim())}</div>` : ''}
             ${ex.reps_secondaire ? `<div class="sa-consigne-exo"><b>2e effort :</b> après chaque série, pause de ${ex.repos_intra_sec || 10} s puis ${escHtml(ex.reps_secondaire)} reps.</div>` : ''}
-            ${chrono ? `<button class="sa-btn-chrono" onclick="SeanceActivePage._startEffort(${i})">▶ Start · ${escHtml(ex.reps_cible)}</button>` : ''}
+            ${chrono ? `<button class="sa-btn-chrono" id="saChrono${i}" onclick="SeanceActivePage._startEffort(${i})">▶ Start · ${escHtml(this._dureeSuivante(i))}</button>` : ''}
             <div class="sa-series" id="saSeries${i}">${this._htmlSeries(i)}</div>
             <div class="sa-plus-moins">
               <button class="sa-rond" aria-label="Retirer une série" onclick="SeanceActivePage._changerSeries(${i}, -1)"
@@ -518,6 +531,8 @@ const SeanceActivePage = {
   _majSeries(i) {
     const el = document.getElementById('saSeries' + i);
     if (el) el.innerHTML = this._htmlSeries(i);
+    const chrono = document.getElementById('saChrono' + i);   // durée de la prochaine série
+    if (chrono) chrono.textContent = '▶ Start · ' + this._dureeSuivante(i);
     this._majHaut();
   },
 
@@ -550,8 +565,8 @@ const SeanceActivePage = {
     const dernier = this._bloc >= this._blocs.length - 1;
     const repos = this._reposBloc(), b = this._blocs[this._bloc], amrap = b && this._amrapDuBloc(b);
     let centre = repos > 0 ? `<button class="sa-minut" onclick="SeanceActivePage._recup()">💤 Récup · ${this._fmt(repos)}</button>` : '';
-    if (amrap !== undefined && !this._amrapFait.has(this._bloc) && !this._blocFait(b)) {
-      centre = `<button class="sa-minut vert" onclick="SeanceActivePage._startEffort(${amrap})">▶ Démarrer · ${escHtml(this._exos[amrap].reps_cible)}</button>`;
+    if (amrap !== undefined && !this._amrapAttente.has(this._bloc) && (this._amrapNb[this._bloc] || 0) < this._nbSeries(this._exos[amrap]) && !this._blocFait(b)) {
+      centre = `<button class="sa-minut vert" onclick="SeanceActivePage._startEffort(${amrap})">▶ Démarrer · ${escHtml(this._dureeSuivante(amrap))}</button>`;
     }
     if (this._mt) {
       const p = this._mt.phases[this._mt.i], r = this._restant();
@@ -637,14 +652,31 @@ const SeanceActivePage = {
 
   _recup() {
     this._bip(0, 1);
+    this._amrapAttente.delete(this._bloc);   // après la récup, l'AMRAP suivant peut démarrer
     const repos = this._reposBloc();
     if (repos > 0) this._lancerMinuteur({ type: 'repos', lib: 'Repos', phases: [{ nom: 'Repos', dur: repos }] });
+  },
+
+  // AMRAP fini ou arrêté : compté, puis « Récup » avant le suivant
+  _finAmrap(mt) {
+    if (mt.bloc == null) return;
+    this._amrapNb[mt.bloc] = (this._amrapNb[mt.bloc] || 0) + 1;
+    this._amrapAttente.add(mt.bloc);
+  },
+
+  // Durée de la prochaine série : AMRAP = suivant de son bloc, durée = 1re série pas cochée
+  _dureeSuivante(i) {
+    const ex = this._exos[i];
+    let k;
+    if (this._type(ex) === 'amrap') k = this._amrapNb[this._blocs.indexOf(this._blocDe(i))] || 0;
+    else { k = (this._s[i] || []).findIndex(s => !s.fait); if (k < 0) k = 0; }
+    return this._cible(ex, Math.min(k, this._nbSeries(ex) - 1)).reps || ex.reps_cible || '';
   },
 
   // AMRAP ou exercice en durée : 10 s de préparation puis l'effort, avec annonces
   _startEffort(i) {
     const ex = this._exos[i];
-    const dur = this._enSecondes(ex.reps_cible);
+    const dur = this._enSecondes(this._dureeSuivante(i));
     this._dire('Prépare-toi');   // aussi pour débloquer la voix sur iPhone (geste du client)
     const amrap = this._type(ex) === 'amrap';
     this._lancerMinuteur({ type: 'effort', annonces: true, lib: amrap ? 'AMRAP' : 'Effort',
@@ -759,7 +791,7 @@ const SeanceActivePage = {
   },
 
   _stopMinuteur() {
-    if (this._mt?.bloc != null) this._amrapFait.add(this._mt.bloc);
+    if (this._mt) this._finAmrap(this._mt);
     this._mt = null;
     this._fermerFeuille();
     this._majBas();

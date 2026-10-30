@@ -126,13 +126,21 @@ const CoachSeanceStudioPage = {
     return k;
   },
 
+  // Valeur de chaque série (reps, durée, distance). Hors reps, series_data ne compte que s'il va
+  // avec le nombre de séries et la 1re valeur (sinon : restes d'un ancien type « reps »).
+  _valeursSeries(e) {
+    return (Array.isArray(e.series_data) && ((e.type_effort || 'reps') === 'reps'
+      || (e.series_data.length === (e.series || 1) && String(e.series_data[0]?.reps ?? '') === String(e.reps_cible ?? '')))
+      ? e.series_data.map(x => x.reps).filter(Boolean) : []);
+  },
+
   _methode(e) {
     const te = e.type_effort || 'reps';
-    const sd = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
+    const sd = this._valeursSeries(e);
     const reps = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : (e.reps_cible || '');
     const parts = [];
-    if (te === 'amrap') parts.push(`Max de reps en ${e.reps_cible || '?'}`);
-    else if (te === 'temps' || te === 'distance') parts.push(e.series > 1 ? `${e.series} × ${e.reps_cible}` : (e.reps_cible || ''));
+    if (te === 'amrap') parts.push((e.series || 1) > 1 ? `${e.series} AMRAP de ${reps || '?'}` : `Max de reps en ${reps || '?'}`);
+    else if (te === 'temps' || te === 'distance') parts.push(e.series > 1 ? `${e.series} × ${reps}` : (reps || ''));
     else parts.push(`${e.series || 1} × ${reps}`);
     if (te === 'reps' && e.reps_secondaire)
       parts.push(`2e effort : ${e.reps_secondaire} reps${e.repos_intra_sec ? ` après ${e.repos_intra_sec} s` : ''}`);
@@ -396,7 +404,7 @@ const CoachSeanceStudioPage = {
     const e = this.data.exercices.find(x => x.id === exerciceId);
     if (!e) return;
     const te = e.type_effort || 'reps';
-    const sd = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
+    const sd = this._valeursSeries(e);
     const reps = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : (e.reps_cible || '');
     const types = [['reps', 'Séries × reps'], ['amrap', 'Max de reps en un temps'], ['temps', 'Durée'], ['distance', 'Distance']];
     document.getElementById('ssModal').innerHTML = `
@@ -410,7 +418,7 @@ const CoachSeanceStudioPage = {
           </div>
           <div class="field-row" style="display:grid;grid-template-columns:1fr 1.4fr;gap:10px;">
             <div class="field"><label class="field-label">Séries</label><input class="input" type="number" min="1" id="ssmSeries" value="${e.series || 1}"></div>
-            <div class="field"><label class="field-label">Reps / objectif</label><input class="input" id="ssmReps" value="${escHtml(te === 'reps' ? reps : (e.reps_cible || ''))}" placeholder="10, 8/8/6, 5 min…"></div>
+            <div class="field"><label class="field-label">Reps / objectif</label><input class="input" id="ssmReps" value="${escHtml(reps)}" placeholder="10, 8/8/6, 5:00/4:00…"></div>
           </div>
           <div class="field-row" style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px;">
             <div class="field"><label class="field-label">Charge cible</label><input class="input" id="ssmCharge" value="${escHtml(e.charge_cible || '')}"></div>
@@ -442,16 +450,11 @@ const CoachSeanceStudioPage = {
       reps_secondaire: te === 'reps' ? (v('ssmReps2') || null) : null,
       repos_intra_sec: te === 'reps' && v('ssmReps2') ? (parseInt(v('ssmReposIntra')) || null) : null,
     };
-    if (te === 'reps') {
-      // « 8/8/6 » = une valeur par série ; « 10 » = la même pour toutes
-      const parts = repsTxt.split('/').map(x => x.trim()).filter(Boolean);
-      const parSerie = Array.from({ length: series }, (_, i) => parts[i] || parts[parts.length - 1] || '10');
-      patch.reps_cible = parSerie[0];
-      patch.series_data = parSerie.map(r => ({ reps: r, charge: charge || '' }));
-    } else {
-      patch.reps_cible = repsTxt || null;
-      patch.series_data = null;
-    }
+    // « 8/8/6 » ou « 5:00/4:00/3:00 » = une valeur par série ; « 10 » = la même pour toutes (tous les types)
+    const parts = repsTxt.split('/').map(x => x.trim()).filter(Boolean);
+    const parSerie = Array.from({ length: series }, (_, i) => parts[i] || parts[parts.length - 1] || (te === 'reps' ? '10' : ''));
+    patch.reps_cible = parSerie[0] || null;
+    patch.series_data = parSerie.map(r => ({ reps: r, charge: charge || '' }));
     try {
       const maj = await db.updateClientExercice(exerciceId, patch);
       const i = this.data.exercices.findIndex(e => e.id === exerciceId);
