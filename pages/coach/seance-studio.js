@@ -212,7 +212,8 @@ const CoachSeanceStudioPage = {
             <div class="ss-exo-nom ss-cliquable" title="Remplacer l'exercice" onclick="CoachSeanceStudioPage.choisirExercice('remplacer', '${e.id}')">${escHtml(nom)}${e.superset_groupe ? ` <span class="ss-ss">${escHtml(e.superset_groupe)}</span>` : ''}</div>
             <div class="ss-exo-meth ss-cliquable" title="Modifier la méthode" onclick="CoachSeanceStudioPage.editerMethode('${e.id}')">${escHtml(this._methode(e))}</div>
             ${e.notes ? `<div class="ss-exo-notes">${escHtml(e.notes)}</div>` : ''}
-            ${video ? `<a class="ss-exo-video" href="${escHtml(video)}" target="_blank" rel="noopener">🎥 Vidéo</a>` : ''}
+            ${video ? `<a class="ss-exo-video" href="${escHtml(video)}" target="_blank" rel="noopener"
+              onclick="return CoachSeanceStudioPage.voirVideo(event, '${e.id}')">🎥 Vidéo</a>` : ''}
           </th>
           ${cases}
           <td></td>
@@ -374,6 +375,27 @@ const CoachSeanceStudioPage = {
   // ── Modifier la séance depuis la grille ────────────────────────────────────
 
   _fermerModal() { this._choix = null; document.getElementById('ssModal').innerHTML = ''; },
+
+  // Vidéo YouTube dans une fenêtre sur la grille (plus d'onglet YouTube) ; autre lien : nouvel onglet
+  voirVideo(ev, exerciceId) {
+    const e = this.data.exercices.find(x => x.id === exerciceId);
+    const url = e?.exercices_bdd?.youtube_url || '';
+    const vid = (url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/) || [])[1];
+    if (!vid) return true;
+    ev.preventDefault();
+    document.getElementById('ssModal').innerHTML = `
+      <div class="modal-overlay" onclick="if (event.target === this) CoachSeanceStudioPage._fermerModal()">
+        <div class="modal ss-modal-video">
+          <div class="modal-title">${escHtml(e.exercices_bdd?.nom || 'Exercice')}
+            <button class="modal-close" onclick="CoachSeanceStudioPage._fermerModal()">×</button>
+          </div>
+          <div class="sa-video"><iframe src="https://www.youtube.com/embed/${vid}?rel=0&playsinline=1&autoplay=1" frameborder="0"
+            allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+          ${e.notes ? `<div class="ss-exo-notes" style="margin-top:10px;">${escHtml(e.notes)}</div>` : ''}
+        </div>
+      </div>`;
+    return false;
+  },
 
   // Remplacer un exercice (il garde ses charges) ou en ajouter un
   async choisirExercice(mode, exerciceId = null) {

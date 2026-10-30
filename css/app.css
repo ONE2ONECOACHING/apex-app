@@ -1926,3 +1926,4 @@ body.resume-replie .fr-replier { right: 5px; }
 /* Grille du studio : une case Charge / Reps par série (pyramidal) et pour le 2e effort */
 .ss-duo.multi { grid-template-columns: 20px 1fr 1fr; align-items: center; margin-bottom: 3px; }
 .ss-duo-lib { font-size: 10px; font-weight: 700; color: var(--gray-light); text-align: center; }
+.ss-modal-video { max-width: 860px; }
