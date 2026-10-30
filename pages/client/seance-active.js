@@ -3,9 +3,10 @@
 // Séance : un bloc par page, on glisse de côté pour passer d'un bloc à l'autre
 // sans rien valider. Chaque série se coche ; le repos se lance tout seul (en
 // superset, après le dernier exercice du tour) ou par le bouton « Récup », avec
-// le temps noté par le coach : le client ne règle aucun minuteur. AMRAP et
-// exercices en durée : « Start », 10 s de préparation puis annonces sonores
-// (3, 2, 1, Go ; mi-temps ; dernière minute ; 3, 2, 1, Stop).
+// le temps noté par le coach : le client ne règle aucun minuteur. Bloc AMRAP :
+// bouton « Démarrer » en bas, 10 s de préparation puis annonces sonores
+// (3, 2, 1, Go ; mi-temps ; dernière minute ; 3, 2, 1, Stop) ; la récup ne part
+// jamais seule, le client appuie sur « Récup ». Exercice en durée : « Start ».
 // La séance commencée est gardée dans le téléphone et dans la base
 // (seances_en_cours) : le client la reprend même après avoir fermé l'app.
 
@@ -25,6 +26,7 @@ const SeanceActivePage = {
   _dernierTic: 0,
   _ressenti:  null,      // 'dur' | 'bien' | 'feu' (obligatoire pour enregistrer)
   _mt:        null,      // minuteur en cours
+  _amrapFait: new Set(), // blocs dont l'AMRAP est terminé (le bouton du bas passe à « Récup »)
   _pave:      null,
   _tic:       null,
   _envoi:     null,
@@ -58,6 +60,7 @@ const SeanceActivePage = {
       this._lastSets  = last.sets || {};
       this._lastNotes = last.notes || {};
       this._vue       = 'apercu';
+      this._amrapFait = new Set();
       this._bloc      = 0;
       this._secondes  = 0;
       this._ressenti  = null;
@@ -278,6 +281,7 @@ const SeanceActivePage = {
         if (mt.annonces) this._dire('Stop');
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         toast(mt.type === 'repos' ? 'Repos terminé : à toi !' : 'Terminé : note ton score', 'info');
+        if (mt.bloc != null) this._amrapFait.add(mt.bloc);
         this._mt = null;
         if (document.getElementById('saMtActif')) this._fermerFeuille();
       }
@@ -451,9 +455,9 @@ const SeanceActivePage = {
 
   _htmlBloc(b) {
     const ss = b.exos.length > 1;
-    const amrap = b.exos.find(i => this._type(this._exos[i]) === 'amrap' && this._exos[i].reps_cible);
+    const amrap = this._amrapDuBloc(b);
     return `<div class="sa-page-bloc">Bloc ${b.lettre}${ss ? ' · superset, enchaîne les exercices' : ''}</div>` +
-      (amrap !== undefined ? `<button class="sa-btn-chrono" style="margin:0 0 12px;" onclick="SeanceActivePage._startEffort(${amrap})">▶ Start · AMRAP ${escHtml(this._exos[amrap].reps_cible)}</button>` : '') +
+      (amrap !== undefined ? `<div class="sa-amrap-info">♾ AMRAP ${escHtml(this._exos[amrap].reps_cible)} : le plus de reps possible. Appuie sur « Démarrer » en bas.</div>` : '') +
       b.exos.map(i => {
         const ex = this._exos[i], te = this._type(ex), vid = this._videoId(ex);
         const derniere = this._derniereFois(ex), noteAvant = this._lastNotes[ex.exercice_id];
@@ -544,8 +548,11 @@ const SeanceActivePage = {
     const bas = document.getElementById('saBas');
     if (!bas) return;
     const dernier = this._bloc >= this._blocs.length - 1;
-    const repos = this._reposBloc();
+    const repos = this._reposBloc(), b = this._blocs[this._bloc], amrap = b && this._amrapDuBloc(b);
     let centre = repos > 0 ? `<button class="sa-minut" onclick="SeanceActivePage._recup()">💤 Récup · ${this._fmt(repos)}</button>` : '';
+    if (amrap !== undefined && !this._amrapFait.has(this._bloc) && !this._blocFait(b)) {
+      centre = `<button class="sa-minut vert" onclick="SeanceActivePage._startEffort(${amrap})">▶ Démarrer · ${escHtml(this._exos[amrap].reps_cible)}</button>`;
+    }
     if (this._mt) {
       const p = this._mt.phases[this._mt.i], r = this._restant();
       const frac = p.monte ? (r % 60) / 60 : Math.max(0, r / p.dur);
@@ -613,6 +620,7 @@ const SeanceActivePage = {
       return;
     }
     if (this._blocFait(b)) toast(`Bloc ${b.lettre} terminé 💪`, 'success', 1800);
+    if (this._amrapDuBloc(b) !== undefined) { this._majBas(); return; }   // AMRAP : récup lancée par le client
     const repos = ex.repos_secondes ?? 90;
     if (repos > 0) this._lancerMinuteur({ type: 'repos', lib: 'Repos', phases: [{ nom: 'Repos', dur: repos }] });
   },
@@ -623,6 +631,9 @@ const SeanceActivePage = {
     const ex = b && this._exos[b.exos[b.exos.length - 1]];
     return ex ? (ex.repos_secondes ?? 90) : 0;
   },
+
+  // Exercice AMRAP du bloc (avec sa durée), s'il y en a un
+  _amrapDuBloc(b) { return b.exos.find(i => this._type(this._exos[i]) === 'amrap' && this._exos[i].reps_cible); },
 
   _recup() {
     this._bip(0, 1);
@@ -635,7 +646,9 @@ const SeanceActivePage = {
     const ex = this._exos[i];
     const dur = this._enSecondes(ex.reps_cible);
     this._dire('Prépare-toi');   // aussi pour débloquer la voix sur iPhone (geste du client)
-    this._lancerMinuteur({ type: 'effort', annonces: true, lib: this._type(ex) === 'amrap' ? 'AMRAP' : 'Effort', phases: [
+    const amrap = this._type(ex) === 'amrap';
+    this._lancerMinuteur({ type: 'effort', annonces: true, lib: amrap ? 'AMRAP' : 'Effort',
+      bloc: amrap ? this._blocs.indexOf(this._blocDe(i)) : null, phases: [
       { nom: 'Prépare-toi', dur: 10 },
       { nom: ex.exercices_bdd?.nom || 'Effort', dur, travail: true },
     ] });
@@ -746,6 +759,7 @@ const SeanceActivePage = {
   },
 
   _stopMinuteur() {
+    if (this._mt?.bloc != null) this._amrapFait.add(this._mt.bloc);
     this._mt = null;
     this._fermerFeuille();
     this._majBas();
