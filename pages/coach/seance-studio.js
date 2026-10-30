@@ -195,12 +195,7 @@ const CoachSeanceStudioPage = {
         const cle = `${e.id}_${k}`;
         return `
           <td class="ss-case ${k === enCours ? 'en-cours' : ''}">
-            <div class="ss-duo">
-              <textarea rows="2" placeholder="Charge" data-cle="${cle}" data-champ="charge"
-                oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">${escHtml(v.charge || '')}</textarea>
-              <textarea rows="2" placeholder="Reps" data-cle="${cle}" data-champ="reps"
-                oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">${escHtml(v.reps || '')}</textarea>
-            </div>
+            ${this._htmlCases(e, cle, k, v)}
             <input class="ss-remarque" placeholder="Remarque" data-cle="${cle}" data-champ="remarque" value="${escHtml(v.remarque || '')}"
               oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">
           </td>`;
@@ -263,6 +258,53 @@ const CoachSeanceStudioPage = {
     if (iCours > 0 && cible && scroll) scroll.scrollLeft = Math.max(0, cible.offsetLeft - fixe);
   },
 
+  // Cases « Charge / Reps » d'un exercice pour une semaine : une seule si toutes les séries
+  // sont pareilles, une par série si les reps ou les charges changent (pyramidal, 12/10/8/6),
+  // plus une pour le 2e effort (cluster, rest-pause). Plusieurs valeurs = « 80 / 85 / 90 » en base.
+  _libellesCases(e) {
+    const te = e.type_effort || 'reps';
+    const reps = this._valeursSeries(e);
+    const charges = Array.isArray(e.series_data) && reps.length ? e.series_data.map(x => String(x.charge || '').trim()) : [];
+    const varie = new Set(reps).size > 1 || new Set(charges.filter(Boolean)).size > 1;
+    const lib = varie ? reps.map((_, j) => `S${j + 1}`) : [''];
+    if (te === 'reps' && e.reps_secondaire) { if (!varie) lib[0] = 'S'; lib.push('2e'); }
+    return lib;
+  },
+
+  _decouper(txt, n) {
+    const parts = String(txt || '').split(/\s*\/\s*/);
+    if (n === 1 || parts.length <= 1) return [txt || '', ...Array(n - 1).fill('')];
+    const res = parts.slice(0, n);
+    if (parts.length > n) res[n - 1] = parts.slice(n - 1).join(' / ');
+    while (res.length < n) res.push('');
+    return res;
+  },
+
+  _htmlCases(e, cle, k, v) {
+    const lib = this._libellesCases(e), n = lib.length;
+    const ch = this._decouper(v.charge, n), rp = this._decouper(v.reps, n);
+    return lib.map((l, j) => `
+            <div class="ss-duo ${n > 1 ? 'multi' : ''}">
+              ${n > 1 ? `<span class="ss-duo-lib">${l}</span>` : ''}
+              <textarea rows="${n > 1 ? 1 : 2}" placeholder="Charge" data-cle="${cle}" data-champ="charge"
+                oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">${escHtml(ch[j])}</textarea>
+              <textarea rows="${n > 1 ? 1 : 2}" placeholder="Reps" data-cle="${cle}" data-champ="reps"
+                oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">${escHtml(rp[j])}</textarea>
+            </div>`).join('');
+  },
+
+  // Valeurs d'une case : plusieurs champs « charge » (ou « reps ») = « 80 / 85 / 90 »
+  _lireCase(cle) {
+    const vals = {};
+    document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => { (vals[el.dataset.champ] = vals[el.dataset.champ] || []).push(el.value.trim()); });
+    const champs = {};
+    for (const [c, l] of Object.entries(vals)) {
+      while (l.length > 1 && !l[l.length - 1]) l.pop();
+      champs[c] = l.join(' / ').trim() || null;
+    }
+    return champs;
+  },
+
   _etat(texte, erreur = false) {
     const el = document.getElementById('ssEtat');
     if (!el) return;
@@ -276,8 +318,7 @@ const CoachSeanceStudioPage = {
     this._etat('Enregistrement…');
     // Valeurs relevées à la frappe et gardées en mémoire tout de suite : un nouvel
     // affichage (↑ ↓, ajout d'exercice) ne les efface plus avant l'enregistrement
-    const champs = {};
-    document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+    const champs = this._lireCase(cle);
     this._attente = this._attente || {};
     this._attente[cle] = champs;
     const d = this.data;
@@ -304,8 +345,7 @@ const CoachSeanceStudioPage = {
     let champs = this._attente?.[cle];
     if (this._attente) delete this._attente[cle];
     if (!champs) {
-      champs = {};
-      document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+      champs = this._lireCase(cle);
     }
     try {
       await db.saveSaisieStudio(exerciceId, semaine, champs);
