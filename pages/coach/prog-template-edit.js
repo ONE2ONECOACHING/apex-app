@@ -11,6 +11,7 @@ const CoachProgTemplateEditPage = {
   _pickMuscle:         'all',
   _pickEquip:          'all',
   _saving:             false,
+  _ouvert:             null,  // 'si,ei' : exercice dont le détail est déplié
   // ── Mode client (édition programme assigné, sans modifier le template) ──
   _clientMode:         false,
   _clientProgrammeId:  null,
@@ -110,6 +111,7 @@ const CoachProgTemplateEditPage = {
     this.seances            = [];
     this._allExos           = [];
     this._saving            = false;
+    this._ouvert            = null;
 
     try {
       this._allExos = await db.getExercicesBdd();
@@ -313,14 +315,15 @@ const CoachProgTemplateEditPage = {
                   onclick="CoachProgTemplateEditPage._setTag('${t.v}')">${t.l}</button>`).join('')}
             </div>
           </div>`}
-          <button class="btn btn-primary" id="tplSaveBtn"
+          <button class="btn btn-primary tpl-save-btn" id="tplSaveBtn"
             onclick="CoachProgTemplateEditPage.save()"
             style="height:44px;padding:0 24px;flex-shrink:0;white-space:nowrap;">
             ✓ Enregistrer
           </button>
         </div>
-        <div style="margin-top:12px;">
-          <div class="form-label">📋 Consignes du programme <span style="color:var(--gray-muted);font-weight:400;">(optionnel — visible par le client)</span></div>
+        <details class="pte-consignes" style="margin-top:12px;">
+          <summary class="form-label">📋 Consignes du programme <span style="color:var(--gray-muted);font-weight:400;">(optionnel — visible par le client)</span>
+            ${d.consignes ? `<span class="pte-consignes-apercu">${escHtml(d.consignes.split('\n')[0].slice(0, 90))}</span>` : ''}</summary>
           <textarea id="tplConsignes"
             placeholder="Ex : Ce programme est conçu pour développer la force sur 4 semaines. Effectue chaque séance en respectant les temps de repos indiqués…"
             style="width:100%;min-height:90px;border:1px solid var(--border-solid);border-radius:8px;
@@ -328,8 +331,12 @@ const CoachProgTemplateEditPage = {
                    padding:10px 12px;font-family:var(--font);resize:vertical;
                    box-sizing:border-box;line-height:1.5;"
           >${(d.consignes||'').replace(/</g,'&lt;')}</textarea>
-        </div>
+        </details>
       </div>
+
+      <!-- Enregistrer toujours visible en bas à droite -->
+      <button class="btn btn-primary tpl-save-btn pte-save-flottant"
+        onclick="CoachProgTemplateEditPage.save()">✓ Enregistrer</button>
 
       <!-- Colonnes séances -->
       <div id="tplCols" style="overflow-x:auto;padding-bottom:7rem;">
@@ -337,7 +344,7 @@ const CoachProgTemplateEditPage = {
           ${this.seances.map((s, si) => this._renderSeanceCol(s, si)).join('')}
 
           <!-- Bouton ajouter séance -->
-          <div style="flex-shrink:0;width:240px;">
+          <div style="flex-shrink:0;width:180px;">
             <button class="btn btn-ghost"
               style="width:100%;height:68px;border:2px dashed var(--border-solid);
                      font-size:14px;color:var(--gray);border-radius:12px;"
@@ -352,7 +359,7 @@ const CoachProgTemplateEditPage = {
   _renderSeanceCol(s, si) {
     const isCardio = !!s.cardio;
     return `
-      <div data-col="${si}" data-cardio="${isCardio ? 1 : 0}" style="flex-shrink:0;width:290px;background:var(--card-bg);
+      <div data-col="${si}" data-cardio="${isCardio ? 1 : 0}" style="flex:1 0 280px;max-width:440px;background:var(--card-bg);
                   border-radius:14px;padding:12px;border:1px solid ${isCardio ? '#EF4444' : 'var(--border-solid)'};">
         <!-- En-tête -->
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
@@ -608,22 +615,24 @@ const CoachProgTemplateEditPage = {
       </label>`;
     }).join('');
 
+    const ouvert = this._ouvert === `${si},${ei}`;
     return `
-      <div data-ex="${si},${ei}" style="background:var(--white);border-radius:8px;padding:8px 10px;
-                  margin-bottom:2px;border:1px solid var(--border);${borderLeft}">
+      <div data-ex="${si},${ei}" class="pte-exo${ouvert ? ' ouvert' : ''}" style="${borderLeft}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
           <span class="dd-poignee" title="Glisser pour déplacer l'exercice (aussi vers une autre séance)"
             onpointerdown="CoachProgTemplateEditPage._ddDebut(event,'ex',${si},${ei})">⠿</span>
           <div style="flex:1;min-width:0;">
-            <!-- Nom + badge superset + lien YT -->
-            <div style="font-weight:600;font-size:13px;line-height:1.3;margin-bottom:6px;">
-              ${ex.exercice?.nom || '?'}${groupBadge}
-              ${ytUrl ? `<a href="${ytUrl}" target="_blank"
-                style="font-size:10px;color:#FF0000;text-decoration:none;margin-left:6px;">▶ YT</a>` : ''}
+            <!-- Nom + badge superset (clic = déplier le détail) -->
+            <div class="pte-tete" onclick="CoachProgTemplateEditPage._basculer(${si},${ei})">
+              <div class="pte-nom">${escHtml(ex.exercice?.nom || '?')}${groupBadge}</div>
+              <div class="pte-resume">${this._resume(ex)}</div>
             </div>
 
+            <div class="pte-detail">
+            ${ytUrl ? `<a href="${escHtml(ytUrl)}" target="_blank"
+                style="display:inline-block;font-size:11px;color:#FF0000;text-decoration:none;margin:6px 0 2px;">▶ Vidéo YouTube</a>` : ''}
             <!-- Modalité -->
-            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 7px;">
               ${effortBtns}
             </div>
 
@@ -775,16 +784,56 @@ const CoachProgTemplateEditPage = {
                      border-radius:6px;background:var(--card-bg);color:var(--black);
                      font-size:11px;padding:0 6px;font-family:var(--font);
                      color:var(--gray);">
+            <div style="display:flex;gap:6px;margin-top:8px;">
+              <button class="btn btn-secondary btn-small" onclick="CoachProgTemplateEditPage.openSwapPicker(${si},${ei})">↔ Remplacer</button>
+              <button class="btn btn-secondary btn-small" style="color:#EF4444;" onclick="CoachProgTemplateEditPage.removeExo(${si},${ei})">× Supprimer</button>
+            </div>
+            </div>
           </div>
-          <!-- Actions exercice -->
-          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;margin-top:2px;">
-            <button class="icon-btn" title="Remplacer l'exercice"
-              onclick="CoachProgTemplateEditPage.openSwapPicker(${si},${ei})">↔</button>
-            <button class="icon-btn" title="Supprimer"
-              onclick="CoachProgTemplateEditPage.removeExo(${si},${ei})">×</button>
-          </div>
+          <button class="pte-chev" title="${ouvert ? 'Replier' : 'Modifier l\'exercice'}"
+            onclick="CoachProgTemplateEditPage._basculer(${si},${ei})">${ouvert ? '▴' : '▾'}</button>
         </div>
       </div>`;
+  },
+
+  // Résumé d'une ligne : « 3 × 10 · 80 kg · 💤 90 s · +max/20 s »
+  _resume(ex) {
+    const effort = ex.type_effort || 'reps';
+    const morceaux = [];
+    if (effort === 'reps') {
+      const ser = (ex.series_data && ex.series_data.length) ? ex.series_data
+        : Array.from({ length: ex.series || 3 }, () => ({ reps: ex.reps_cible || '10', charge: ex.charge_cible || '' }));
+      const reps = ser.map(x => String(x.reps || '').trim());
+      morceaux.push(reps.every(r => r === reps[0]) ? `${ser.length} × ${reps[0] || '?'}` : reps.join(' / '));
+      const ch = ser.map(x => String(x.charge || '').trim());
+      if (ch.some(Boolean)) morceaux.push(ch.every(c => c === ch[0]) ? `${ch[0]} kg` : ch.map(c => c || '–').join(' / ') + ' kg');
+    } else {
+      const lab = { temps: '⏱', amrap: '♾ AMRAP', distance: '📏' }[effort] || '';
+      morceaux.push(`${lab} ${ex.reps_cible || '?'}`.trim());
+      if (ex.charge_cible) morceaux.push(ex.charge_cible);
+    }
+    const r = parseInt(ex.repos_secondes) || 0;
+    morceaux.push(r === 0 ? 'enchaîné' : `💤 ${r < 60 ? r + ' s' : r % 60 === 0 ? (r / 60) + ' min' : Math.floor(r / 60) + ':' + String(r % 60).padStart(2, '0')}`);
+    if (effort === 'reps' && ex.reps_secondaire) morceaux.push(`+${ex.reps_secondaire}${ex.repos_intra_sec ? '/' + ex.repos_intra_sec + ' s' : ''}`);
+    if (ex.notes) morceaux.push('📝');
+    return escHtml(morceaux.join(' · '));
+  },
+
+  // Déplie / replie le détail d'un exercice (un seul ouvert), sans tout redessiner
+  _basculer(si, ei) {
+    this._syncFromDOM();
+    const cle = `${si},${ei}`;
+    this._ouvert = this._ouvert === cle ? null : cle;
+    document.querySelectorAll('#tplEditContent [data-ex]').forEach(el => {
+      const ouvert = el.dataset.ex === this._ouvert;
+      el.classList.toggle('ouvert', ouvert);
+      const chev = el.querySelector('.pte-chev');
+      if (chev) { chev.textContent = ouvert ? '▴' : '▾'; chev.title = ouvert ? 'Replier' : "Modifier l'exercice"; }
+      const [a, b] = el.dataset.ex.split(',').map(Number);
+      const ex = this.seances[a]?.exercices[b];
+      const res = el.querySelector('.pte-resume');
+      if (ex && res) res.innerHTML = this._resume(ex);
+    });
   },
 
   // ── Glisser-déposer : exercices (dans une séance ou vers une autre) et séances ──
@@ -893,6 +942,7 @@ const CoachProgTemplateEditPage = {
     document.body.classList.remove('dd-actif');
     this._dd = null;
     if (!d.cible) return;
+    this._ouvert = null;
 
     if (d.type === 'seance') {
       let idx = d.cible.idx;
@@ -992,6 +1042,7 @@ const CoachProgTemplateEditPage = {
     const ex = this.seances[si].exercices[ei];
     if (this._clientMode && ex?.id && !confirm(`Retirer « ${ex.exercice?.nom || 'cet exercice'} » ?\n\nÀ l'enregistrement, les charges notées pour cet exercice (grille du studio) seront supprimées.`)) return;
     this.seances[si].exercices.splice(ei, 1);
+    this._ouvert = null;
     // Nettoyer un éventuel superset devenu orphelin (1 seul membre restant). #41
     this._normalizeSupersets(this.seances[si].exercices);
     this.renderContent();
@@ -1191,8 +1242,10 @@ const CoachProgTemplateEditPage = {
     this._syncFromDOM();
     if (this._saving) return;
     this._saving = true;
-    const btn = document.getElementById('tplSaveBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement…'; }
+    // Les deux boutons Enregistrer (en haut et en bas à droite)
+    const boutons = [...document.querySelectorAll('.tpl-save-btn')];
+    const btn = { set disabled(v) { boutons.forEach(b => b.disabled = v); }, set textContent(v) { boutons.forEach(b => b.textContent = v); } };
+    btn.disabled = true; btn.textContent = '⏳ Enregistrement…';
 
     try {
       if (this._clientMode) {
