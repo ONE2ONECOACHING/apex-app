@@ -5,6 +5,7 @@ const AGENDA_HEURE_FIN   = 21;  // 21h
 const AGENDA_PAS_MIN     = 15;  // pas de la grille, en minutes
 const AGENDA_PX_PAS      = 14;  // hauteur d'un pas, en pixels
 const AGENDA_COULEURS    = ['#2563EB', '#DB2777', '#059669', '#D97706', '#7C3AED', '#0891B2', '#DC2626', '#4B5563'];
+const AGENDA_COULEUR_FORMATION = '#1E293B';   // formation de l'équipe (tous les coachs)
 const AGENDA_JOURS       = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 const CoachAgendaPage = {
@@ -134,6 +135,9 @@ const CoachAgendaPage = {
     this._renderGrille();
   },
 
+  // Formation : un seul créneau, affiché chez tous les coachs, avec sa couleur
+  _couleurCreneau(c) { return c.type === 'formation' ? AGENDA_COULEUR_FORMATION : this._couleur(c.coach_id); },
+
   _couleur(coachId) {
     const i = this.coachs.findIndex(c => c.id === coachId);
     return AGENDA_COULEURS[(i < 0 ? 0 : i) % AGENDA_COULEURS.length];
@@ -147,6 +151,7 @@ const CoachAgendaPage = {
   _titreCreneau(c) {
     if (c.type === 'indispo') return 'Indisponible';
     if (c.type === 'prospect') return '🎯 ' + (c.prospect_nom || 'Prospect');
+    if (c.type === 'formation') return '🎓 ' + ((c.notes || '').trim().split('\n')[0] || 'Formation');
     return this._nomClient(c.client_id);
   },
 
@@ -280,8 +285,10 @@ const CoachAgendaPage = {
     const debut = col.date.getTime();
     const fin   = this._ajouterJours(col.date, 1).getTime();
     return this.creneaux.filter(c => {
-      if (!this.visibles.has(c.coach_id)) return false;
-      if (col.coachId && c.coach_id !== col.coachId) return false;
+      if (c.type !== 'formation') {
+        if (!this.visibles.has(c.coach_id)) return false;
+        if (col.coachId && c.coach_id !== col.coachId) return false;
+      }
       return new Date(c.debut).getTime() < fin && new Date(c.fin).getTime() > debut;
     });
   },
@@ -356,17 +363,17 @@ const CoachAgendaPage = {
         const indispo = c.type === 'indispo';
         const titre = this._titreCreneau(c);
         const heure = `${this._hm(new Date(c.debut))}–${this._hm(new Date(c.fin))}`;
-        return `<div class="ag-bloc ${indispo ? 'indispo' : ''} ${c.type === 'prospect' ? 'prospect' : ''}" style="top:${top}px;height:${h - 2}px;left:${p.couloir * largeur}%;width:calc(${largeur}% - 3px);--c:${this._couleur(c.coach_id)}"
+        return `<div class="ag-bloc ${indispo ? 'indispo' : ''} ${c.type === 'prospect' ? 'prospect' : ''}" style="top:${top}px;height:${h - 2}px;left:${p.couloir * largeur}%;width:calc(${largeur}% - 3px);--c:${this._couleurCreneau(c)}"
                   onclick="event.stopPropagation()" oncontextmenu="event.preventDefault()" onpointerdown="CoachAgendaPage.debutDrag(event, '${c.id}')" title="${escHtml(titre + ' · ' + heure)}">
           <div class="ag-poignee haut"></div><div class="ag-poignee bas"></div>
           <div class="ag-bloc-titre">${escHtml(titre)}${c.serie_id ? ' ↻' : ''}${c.en_plus ? ' · en plus' : ''}</div>
-          <div class="ag-bloc-sub">${heure}${this.vue === 'semaine' || this._mobile ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}</div>
+          <div class="ag-bloc-sub">${heure}${(this.vue === 'semaine' || this._mobile) && c.type !== 'formation' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}</div>
         </div>`;
       }).join('');
 
       const bandeau = journee.map(c => `
-        <div class="ag-journee" style="--c:${this._couleur(c.coach_id)}" onclick="event.stopPropagation();CoachAgendaPage.ouvrir('${c.id}')">
-          Indisponible${this.vue === 'semaine' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}
+        <div class="ag-journee ${c.type === 'formation' ? 'formation' : ''}" style="--c:${this._couleurCreneau(c)}" onclick="event.stopPropagation();CoachAgendaPage.ouvrir('${c.id}')">
+          ${escHtml(this._titreCreneau(c))}${this.vue === 'semaine' && c.type !== 'formation' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}
         </div>`).join('');
 
       return `
@@ -654,7 +661,7 @@ const CoachAgendaPage = {
       debut: this._dateLocale(ymd, cible.debut).toISOString(),
       fin:   this._dateLocale(ymd, cible.fin).toISOString(),
     };
-    if (col.coachId && col.coachId !== g.c.coach_id) patch.coach_id = col.coachId;
+    if (col.coachId && col.coachId !== g.c.coach_id && g.c.type !== 'formation') patch.coach_id = col.coachId;
     const inchange = new Date(patch.debut).getTime() === new Date(g.c.debut).getTime()
                   && new Date(patch.fin).getTime() === new Date(g.c.fin).getTime() && !patch.coach_id;
     if (inchange) { this._renderGrille(); return; }
@@ -735,11 +742,11 @@ const CoachAgendaPage = {
     const v = id => document.getElementById(id);
     if (!e || !v('agType')) return;
     e.type = v('agType').value;
-    e.coach_id = v('agCoach').value;
+    if (v('agCoach')) e.coach_id = v('agCoach').value;
     e.jour = v('agJour').value;
     e.minutes = parseInt(v('agHeure').value);
     e.duree = parseInt(v('agDuree').value);
-    e.journee_entiere = e.type === 'indispo' && !!v('agJournee')?.checked;
+    e.journee_entiere = (e.type === 'indispo' || e.type === 'formation') && !!v('agJournee')?.checked;
     e.notes = v('agNotes').value;
     if (v('agEnPlus')) e.en_plus = v('agEnPlus').value === 'plus';
     if (v('agProspectNom')) {
@@ -760,6 +767,7 @@ const CoachAgendaPage = {
     const client = this.clients.find(c => c.id === e.client_id);
     const indispo = e.type === 'indispo';
     const prospect = e.type === 'prospect';
+    const formation = e.type === 'formation';
 
     document.getElementById('agModal').innerHTML = `
       <div class="modal-overlay">
@@ -774,6 +782,7 @@ const CoachAgendaPage = {
               <option value="coaching" ${e.type === 'coaching' ? 'selected' : ''}>Coaching</option>
               <option value="prospect" ${prospect ? 'selected' : ''}>Rendez-vous prospect</option>
               <option value="indispo" ${indispo ? 'selected' : ''}>Indisponibilité</option>
+              <option value="formation" ${formation ? 'selected' : ''}>Formation (tous les coachs)</option>
             </select>
           </div>
 
@@ -785,7 +794,7 @@ const CoachAgendaPage = {
               <input class="input" type="tel" id="agProspectTel" value="${escHtml(e.prospect_tel)}" placeholder="06…"></div>
           </div>` : ''}
 
-          ${indispo || prospect ? '' : `
+          ${indispo || prospect || formation ? '' : `
           <div class="field">
             <label class="field-label">Client</label>
             ${client ? `
@@ -801,12 +810,14 @@ const CoachAgendaPage = {
               <div id="agStudioForm"></div>`}
           </div>`}
 
+          ${formation ? `
+          <div style="font-size:13px;color:var(--gray);margin-bottom:12px;">🎓 Visible dans le planning de tous les coachs. Le titre est la 1re ligne des notes.</div>` : `
           <div class="field">
             <label class="field-label">Coach</label>
             <select class="input" id="agCoach">
               ${this.coachs.map(co => `<option value="${co.id}" ${co.id === e.coach_id ? 'selected' : ''}>${escHtml(this._nomCoach(co.id))}</option>`).join('')}
             </select>
-          </div>
+          </div>`}
 
           <div class="field-row" style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px;">
             <div class="field"><label class="field-label">Date</label><input class="input" type="date" id="agJour" value="${e.jour}"></div>
@@ -814,7 +825,7 @@ const CoachAgendaPage = {
             <div class="field"><label class="field-label">Durée</label><select class="input" id="agDuree" ${e.journee_entiere ? 'disabled' : ''}>${this._optionsDurees(e.duree)}</select></div>
           </div>
 
-          ${indispo ? `
+          ${indispo || formation ? `
           <label class="ag-check"><input type="checkbox" id="agJournee" ${e.journee_entiere ? 'checked' : ''} onchange="CoachAgendaPage.changerChamp()"> Journée entière</label>` : ''}
 
           ${e.type === 'coaching' && client?.facturation_mixte ? `
@@ -1036,7 +1047,7 @@ const CoachAgendaPage = {
     const e = this._edit;
     const c = this.creneaux.find(x => x.id === e.id);
     if (!c) return;
-    const label = c.type === 'indispo' ? 'cette indisponibilité' : `le rendez-vous de ${escHtml(c.type === 'prospect' ? c.prospect_nom : this._nomClient(c.client_id))}`;
+    const label = c.type === 'indispo' ? 'cette indisponibilité' : c.type === 'formation' ? 'cette formation (pour tous les coachs)' : `le rendez-vous de ${escHtml(c.type === 'prospect' ? c.prospect_nom : this._nomClient(c.client_id))}`;
     document.getElementById('agModal').innerHTML = `
       <div class="modal-overlay">
         <div class="modal">

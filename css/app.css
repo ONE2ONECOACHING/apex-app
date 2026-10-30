@@ -1411,6 +1411,9 @@ body.coach-layout .nav-bottom { display: none; }
 /* Rendez-vous prospect */
 .ag-bloc.prospect { background: #FFF6E5; border-left-color: #D97706; outline: 1.5px dashed #D97706; outline-offset: -2px; }
 .ag-m .ag-bloc.prospect { background: #D97706; color: var(--white); outline-color: rgba(255, 255, 255, 0.7); }
+/* Formation (tous les coachs) */
+.ag-journee.formation { background: color-mix(in srgb, var(--c) 14%, white); color: var(--black); }
+.ag-m .ag-journee.formation { background: var(--c); color: var(--white); }
 
 /* ═══════════════════════════════════════════════════════════
    MESSAGERIE
