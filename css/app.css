@@ -1893,20 +1893,6 @@ body.resume-replie .fr-replier { right: 5px; }
 .sa-act.bleu { background: var(--gold); color: #fff !important; }
 .sa-act.clair { background: var(--gold-light); color: var(--gold) !important; }
 .sa-act.gris { background: var(--bg); color: var(--gray) !important; }
-.sa-outils { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-.sa-outil { border: 1.5px solid var(--border-solid); background: var(--white); border-radius: 16px; padding: 14px 12px; text-align: left; }
-.sa-outil .ic { font-size: 24px; }
-.sa-outil .n { font-size: 16px; font-weight: 800; margin-top: 4px; }
-.sa-outil .d { font-size: 12px; color: var(--gray); margin-top: 2px; }
-.sa-retour-outils { background: none; border: 0; padding: 0; color: var(--gold) !important; font-size: 13px; font-weight: 700; }
-.sa-rapides { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0; }
-.sa-rapide { border: 1.5px solid var(--gold-border); background: var(--gold-light); color: var(--gold) !important; border-radius: 99px; padding: 9px 16px; font-size: 16px; font-weight: 800; }
-.sa-reglage { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-block: 10px; border-top: 1px solid var(--border-solid); }
-.sa-reglage .lib { font-weight: 700; }
-.sa-reglage .lib small { display: block; font-weight: 500; color: var(--gray); font-size: 12px; }
-.sa-pas { display: flex; align-items: center; gap: 10px; }
-.sa-pas button { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--gold); background: transparent; color: var(--gold) !important; font-size: 20px; padding: 0; }
-.sa-pas .v { min-width: 70px; text-align: center; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .sa-phase { text-align: center; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-top: 8px; }
 .sa-phase.travail { color: #C2410C; }
 .sa-phase.repos { color: var(--success); }
@@ -1915,8 +1901,6 @@ body.resume-replie .fr-replier { right: 5px; }
 .sa-barre div { height: 100%; background: var(--gold); }
 .sa-ligne-btn { display: flex; gap: 10px; margin-top: 16px; }
 .sa-ligne-btn button { flex: 1; height: 50px; border-radius: 14px; border: 0; font-weight: 800; font-size: 15px; }
-.sa-ligne-btn .gris { background: var(--bg); }
-.sa-ligne-btn .clair { background: var(--gold-light); color: var(--gold) !important; }
 .sa-ligne-btn .noir { background: var(--black); color: #fff !important; }
 .sa-video { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 14px; overflow: hidden; background: #000; margin-top: 8px; }
 .sa-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

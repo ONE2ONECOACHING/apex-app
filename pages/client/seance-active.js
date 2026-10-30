@@ -2,8 +2,10 @@
 // Aperçu : toute la séance d'un coup d'œil (A, B1/B2 pour les supersets).
 // Séance : un bloc par page, on glisse de côté pour passer d'un bloc à l'autre
 // sans rien valider. Chaque série se coche ; le repos se lance tout seul (en
-// superset, après le dernier exercice du tour). Menu ⏱ : repos, chrono, AMRAP,
-// EMOM, Tabata, intervalles.
+// superset, après le dernier exercice du tour) ou par le bouton « Récup », avec
+// le temps noté par le coach : le client ne règle aucun minuteur. AMRAP et
+// exercices en durée : « Start », 10 s de préparation puis annonces sonores
+// (3, 2, 1, Go ; mi-temps ; dernière minute ; 3, 2, 1, Stop).
 // La séance commencée est gardée dans le téléphone et dans la base
 // (seances_en_cours) : le client la reprend même après avoir fermé l'app.
 
@@ -24,12 +26,10 @@ const SeanceActivePage = {
   _ressenti:  null,      // 'dur' | 'bien' | 'feu' (obligatoire pour enregistrer)
   _mt:        null,      // minuteur en cours
   _pave:      null,
-  _outil:     null,
   _tic:       null,
   _envoi:     null,
   _wake:      null,
   _audio:     null,
-  _cfg: { repos: 90, amrap: 12, emomTours: 10, emomInt: 60, tabTours: 8, intTravail: 40, intRepos: 20, intTours: 6 },
 
   render() {
     return `<div id="saWrap" class="sa"><div style="display:flex;align-items:center;justify-content:center;flex:1;"><div class="spinner"></div></div></div>`;
@@ -264,16 +264,20 @@ const SeanceActivePage = {
     this._dernierTic = now;
     if (this._vue === 'seance' && delta < 10 * 60000) this._secondes += delta / 1000;
     if (!this._mt) return;
-    const p = this._mt.phases[this._mt.i];
+    const mt = this._mt, p = mt.phases[mt.i];
+    if (mt.annonces && !p.monte) this._annoncer(mt, p);
     if (!p.monte && this._restant() <= 0) {
-      if (this._mt.i < this._mt.phases.length - 1) {
-        this._mt.i++;
-        this._mt.debutPhase = now;
-        this._bip(this._mt.phases[this._mt.i].travail ? 990 : 660);
+      if (mt.i < mt.phases.length - 1) {
+        mt.i++;
+        mt.debutPhase = now;
+        mt.seconde = null;
+        if (mt.annonces) { this._bip(1320, 700); this._dire('Go'); }
+        else this._bip(mt.phases[mt.i].travail ? 990 : 660);
       } else {
-        this._bip(990, 600);
+        this._bip(mt.annonces ? 1320 : 990, mt.annonces ? 900 : 600);
+        if (mt.annonces) this._dire('Stop');
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-        toast(this._mt.type === 'repos' ? 'Repos terminé : à toi !' : 'Minuteur terminé', 'info');
+        toast(mt.type === 'repos' ? 'Repos terminé : à toi !' : 'Terminé : note ton score', 'info');
         this._mt = null;
         if (document.getElementById('saMtActif')) this._fermerFeuille();
       }
@@ -308,6 +312,34 @@ const SeanceActivePage = {
       o.frequency.value = f; g.gain.value = 0.3;
       o.connect(g); g.connect(this._audio.destination);
       o.start(); o.stop(this._audio.currentTime + ms / 1000);
+    } catch (_) {}
+  },
+
+  // Annonces des efforts minutés : 3, 2, 1 avant le départ et avant la fin,
+  // mi-temps (1 min et plus), dernière minute (plus de 2 min)
+  _annoncer(mt, p) {
+    const s = Math.ceil(this._restant());
+    if (s === mt.seconde) return;
+    mt.seconde = s;
+    if (s >= 1 && s <= 3) { this._bip(880, 150); this._dire(String(s)); return; }
+    if (!p.travail) return;
+    if (p.dur >= 60 && s === Math.round(p.dur / 2)) {
+      this._bip(990, 150); setTimeout(() => this._bip(990, 150), 250);
+      this._dire('Mi-temps');
+    } else if (p.dur > 120 && s === 60) {
+      this._bip(990, 400);
+      this._dire('Plus qu\'une minute');
+    }
+  },
+
+  _dire(txt) {
+    try {
+      if (!window.speechSynthesis) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(txt);
+      u.lang = 'fr-FR';
+      u.rate = 1.1;
+      speechSynthesis.speak(u);
     } catch (_) {}
   },
 
@@ -395,7 +427,7 @@ const SeanceActivePage = {
         <div class="sa-haut-ligne">
           <button class="sa-icone" aria-label="Fermer (la séance est gardée)" onclick="SeanceActivePage._fermerSeance()">⌄</button>
           <div class="sa-points" id="saPoints"></div>
-          <button class="sa-icone" aria-label="Minuteurs" onclick="SeanceActivePage._ouvrirMinuteurs()">⏱</button>
+          <span class="sa-icone" style="visibility:hidden"></span>
         </div>
         <div class="sa-totaux" id="saTotaux"></div>
       </div>
@@ -419,11 +451,13 @@ const SeanceActivePage = {
 
   _htmlBloc(b) {
     const ss = b.exos.length > 1;
+    const amrap = b.exos.find(i => this._type(this._exos[i]) === 'amrap' && this._exos[i].reps_cible);
     return `<div class="sa-page-bloc">Bloc ${b.lettre}${ss ? ' · superset, enchaîne les exercices' : ''}</div>` +
+      (amrap !== undefined ? `<button class="sa-btn-chrono" style="margin:0 0 12px;" onclick="SeanceActivePage._startEffort(${amrap})">▶ Start · AMRAP ${escHtml(this._exos[amrap].reps_cible)}</button>` : '') +
       b.exos.map(i => {
         const ex = this._exos[i], te = this._type(ex), vid = this._videoId(ex);
         const derniere = this._derniereFois(ex), noteAvant = this._lastNotes[ex.exercice_id];
-        const chrono = (te === 'amrap' || te === 'temps') && ex.reps_cible;
+        const chrono = te === 'temps' && ex.reps_cible;
         return `
           <div class="sa-exo">
             <div class="sa-exo-tete"><div class="sa-exo-nom">${escHtml(ex.exercices_bdd?.nom || 'Exercice')}</div>${ss ? `<span class="sa-ss-tag">${this._lettreExo(b, i)}</span>` : ''}</div>
@@ -439,7 +473,7 @@ const SeanceActivePage = {
             </div>
             ${ex.notes?.trim() ? `<div class="sa-consigne-exo"><b>Consigne du coach :</b> ${escHtml(ex.notes.trim())}</div>` : ''}
             ${ex.reps_secondaire ? `<div class="sa-consigne-exo"><b>2e effort :</b> après chaque série, pause de ${ex.repos_intra_sec || 10} s puis ${escHtml(ex.reps_secondaire)} reps.</div>` : ''}
-            ${chrono ? `<button class="sa-btn-chrono" onclick="SeanceActivePage._chronoExo(${i})">▶ Lancer le minuteur · ${escHtml(ex.reps_cible)}</button>` : ''}
+            ${chrono ? `<button class="sa-btn-chrono" onclick="SeanceActivePage._startEffort(${i})">▶ Start · ${escHtml(ex.reps_cible)}</button>` : ''}
             <div class="sa-series" id="saSeries${i}">${this._htmlSeries(i)}</div>
             <div class="sa-plus-moins">
               <button class="sa-rond" aria-label="Retirer une série" onclick="SeanceActivePage._changerSeries(${i}, -1)"
@@ -510,7 +544,8 @@ const SeanceActivePage = {
     const bas = document.getElementById('saBas');
     if (!bas) return;
     const dernier = this._bloc >= this._blocs.length - 1;
-    let centre = `<button class="sa-minut" onclick="SeanceActivePage._ouvrirMinuteurs()">⏱ Minuteur</button>`;
+    const repos = this._reposBloc();
+    let centre = repos > 0 ? `<button class="sa-minut" onclick="SeanceActivePage._recup()">💤 Récup · ${this._fmt(repos)}</button>` : '';
     if (this._mt) {
       const p = this._mt.phases[this._mt.i], r = this._restant();
       const frac = p.monte ? (r % 60) / 60 : Math.max(0, r / p.dur);
@@ -582,10 +617,28 @@ const SeanceActivePage = {
     if (repos > 0) this._lancerMinuteur({ type: 'repos', lib: 'Repos', phases: [{ nom: 'Repos', dur: repos }] });
   },
 
-  _chronoExo(i) {
+  // Repos du bloc affiché : celui du dernier exercice (fin du tour en superset)
+  _reposBloc() {
+    const b = this._blocs[this._bloc];
+    const ex = b && this._exos[b.exos[b.exos.length - 1]];
+    return ex ? (ex.repos_secondes ?? 90) : 0;
+  },
+
+  _recup() {
+    this._bip(0, 1);
+    const repos = this._reposBloc();
+    if (repos > 0) this._lancerMinuteur({ type: 'repos', lib: 'Repos', phases: [{ nom: 'Repos', dur: repos }] });
+  },
+
+  // AMRAP ou exercice en durée : 10 s de préparation puis l'effort, avec annonces
+  _startEffort(i) {
     const ex = this._exos[i];
     const dur = this._enSecondes(ex.reps_cible);
-    this._lancerMinuteur({ type: 'effort', lib: this._type(ex) === 'amrap' ? 'AMRAP' : 'Effort', phases: [{ nom: ex.exercices_bdd?.nom || 'Effort', dur, travail: true }] });
+    this._dire('Prépare-toi');   // aussi pour débloquer la voix sur iPhone (geste du client)
+    this._lancerMinuteur({ type: 'effort', annonces: true, lib: this._type(ex) === 'amrap' ? 'AMRAP' : 'Effort', phases: [
+      { nom: 'Prépare-toi', dur: 10 },
+      { nom: ex.exercices_bdd?.nom || 'Effort', dur, travail: true },
+    ] });
     this._feuilleMinuteurActif();
   },
 
@@ -661,70 +714,8 @@ const SeanceActivePage = {
 
   // ── Minuteurs ───────────────────────────────────────────────────────────────
 
-  _OUTILS: [
-    ['repos', '💤', 'Repos', 'Compte à rebours'],
-    ['chrono', '⏱', 'Chronomètre', 'Le temps qui passe'],
-    ['amrap', '🔥', 'AMRAP', 'Max de tours en un temps'],
-    ['emom', '🔁', 'EMOM', 'Un départ chaque minute'],
-    ['tabata', '⚡', 'Tabata', '20 s / 10 s'],
-    ['intervalles', '🎛', 'Intervalles', 'Travail / repos réglables'],
-  ],
-
-  _ouvrirMinuteurs() {
-    if (this._mt) return this._feuilleMinuteurActif();
-    this._feuille(`
-      <div class="sa-f-titre"><h2>Minuteurs</h2><button class="sa-icone" aria-label="Fermer" onclick="SeanceActivePage._fermerFeuille()">⌄</button></div>
-      <div class="sa-f-sous">Le repos se lance tout seul quand tu coches une série, avec le temps prévu par ton coach.</div>
-      <div class="sa-outils">${this._OUTILS.map(([k, ic, n, d]) => `
-        <button class="sa-outil" onclick="SeanceActivePage._reglerOutil('${k}')"><div class="ic">${ic}</div><div class="n">${n}</div><div class="d">${d}</div></button>`).join('')}</div>`);
-  },
-
-  _pas(cle, d, min, max) {
-    this._cfg[cle] = Math.max(min, Math.min(max, this._cfg[cle] + d));
-    this._reglerOutil(this._outil);
-  },
-
-  _reglerOutil(k) {
-    this._outil = k;
-    const titre = this._OUTILS.find(o => o[0] === k)[2];
-    const sec = v => this._fmt(v), mn = v => v + ' min', fois = v => '× ' + v;
-    const ligne = (lib, sous, cle, d, min, max, aff) => `
-      <div class="sa-reglage"><div class="lib">${lib}${sous ? `<small>${sous}</small>` : ''}</div>
-        <div class="sa-pas"><button aria-label="Moins" onclick="SeanceActivePage._pas('${cle}', ${-d}, ${min}, ${max})">−</button>
-          <span class="v">${aff(this._cfg[cle])}</span>
-          <button aria-label="Plus" onclick="SeanceActivePage._pas('${cle}', ${d}, ${min}, ${max})">+</button></div></div>`;
-    let corps = '';
-    if (k === 'repos') corps = `<div class="sa-rapides">${[30, 45, 60, 90, 120, 180].map(s => `<button class="sa-rapide" onclick="SeanceActivePage._cfg.repos=${s};SeanceActivePage._demarrer('repos')">${this._fmt(s)}</button>`).join('')}</div>`
-      + ligne('Durée', 'Réglage libre', 'repos', 15, 15, 600, sec);
-    if (k === 'chrono') corps = '<div class="sa-f-sous" style="margin-block:10px;">Compte le temps jusqu\'à ce que tu l\'arrêtes.</div>';
-    if (k === 'amrap') corps = ligne('Durée', 'Le plus de tours possible', 'amrap', 1, 1, 60, mn);
-    if (k === 'emom') corps = ligne('Nombre de tours', '', 'emomTours', 1, 1, 60, fois) + ligne('Un départ toutes les', '', 'emomInt', 15, 15, 300, sec);
-    if (k === 'tabata') corps = ligne('Tours', '20 s de travail, 10 s de repos', 'tabTours', 1, 1, 20, fois);
-    if (k === 'intervalles') corps = ligne('Travail', '', 'intTravail', 5, 5, 600, sec) + ligne('Repos', '', 'intRepos', 5, 0, 600, sec) + ligne('Tours', '', 'intTours', 1, 1, 50, fois);
-    this._feuille(`
-      <div class="sa-f-titre"><div><button class="sa-retour-outils" onclick="SeanceActivePage._ouvrirMinuteurs()">‹ Minuteurs</button><h2>${titre}</h2></div>
-        <button class="sa-icone" aria-label="Fermer" onclick="SeanceActivePage._fermerFeuille()">⌄</button></div>
-      ${corps}
-      <button class="sa-btn-plein vert" style="margin-top:14px;" onclick="SeanceActivePage._demarrer('${k}')">▶ Démarrer</button>`);
-  },
-
-  _demarrer(k) {
-    const c = this._cfg, lib = this._OUTILS.find(o => o[0] === k)[2];
-    let phases = [];
-    if (k === 'repos') phases = [{ nom: 'Repos', dur: c.repos }];
-    if (k === 'chrono') phases = [{ nom: 'Chronomètre', dur: 0, monte: true }];
-    if (k === 'amrap') phases = [{ nom: 'AMRAP', dur: c.amrap * 60, travail: true }];
-    if (k === 'emom') phases = Array.from({ length: c.emomTours }, (_, n) => ({ nom: `Tour ${n + 1} / ${c.emomTours}`, dur: c.emomInt, travail: true }));
-    if (k === 'tabata') for (let n = 0; n < c.tabTours; n++) phases.push({ nom: `Travail · tour ${n + 1} / ${c.tabTours}`, dur: 20, travail: true }, { nom: `Repos · tour ${n + 1} / ${c.tabTours}`, dur: 10 });
-    if (k === 'intervalles') for (let n = 0; n < c.intTours; n++) {
-      phases.push({ nom: `Travail · tour ${n + 1} / ${c.intTours}`, dur: c.intTravail, travail: true });
-      if (c.intRepos) phases.push({ nom: `Repos · tour ${n + 1} / ${c.intTours}`, dur: c.intRepos });
-    }
-    this._lancerMinuteur({ type: k, lib, phases });
-    if (k !== 'repos') this._feuilleMinuteurActif();
-  },
-
   _lancerMinuteur(m) {
+    if (m.type === 'repos' && this._mt?.type === 'effort') return;   // ne coupe pas un AMRAP en cours
     this._mt = { ...m, i: 0, debutPhase: Date.now(), pauseA: null };
     this._bip(660);
     this._fermerFeuille();
@@ -748,22 +739,10 @@ const SeanceActivePage = {
       <div class="sa-grand-temps">${this._fmt(r)}</div>
       ${p.monte ? '' : `<div class="sa-barre"><div style="width:${(frac * 100).toFixed(1)}%"></div></div>`}
       <div class="sa-ligne-btn">
-        ${p.monte ? '' : '<button class="gris" onclick="SeanceActivePage._ajouter(15)">+15 s</button>'}
-        <button class="clair" onclick="SeanceActivePage._pauseMinuteur()">${mt.pauseA ? '▶ Reprendre' : '⏸ Pause'}</button>
         <button class="noir" onclick="SeanceActivePage._stopMinuteur()">${mt.type === 'repos' ? 'Passer' : 'Arrêter'}</button>
       </div></div>`;
     const ex = document.getElementById('saMtActif');
     if (ex) ex.outerHTML = html; else this._feuille(html);
-  },
-
-  _ajouter(s) { if (this._mt) { this._mt.debutPhase += s * 1000; this._feuilleMinuteurActif(); this._majBas(); } },
-
-  _pauseMinuteur() {
-    const mt = this._mt;
-    if (!mt) return;
-    if (mt.pauseA) { mt.debutPhase += Date.now() - mt.pauseA; mt.pauseA = null; }
-    else mt.pauseA = Date.now();
-    this._feuilleMinuteurActif();
   },
 
   _stopMinuteur() {
