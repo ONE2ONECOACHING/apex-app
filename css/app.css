@@ -1411,8 +1411,9 @@ body.coach-layout .nav-bottom { display: none; }
 .ag-bloc, .ag-journee { -webkit-tap-highlight-color: transparent; }
 
 /* Rendez-vous prospect */
-.ag-bloc.prospect { background: #D97706; color: var(--white); outline: 1.5px dashed rgba(255, 255, 255, 0.7); outline-offset: -2px; }
-.ag-m .ag-bloc.prospect { background: #D97706; color: var(--white); outline-color: rgba(255, 255, 255, 0.7); }
+.ag-bloc.prospect { background: #FACC15; color: #1F2937; outline: 1.5px dashed rgba(0, 0, 0, 0.45); outline-offset: -2px; }
+.ag-m .ag-bloc.prospect { background: #FACC15; color: #1F2937; outline-color: rgba(0, 0, 0, 0.45); }
+.ag-bloc.prospect .ag-bloc-sub { color: rgba(31, 41, 55, 0.85); }
 /* Formation (tous les coachs) */
 .ag-journee.formation { background: var(--c); color: var(--white); border-left: none; }
 .ag-m .ag-journee.formation { background: var(--c); color: var(--white); }
