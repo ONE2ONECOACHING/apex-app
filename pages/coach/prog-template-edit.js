@@ -626,7 +626,8 @@ const CoachProgTemplateEditPage = {
                           white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
                 title="${escHtml(ex.exercice?.nom || '')}">
                 ${escHtml(ex.exercice?.nom || '?')}${groupBadge}
-                ${ytUrl ? `<a href="${escHtml(ytUrl)}" target="_blank"
+                ${ytUrl ? `<a href="${escHtml(ytUrl)}" target="_blank" rel="noopener"
+                  onclick="return CoachProgTemplateEditPage.voirVideo(event, ${si}, ${ei})"
                   style="font-size:10px;color:#FF0000;text-decoration:none;margin-left:6px;">▶ YT</a>` : ''}
               </div>
               <button class="pte-mini" title="Ajouter une note"
@@ -957,6 +958,28 @@ const CoachProgTemplateEditPage = {
 
   // Changement de type (reps, durée, AMRAP, distance) : les valeurs des séries
   // de l'ancien type n'ont plus de sens, on met une valeur de départ
+  // Vidéo YouTube dans une fenêtre (comme la grille du studio) ; autre lien : nouvel onglet
+  voirVideo(ev, si, ei) {
+    const ex  = this.seances[si]?.exercices[ei];
+    const url = ex?.exercice?.youtube_url || '';
+    const vid = (url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/) || [])[1];
+    if (!vid) return true;
+    ev.preventDefault();
+    const fen = document.createElement('div');
+    fen.className = 'modal-overlay';
+    fen.onclick = e => { if (e.target === fen || e.target.closest('.modal-close')) fen.remove(); };
+    fen.innerHTML = `
+      <div class="modal ss-modal-video">
+        <div class="modal-title">${escHtml(ex.exercice?.nom || 'Exercice')}
+          <button class="modal-close">×</button>
+        </div>
+        <div class="sa-video"><iframe src="https://www.youtube.com/embed/${vid}?rel=0&playsinline=1&autoplay=1" frameborder="0"
+          allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+      </div>`;
+    document.body.appendChild(fen);
+    return false;
+  },
+
   _changerType(si, ei) {
     const ex = this.seances[si].exercices[ei];
     const avant = ex.type_effort || 'reps';
