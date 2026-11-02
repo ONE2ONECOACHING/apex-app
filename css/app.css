@@ -1778,7 +1778,11 @@ body.resume-replie .fr-replier { right: 5px; }
 .ss-methode-btn.on { background: var(--gold-light); color: var(--gold); border-color: #BFD3F2; }
 /* Notes de passation (prochain coaching) */
 .ss-passation { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
-.ss-passation-titre { font-size: 13px; font-weight: 700; color: #92400E; margin-bottom: 6px; }
+.ss-passation-titre { font-size: 13px; font-weight: 700; color: #92400E; margin-bottom: 6px; cursor: pointer; user-select: none; }
+.ss-passation-fleche { display: inline-block; width: 12px; }
+.ss-passation.repliee { padding: 6px 12px; }
+.ss-passation.repliee .ss-passation-titre { margin-bottom: 0; }
+.ss-passation.repliee .ss-passation-note, .ss-passation.repliee .ss-passation-ajout { display: none; }
 .ss-passation-note { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px;
   padding: 6px 0; border-top: 1px solid #FDE68A; white-space: pre-wrap; }
 .ss-passation-note .btn { width: auto; flex-shrink: 0; }

@@ -69,9 +69,15 @@ const CoachSeanceStudioPage = {
       if (this.client?.id !== clientId) return;
       const nom = id => coachs.find(c => c.id === id)?.prenom || 'Coach';
       const date = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      // Repliée par défaut : les clients voient souvent l'écran (choix mémorisé dans ce navigateur)
+      let ouverte = false;
+      try { ouverte = localStorage.getItem('passationOuverte') === '1'; } catch (e) {}
       this._passationHtml = `
-        <div class="ss-passation">
-          <div class="ss-passation-titre">📌 À savoir pour le prochain coaching</div>
+        <div class="ss-passation ${ouverte ? '' : 'repliee'}">
+          <div class="ss-passation-titre" onclick="CoachSeanceStudioPage.basculerPassation()">
+            <span class="ss-passation-fleche">${ouverte ? '▾' : '▸'}</span>
+            📌 À savoir pour le prochain coaching${notes.length ? ` (${notes.length})` : ''}
+          </div>
           ${notes.map(n => `
             <div class="ss-passation-note">
               <div><span class="ss-passation-qui">${date(n.created_at)} · ${escHtml(nom(n.coach_id))}</span> ${escHtml(n.texte)}</div>
@@ -91,6 +97,15 @@ const CoachSeanceStudioPage = {
       const el = document.getElementById('ssPassation');
       if (el) el.innerHTML = '<div class="alert alert-error">Notes du prochain coaching : ' + escHtml(e.message) + '</div>';
     }
+  },
+
+  basculerPassation() {
+    const zone = document.querySelector('.ss-passation');
+    if (!zone) return;
+    const ouverte = zone.classList.toggle('repliee') === false;
+    zone.querySelector('.ss-passation-fleche').textContent = ouverte ? '▾' : '▸';
+    try { localStorage.setItem('passationOuverte', ouverte ? '1' : '0'); } catch (e) {}
+    this._passationHtml = zone.outerHTML;
   },
 
   async ajouterPassation() {
