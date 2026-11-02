@@ -253,10 +253,37 @@ const db = {
     return data || [];
   },
 
+  // Lecture du compte Stripe (Edge Function stripe-gerant, gérants seulement)
+  async stripe(action, extra = {}) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/stripe-gerant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json?.error) throw new Error(json?.error || json?.message || `Erreur serveur (${res.status})`);
+    return json;
+  },
+
+  // Relie (ou délie, cus = null) un client de l'app à son client Stripe
+  async relierStripe(clientId, cus) {
+    const { data, error } = await getSupabase()
+      .from('facturation_clients').upsert({ client_id: clientId, stripe_customer_id: cus }, { onConflict: 'client_id' })
+      .select().single();
+    if (error) {
+      if (error.code === '23505') throw new Error('ce client Stripe est déjà relié à un autre client de l\'app');
+      throw error;
+    }
+    return data;
+  },
+
   // Tous les clients (actifs ou non, tous types), pour la facturation du mois
   async getClientsFacturation() {
     const { data, error } = await getSupabase()
-      .from('profiles').select('id, prenom, nom, type_client, mode_facturation, actif')
+      .from('profiles').select('id, prenom, nom, email, type_client, mode_facturation, actif')
       .eq('role', 'client').order('prenom');
     if (error) throw error;
     return data || [];

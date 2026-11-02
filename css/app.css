@@ -1824,6 +1824,21 @@ body.resume-replie .fr-replier { right: 5px; }
 .cf-grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 @media (max-width: 700px) { .cf-grille { grid-template-columns: 1fr; } }
 .cf-aide { font-size: 12px; color: var(--gray-light); margin: 4px 0 10px; }
+/* Stripe (lecture seule) */
+.cf-stripe-entete { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.cf-stripe-entete .btn { width: auto; }
+.cf-stripe-ligne { font-size: 13px; padding: 4px 0; }
+.cf-stripe-alerte { color: var(--error); }
+.cf-stripe-choix { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border-solid); }
+.cf-stripe-choix .btn { width: auto; }
+.cf-statut { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: #F1F1F3; color: var(--gray); white-space: nowrap; }
+.cf-statut.ok { background: #E8F5E9; color: #2E7D32; }
+.cf-statut.ko { background: var(--error-bg); color: var(--error); }
+.fa-stripe-barre { margin-bottom: 10px; }
+.fa-stripe-barre > .btn { width: auto; }
+.fa-relier { margin-top: 8px; }
+.fa-relier-ligne { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; cursor: pointer; }
+.fa-stripe { white-space: nowrap; }
 .fa-mois { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 16px; font-weight: 700; }
 .fa-totaux { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
 .fa-total { background: var(--white); border: 1px solid var(--border-solid); border-radius: 12px; padding: 12px 14px; }

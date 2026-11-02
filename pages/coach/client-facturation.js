@@ -4,6 +4,14 @@
 // Abonnement : formule du catalogue → montant mensuel, modifiable pour ce client.
 // Consommation : prix fixe par séance, propre au client.
 
+// Stripe (lecture seule, étape 6b-1) : libellés partagés avec la facturation du mois
+const STRIPE_ABO = { active: 'À jour', trialing: 'Essai', past_due: 'Paiement en retard', unpaid: 'Impayé',
+  incomplete: 'Premier paiement pas fait', paused: 'En pause', canceled: 'Arrêté', incomplete_expired: 'Expiré' };
+const STRIPE_ABO_OK = ['active', 'trialing'];
+const STRIPE_PAIEMENT = { succeeded: 'Payé', failed: 'Refusé', pending: 'En cours' };
+const RYTHME = { month: 'mois', year: 'an', week: 'semaine', day: 'jour' };
+let _stripeClients = null;   // liste des clients Stripe, chargée une fois par visite
+
 const CoachClientFacturationPage = {
   client: null,
   factu: null,
@@ -106,7 +114,109 @@ const CoachClientFacturationPage = {
         </div>
         <button class="btn btn-primary btn-small" onclick="CoachClientFacturationPage.enregistrer()">💾 Enregistrer</button>
         <div id="cfMsg" style="margin-top:0.75rem;"></div>
-      </div>`;
+      </div>
+      <div class="card" id="cfStripe"></div>`;
+    this._afficherStripe();
+  },
+
+  // ── Stripe (lecture seule) ────────────────────────────────────────────────
+  async _afficherStripe() {
+    const zone = document.getElementById('cfStripe');
+    const cus = this.factu.stripe_customer_id;
+    const titre = '<div class="card-title">Stripe</div>';
+    if (!cus) {
+      zone.innerHTML = `${titre}
+        <div class="cf-aide">Pas encore relié à un client Stripe.</div>
+        <button class="btn btn-secondary btn-small" onclick="CoachClientFacturationPage.chercherStripe()">🔎 Chercher dans Stripe</button>
+        <div id="cfStripeRecherche"></div>`;
+      return;
+    }
+    zone.innerHTML = `${titre}<div class="spinner"></div>`;
+    const jeton = this._jeton;
+    try {
+      const f = await db.stripe('fiche', { customer: cus });
+      if (jeton !== this._jeton) return;
+      const date = t => new Date(t * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+      zone.innerHTML = `${titre}
+        <div class="cf-stripe-entete">
+          <div><div class="fa-nom">${escHtml(f.nom || '(sans nom)')}</div><div class="fa-sous">${escHtml(f.email || '')}</div></div>
+          <div style="display:flex;gap:6px;">
+            <a class="btn btn-secondary btn-small" href="https://dashboard.stripe.com/customers/${escHtml(f.id)}" target="_blank" rel="noopener">Ouvrir dans Stripe ↗</a>
+            <button class="btn btn-secondary btn-small" onclick="CoachClientFacturationPage.delierStripe()">Délier</button>
+          </div>
+        </div>
+
+        <div class="cf-bloc-titre">Moyen de paiement</div>
+        ${f.moyens.length ? f.moyens.map(m => `<div class="cf-stripe-ligne">💳 ${escHtml(m.marque || m.type)} ···· ${escHtml(m.fin || '')}${m.expire ? ` · expire ${escHtml(m.expire)}` : ''}${m.defaut ? ' · <b>par défaut</b>' : ''}</div>`).join('')
+          : '<div class="cf-stripe-ligne cf-stripe-alerte">Aucune carte ni RIB enregistré : impossible de prélever ce client.</div>'}
+
+        <div class="cf-bloc-titre" style="margin-top:12px;">Abonnements Stripe</div>
+        ${f.abonnements.length ? f.abonnements.map(a => `
+          <div class="cf-stripe-ligne">
+            <span class="cf-statut ${STRIPE_ABO_OK.includes(a.statut) ? 'ok' : a.statut === 'canceled' ? '' : 'ko'}">${STRIPE_ABO[a.statut] || escHtml(a.statut)}</span>
+            ${a.lignes.map(l => `${l.nom ? escHtml(l.nom) + ' · ' : ''}${l.montant != null ? euros(l.montant) : ''}${l.rythme ? ' / ' + escHtml(RYTHME[l.rythme] || l.rythme) : ''}`).join(' + ')}
+            ${a.statut !== 'canceled' && a.prochaine ? `<span class="fa-sous"> · ${a.fin_annoncee ? 'se termine le' : 'prochain prélèvement le'} ${date(a.prochaine)}</span>` : ''}
+          </div>`).join('') : '<div class="cf-stripe-ligne fa-sous">Aucun abonnement.</div>'}
+
+        <div class="cf-bloc-titre" style="margin-top:12px;">Derniers paiements</div>
+        ${f.paiements.length ? `<table class="fa-table">${f.paiements.map(p => `
+          <tr><td>${date(p.date)}</td><td class="num">${euros(p.montant)}${p.rembourse ? `<div class="fa-sous">remboursé ${euros(p.rembourse)}</div>` : ''}</td>
+            <td><span class="cf-statut ${p.statut === 'succeeded' ? 'ok' : p.statut === 'failed' ? 'ko' : ''}">${STRIPE_PAIEMENT[p.statut] || escHtml(p.statut)}</span></td>
+            <td class="fa-sous">${escHtml(p.erreur || p.description)}</td></tr>`).join('')}</table>`
+          : '<div class="cf-stripe-ligne fa-sous">Aucun paiement.</div>'}`;
+    } catch (e) {
+      if (jeton !== this._jeton) return;
+      zone.innerHTML = `${titre}<div class="alert alert-error">${escHtml(e.message)}</div>
+        <button class="btn btn-secondary btn-small" style="margin-top:8px;" onclick="CoachClientFacturationPage.delierStripe()">Délier</button>`;
+    }
+  },
+
+  async chercherStripe() {
+    const zone = document.getElementById('cfStripeRecherche');
+    zone.innerHTML = '<div class="spinner"></div>';
+    try {
+      if (!_stripeClients) _stripeClients = await db.stripe('clients');
+      const c = this.client;
+      zone.innerHTML = `
+        <input class="input" id="cfStripeQ" style="margin-top:10px;" placeholder="Nom ou email du client dans Stripe"
+          value="${escHtml(c.email && !c.email.includes('@clients.one2onecoaching.fr') ? c.email : `${c.prenom || ''} ${c.nom || ''}`.trim())}"
+          oninput="CoachClientFacturationPage._listeStripe()">
+        <div id="cfStripeListe"></div>`;
+      this._listeStripe();
+    } catch (e) {
+      zone.innerHTML = '<div class="alert alert-error" style="margin-top:8px;">' + escHtml(e.message) + '</div>';
+    }
+  },
+
+  _listeStripe() {
+    const q = document.getElementById('cfStripeQ').value.trim().toLowerCase();
+    const mots = q.split(/\s+/).filter(Boolean);
+    const trouves = mots.length
+      ? _stripeClients.filter(x => mots.every(m => `${x.nom} ${x.email}`.toLowerCase().includes(m))).slice(0, 15)
+      : [];
+    document.getElementById('cfStripeListe').innerHTML = trouves.length
+      ? trouves.map(x => `
+          <div class="cf-stripe-choix">
+            <div><div class="fa-nom">${escHtml(x.nom || '(sans nom)')}</div><div class="fa-sous">${escHtml(x.email || '')}</div></div>
+            <button class="btn btn-primary btn-small" onclick="CoachClientFacturationPage.relierStripe('${escHtml(x.id)}')">Relier</button>
+          </div>`).join('')
+      : `<div class="cf-aide" style="margin-top:8px;">${mots.length ? 'Aucun client Stripe trouvé.' : 'Tape un nom ou un email.'}</div>`;
+  },
+
+  async relierStripe(cus) {
+    try {
+      this.factu = await db.relierStripe(this.client.id, cus);
+      toast('Client relié à Stripe', 'success');
+      this._afficherStripe();
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  async delierStripe() {
+    if (!confirm('Délier ce client de sa fiche Stripe ?\n\nRien n\'est modifié dans Stripe.')) return;
+    try {
+      this.factu = await db.relierStripe(this.client.id, null);
+      this._afficherStripe();
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   changerMode(mode) {
