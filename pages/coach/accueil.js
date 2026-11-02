@@ -37,6 +37,9 @@ const CoachAccueilPage = {
         db.getCyclesClients(me.id).catch(() => []),
         db.getSuivisPourRetards().catch(() => []),
       ]);
+      // Notes de passation en cours sur mes clients du jour (📌)
+      this.notesPassation = await db.clientsAvecNotePassation(
+        [...new Set(this.coachings.map(r => r.client_id).filter(Boolean))]).catch(() => new Map());
       // Retards de suivi : mes clients dont les deux dernières semaines du journal ne sont pas faites
       this.retards = suivis.filter(c => c.coach_referent_id === me.id && JournalSuivi.enRetard(
         c.date_debut, [].concat(c.journal_suivi_entete || [])[0]?.nb_semaines || 26, c.journal_suivi));
@@ -111,7 +114,7 @@ const CoachAccueilPage = {
       ? aVenir.map(r => `
           <div class="ac-ligne" onclick="${r.type === 'prospect' ? "window.location.hash='#coach-agenda'" : `Router.navigate('coach-client-programme',{clientId:'${r.client_id}'})`}">
             <span class="ac-heure">${this._hm(r.debut)} – ${this._hm(r.fin)}${new Date(r.debut).getTime() <= maintenant ? ' <span class="ac-en-cours">en cours</span>' : ''}</span>
-            <span class="ac-nom">${r.type === 'prospect' ? '🎯 ' + escHtml(r.prospect_nom || 'Prospect') : this._nom(r.client)}</span><span class="ac-fleche">›</span>
+            <span class="ac-nom">${r.type === 'prospect' ? '🎯 ' + escHtml(r.prospect_nom || 'Prospect') : this._nom(r.client)}${this.notesPassation?.has(r.client_id) ? ` <span class="ac-pin" data-info="${escHtml(this.notesPassation.get(r.client_id))}">📌</span>` : ''}</span><span class="ac-fleche">›</span>
           </div>`).join('')
       : vide(termines
           ? `Plus de coaching aujourd'hui (${termines} terminé${termines > 1 ? 's' : ''}) · <a href="#coach-agenda">ouvrir l'agenda</a>`

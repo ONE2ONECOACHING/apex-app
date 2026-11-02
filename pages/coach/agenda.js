@@ -138,6 +138,10 @@ const CoachAgendaPage = {
   // Formation : un seul créneau, affiché chez tous les coachs, avec sa couleur
   _couleurCreneau(c) { return c.type === 'formation' ? AGENDA_COULEUR_FORMATION : this._couleur(c.coach_id); },
 
+  _aNotePassation(c) {
+    return !!c.client_id && this._notesPassation?.has(c.client_id) && new Date(c.fin).getTime() > Date.now();
+  },
+
   _couleur(coachId) {
     const i = this.coachs.findIndex(c => c.id === coachId);
     return AGENDA_COULEURS[(i < 0 ? 0 : i) % AGENDA_COULEURS.length];
@@ -258,6 +262,9 @@ const CoachAgendaPage = {
     const fin   = this._ajouterJours(jours[jours.length - 1], 1);
     try {
       this.creneaux = await db.getCreneaux(debut.toISOString(), fin.toISOString());
+      // Notes de passation en cours (📌 sur les coachings pas encore terminés)
+      this._notesPassation = await db.clientsAvecNotePassation(
+        [...new Set(this.creneaux.map(c => c.client_id).filter(Boolean))]).catch(() => new Map());
       this._renderGrille();
     } catch (e) {
       document.getElementById('agContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
@@ -366,7 +373,7 @@ const CoachAgendaPage = {
         return `<div class="ag-bloc ${indispo ? 'indispo' : ''} ${c.type === 'prospect' ? 'prospect' : ''}" style="top:${top}px;height:${h - 2}px;left:${p.couloir * largeur}%;width:calc(${largeur}% - 3px);--c:${this._couleurCreneau(c)}"
                   onclick="event.stopPropagation()" oncontextmenu="event.preventDefault()" onpointerdown="CoachAgendaPage.debutDrag(event, '${c.id}')" title="${escHtml(titre + ' · ' + heure)}">
           <div class="ag-poignee haut"></div><div class="ag-poignee bas"></div>
-          <div class="ag-bloc-titre">${escHtml(titre)}${c.serie_id ? ' ↻' : ''}${c.en_plus ? ' · en plus' : ''}</div>
+          <div class="ag-bloc-titre">${this._aNotePassation(c) ? '📌 ' : ''}${escHtml(titre)}${c.serie_id ? ' ↻' : ''}${c.en_plus ? ' · en plus' : ''}</div>
           <div class="ag-bloc-sub">${heure}${(this.vue === 'semaine' || this._mobile) && c.type !== 'formation' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}</div>
         </div>`;
       }).join('');

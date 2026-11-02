@@ -1776,6 +1776,16 @@ body.resume-replie .fr-replier { right: 5px; }
 .cpc-onglet.cpc-glisse { position: relative; z-index: 2; cursor: grabbing; background: var(--white); box-shadow: 0 6px 18px rgba(0,0,0,.15); transition: none; }
 /* Grille du studio : explication de la méthode (consignes du programme) */
 .ss-methode-btn.on { background: var(--gold-light); color: var(--gold); border-color: #BFD3F2; }
+/* Notes de passation (prochain coaching) */
+.ss-passation { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+.ss-passation-titre { font-size: 13px; font-weight: 700; color: #92400E; margin-bottom: 6px; }
+.ss-passation-note { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px;
+  padding: 6px 0; border-top: 1px solid #FDE68A; white-space: pre-wrap; }
+.ss-passation-note .btn { width: auto; flex-shrink: 0; }
+.ss-passation-qui { font-size: 12px; font-weight: 600; color: #92400E; margin-right: 4px; }
+.ss-passation-ajout { display: flex; gap: 8px; margin-top: 6px; }
+.ss-passation-ajout .form-input { flex: 1; padding: 6px 10px; font-size: 13px; }
+.ss-passation-ajout .btn { width: auto; }
 .ss-methode { white-space: pre-wrap; font-size: 14px; line-height: 1.55; color: var(--black); background: var(--gold-light); border: 1px solid #BFD3F2;
   border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; max-height: 320px; overflow-y: auto; }
 /* Plans du client en onglets (fiche duo, plusieurs programmes) : en haut de la grille du studio et du plan cardio */

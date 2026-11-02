@@ -31,6 +31,7 @@ const CoachSeanceStudioPage = {
     this._timers = {};
     this._voirMethode = false;
     this._plans = '';
+    this._passationHtml = '';
 
     const profile = Router.userProfile;
     if (!profile || profile.role !== 'coach') { window.location.hash = '#coach-clients'; return; }
@@ -53,9 +54,64 @@ const CoachSeanceStudioPage = {
         const el = document.getElementById('ssPlans');
         if (el) el.innerHTML = html;
       });
+      this._chargerPassation();
     } catch (e) {
       document.getElementById('ssContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
     }
+  },
+
+  // Notes de passation : faits marquants à savoir pour le prochain coach (jamais visibles du client)
+  async _chargerPassation() {
+    const clientId = this.client.id;
+    try {
+      const [notes, coachs] = await Promise.all([db.getNotesPassation(clientId), this._coachs || db.getCoachs()]);
+      this._coachs = coachs;
+      if (this.client?.id !== clientId) return;
+      const nom = id => coachs.find(c => c.id === id)?.prenom || 'Coach';
+      const date = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      this._passationHtml = `
+        <div class="ss-passation">
+          <div class="ss-passation-titre">📌 À savoir pour le prochain coaching</div>
+          ${notes.map(n => `
+            <div class="ss-passation-note">
+              <div><span class="ss-passation-qui">${date(n.created_at)} · ${escHtml(nom(n.coach_id))}</span> ${escHtml(n.texte)}</div>
+              <button class="btn btn-secondary btn-small" onclick="CoachSeanceStudioPage.archiverPassation('${n.id}')"
+                data-info="Masquer cette note">Plus d'actualité</button>
+            </div>`).join('')}
+          <div class="ss-passation-ajout">
+            <input id="ssPassationTexte" class="form-input" maxlength="500"
+              placeholder="Un fait marquant à noter pour le prochain coach (blessure, fatigue, événement…)"
+              onkeydown="if (event.key === 'Enter') CoachSeanceStudioPage.ajouterPassation()">
+            <button class="btn btn-primary btn-small" onclick="CoachSeanceStudioPage.ajouterPassation()">Ajouter</button>
+          </div>
+        </div>`;
+      const el = document.getElementById('ssPassation');
+      if (el) el.innerHTML = this._passationHtml;
+    } catch (e) {
+      const el = document.getElementById('ssPassation');
+      if (el) el.innerHTML = '<div class="alert alert-error">Notes du prochain coaching : ' + escHtml(e.message) + '</div>';
+    }
+  },
+
+  async ajouterPassation() {
+    const champ = document.getElementById('ssPassationTexte');
+    const texte = champ?.value.trim();
+    if (!texte) return;
+    champ.disabled = true;
+    try {
+      await db.ajouterNotePassation(this.client.id, texte);
+      await this._chargerPassation();
+    } catch (e) {
+      champ.disabled = false;
+      toast('Erreur : ' + e.message, 'error');
+    }
+  },
+
+  async archiverPassation(id) {
+    try {
+      await db.archiverNotePassation(id);
+      await this._chargerPassation();
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   // Consignes du programme (texte de méthode du modèle), dépliées au-dessus de la grille
@@ -223,6 +279,7 @@ const CoachSeanceStudioPage = {
     document.getElementById('ssContent').innerHTML = `
       ${coachClientNav(this.client.id, 'coach-client-programme')}
       <div id="ssPlans">${this._plans || ''}</div>
+      <div id="ssPassation">${this._passationHtml || ''}</div>
       <div class="ss-entete">
         <div>
           <div style="font-weight:700;font-size:15px;">${escHtml(prog.nom || '')} · ${escHtml(d.seance.nom)}</div>

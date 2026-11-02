@@ -2021,6 +2021,37 @@ const db = {
     if (error) throw error;
   },
 
+  // Notes de passation entre coachs (jamais visibles du client)
+  async getNotesPassation(clientId) {
+    const { data, error } = await getSupabase().from('notes_passation')
+      .select('id, texte, created_at, coach_id').eq('client_id', clientId).eq('archivee', false)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async ajouterNotePassation(clientId, texte) {
+    const { error } = await getSupabase().from('notes_passation').insert({ client_id: clientId, texte });
+    if (error) throw error;
+  },
+
+  async archiverNotePassation(id) {
+    const { error } = await getSupabase().from('notes_passation').update({ archivee: true }).eq('id', id);
+    if (error) throw error;
+  },
+
+  // Clients (parmi ceux donnés) qui ont au moins une note de passation en cours
+  async clientsAvecNotePassation(clientIds) {
+    if (!clientIds.length) return new Map();
+    const { data, error } = await getSupabase().from('notes_passation')
+      .select('client_id, texte, created_at').in('client_id', clientIds).eq('archivee', false)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const m = new Map();
+    (data || []).forEach(n => { if (!m.has(n.client_id)) m.set(n.client_id, n.texte); });
+    return m;
+  },
+
   // Nouvelle date de début (et retour du cycle dans le tableau de bord)
   async redemarrerProgramme(programmeId, dateDebut) {
     const { error } = await getSupabase().from('client_programmes')
