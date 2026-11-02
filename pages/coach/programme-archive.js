@@ -114,9 +114,20 @@ const CoachProgrammeArchivePage = {
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-secondary btn-small" onclick="Router.navigate('coach-client-programme',{clientId:'${this.clientId}'})">‹ Programmes</button>
           <button class="btn btn-secondary btn-small" onclick="CoachProgrammeArchivePage.reactiver()">Réactiver</button>
+          <button class="btn btn-small" style="background:var(--error-bg);color:var(--error);border:1.5px solid #FFCDD2;"
+            onclick="CoachProgrammeArchivePage.supprimer()">🗑 Supprimer</button>
         </div>
       </div>
       ${seances || '<div class="card">Aucune séance.</div>'}`;
+  },
+
+  async supprimer() {
+    if (!confirm(`Supprimer définitivement « ${this.prog.nom} » ?\n\nSes séances et sa grille du studio sont effacées, sans retour possible. Les séances déjà faites par le client restent dans son historique.`)) return;
+    try {
+      await db.supprimerClientProgramme(this.prog.id);
+      toast('Programme supprimé', 'success');
+      Router.navigate('coach-client-programme', { clientId: this.clientId });
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   async reactiver() {
