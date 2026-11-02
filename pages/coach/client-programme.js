@@ -152,6 +152,8 @@ const CoachClientProgrammePage = {
           <div class="cp-archive" onclick="CoachClientProgrammePage.ouvrirCardio('${p.id}')">
             <div class="cp-archive-nom">🏃 ${escHtml(p.nom)}</div>
             <div class="cp-archive-meta">${new Date(p.cree_le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })} · ${(p.cardio_phases || []).length} phase(s)</div>
+            <button class="cp-archive-suppr" data-info="Supprimer définitivement"
+              onclick="event.stopPropagation();CoachClientProgrammePage.supprimerCardio('${p.id}')">🗑</button>
             <span class="cp-archive-fleche">›</span>
           </div>`).join('')}
       </div>`;
@@ -176,6 +178,29 @@ const CoachClientProgrammePage = {
       p.actif = false;
       this._render(coachClientNav(this.client.id, 'coach-client-programme'));
       toast('Plan cardio archivé', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  // Suppression définitive, seulement depuis les archives
+  async supprimerArchive(progId) {
+    const a = (this.archives || []).find(x => x.id === progId);
+    if (!a || !confirm(`Supprimer définitivement le programme « ${a.nom || 'Programme'} » ?\n\nSes séances et sa grille du studio sont effacées, sans retour possible. Les séances déjà faites par le client restent dans son historique.`)) return;
+    try {
+      await db.supprimerClientProgramme(progId);
+      this.archives = this.archives.filter(x => x.id !== progId);
+      this._render(coachClientNav(this.client.id, 'coach-client-programme'));
+      toast('Programme supprimé', 'success');
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
+  },
+
+  async supprimerCardio(planId) {
+    const p = (this.cardio || []).find(x => x.id === planId);
+    if (!p || !confirm(`Supprimer définitivement le plan cardio « ${p.nom} » ?\n\nToutes ses phases et séances sont effacées, sans retour possible.`)) return;
+    try {
+      await db.supprimerCardioPlan(planId);
+      this.cardio = this.cardio.filter(x => x.id !== planId);
+      this._render(coachClientNav(this.client.id, 'coach-client-programme'));
+      toast('Plan cardio supprimé', 'success');
     } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
@@ -241,6 +266,8 @@ const CoachClientProgrammePage = {
           <div class="cp-archive" onclick="Router.navigate('coach-programme-archive',{clientId:'${this.client.id}',progId:'${a.id}'})">
             <div class="cp-archive-nom">${escHtml(a.nom || 'Programme')}</div>
             <div class="cp-archive-meta">${date(a.date_debut || a.created_at)} · ${a.nb_semaines || 4} sem. · ${(a.client_prog_seances || []).length} séance${(a.client_prog_seances || []).length > 1 ? 's' : ''}</div>
+            <button class="cp-archive-suppr" data-info="Supprimer définitivement"
+              onclick="event.stopPropagation();CoachClientProgrammePage.supprimerArchive('${a.id}')">🗑</button>
             <span class="cp-archive-fleche">›</span>
           </div>`).join('')}
       </div>`;

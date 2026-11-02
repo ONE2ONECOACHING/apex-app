@@ -2071,6 +2071,25 @@ const db = {
     return data || [];
   },
 
+  // Suppression définitive d'un programme archivé (séances, exercices et grille du studio avec).
+  // Les séances déjà faites par le client restent dans son historique.
+  async supprimerClientProgramme(programmeId) {
+    const { data, error } = await getSupabase()
+      .from('client_programmes').delete().eq('id', programmeId).eq('actif', false).select('id');
+    if (error) {
+      if (error.code === '23503') throw new Error('des séances faites par le client y sont encore rattachées, impossible de le supprimer pour l\'instant');
+      throw error;
+    }
+    if (!data?.length) throw new Error('programme introuvable ou pas archivé');
+  },
+
+  async supprimerCardioPlan(planId) {
+    const { data, error } = await getSupabase()
+      .from('cardio_plans').delete().eq('id', planId).eq('actif', false).select('id');
+    if (error) throw error;
+    if (!data?.length) throw new Error('plan introuvable ou pas archivé');
+  },
+
   async reactiverClientProgramme(programmeId) {
     const { error } = await getSupabase()
       .from('client_programmes')
