@@ -82,7 +82,7 @@ const CoachSeanceStudioPage = {
             <div class="ss-passation-note">
               <div><span class="ss-passation-qui">${date(n.created_at)} · ${escHtml(nom(n.coach_id))}</span> ${escHtml(n.texte)}</div>
               <button class="btn btn-secondary btn-small" onclick="CoachSeanceStudioPage.archiverPassation('${n.id}')"
-                data-info="Masquer cette note">Plus d'actualité</button>
+                >Supprimer cette note</button>
             </div>`).join('')}
           <div class="ss-passation-ajout">
             <input id="ssPassationTexte" class="form-input" maxlength="500"
@@ -123,6 +123,7 @@ const CoachSeanceStudioPage = {
   },
 
   async archiverPassation(id) {
+    if (!confirm('Supprimer cette note ?')) return;
     try {
       await db.archiverNotePassation(id);
       await this._chargerPassation();
