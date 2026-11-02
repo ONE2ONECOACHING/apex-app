@@ -126,14 +126,24 @@ const CoachSeanceStudioPage = {
     return k;
   },
 
+  // Valeur de chaque série (reps, durée, distance). Hors reps, series_data ne compte que s'il va
+  // avec le nombre de séries et la 1re valeur (sinon : restes d'un ancien type « reps »).
+  _valeursSeries(e) {
+    return (Array.isArray(e.series_data) && ((e.type_effort || 'reps') === 'reps'
+      || (e.series_data.length === (e.series || 1) && String(e.series_data[0]?.reps ?? '') === String(e.reps_cible ?? '')))
+      ? e.series_data.map(x => x.reps).filter(Boolean) : []);
+  },
+
   _methode(e) {
     const te = e.type_effort || 'reps';
-    const sd = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
+    const sd = this._valeursSeries(e);
     const reps = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : (e.reps_cible || '');
     const parts = [];
-    if (te === 'amrap') parts.push(`Max de reps en ${e.reps_cible || '?'}`);
-    else if (te === 'temps' || te === 'distance') parts.push(e.series > 1 ? `${e.series} × ${e.reps_cible}` : (e.reps_cible || ''));
+    if (te === 'amrap') parts.push((e.series || 1) > 1 ? `${e.series} AMRAP de ${reps || '?'}` : `Max de reps en ${reps || '?'}`);
+    else if (te === 'temps' || te === 'distance') parts.push(e.series > 1 ? `${e.series} × ${reps}` : (reps || ''));
     else parts.push(`${e.series || 1} × ${reps}`);
+    if (te === 'reps' && e.reps_secondaire)
+      parts.push(`2e effort : ${e.reps_secondaire} reps${e.repos_intra_sec ? ` après ${e.repos_intra_sec} s` : ''}`);
     if (e.charge_cible) parts.push(e.charge_cible);
     if (e.repos_secondes) {
       const r = e.repos_secondes;
@@ -185,12 +195,7 @@ const CoachSeanceStudioPage = {
         const cle = `${e.id}_${k}`;
         return `
           <td class="ss-case ${k === enCours ? 'en-cours' : ''}">
-            <div class="ss-duo">
-              <textarea rows="2" placeholder="Charge" data-cle="${cle}" data-champ="charge"
-                oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">${escHtml(v.charge || '')}</textarea>
-              <textarea rows="2" placeholder="Reps" data-cle="${cle}" data-champ="reps"
-                oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">${escHtml(v.reps || '')}</textarea>
-            </div>
+            ${this._htmlCases(e, cle, k, v)}
             <input class="ss-remarque" placeholder="Remarque" data-cle="${cle}" data-champ="remarque" value="${escHtml(v.remarque || '')}"
               oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">
           </td>`;
@@ -207,7 +212,8 @@ const CoachSeanceStudioPage = {
             <div class="ss-exo-nom ss-cliquable" title="Remplacer l'exercice" onclick="CoachSeanceStudioPage.choisirExercice('remplacer', '${e.id}')">${escHtml(nom)}${e.superset_groupe ? ` <span class="ss-ss">${escHtml(e.superset_groupe)}</span>` : ''}</div>
             <div class="ss-exo-meth ss-cliquable" title="Modifier la méthode" onclick="CoachSeanceStudioPage.editerMethode('${e.id}')">${escHtml(this._methode(e))}</div>
             ${e.notes ? `<div class="ss-exo-notes">${escHtml(e.notes)}</div>` : ''}
-            ${video ? `<a class="ss-exo-video" href="${escHtml(video)}" target="_blank" rel="noopener">🎥 Vidéo</a>` : ''}
+            ${video ? `<a class="ss-exo-video" href="${escHtml(video)}" target="_blank" rel="noopener"
+              onclick="return CoachSeanceStudioPage.voirVideo(event, '${e.id}')">🎥 Vidéo</a>` : ''}
           </th>
           ${cases}
           <td></td>
@@ -253,6 +259,53 @@ const CoachSeanceStudioPage = {
     if (iCours > 0 && cible && scroll) scroll.scrollLeft = Math.max(0, cible.offsetLeft - fixe);
   },
 
+  // Cases « Charge / Reps » d'un exercice pour une semaine : une seule si toutes les séries
+  // sont pareilles, une par série si les reps ou les charges changent (pyramidal, 12/10/8/6),
+  // plus une pour le 2e effort (cluster, rest-pause). Plusieurs valeurs = « 80 / 85 / 90 » en base.
+  _libellesCases(e) {
+    const te = e.type_effort || 'reps';
+    const reps = this._valeursSeries(e);
+    const charges = Array.isArray(e.series_data) && reps.length ? e.series_data.map(x => String(x.charge || '').trim()) : [];
+    const varie = new Set(reps).size > 1 || new Set(charges.filter(Boolean)).size > 1;
+    const lib = varie ? reps.map((_, j) => `S${j + 1}`) : [''];
+    if (te === 'reps' && e.reps_secondaire) { if (!varie) lib[0] = 'S'; lib.push('2e'); }
+    return lib;
+  },
+
+  _decouper(txt, n) {
+    const parts = String(txt || '').split(/\s*\/\s*/);
+    if (n === 1 || parts.length <= 1) return [txt || '', ...Array(n - 1).fill('')];
+    const res = parts.slice(0, n);
+    if (parts.length > n) res[n - 1] = parts.slice(n - 1).join(' / ');
+    while (res.length < n) res.push('');
+    return res;
+  },
+
+  _htmlCases(e, cle, k, v) {
+    const lib = this._libellesCases(e), n = lib.length;
+    const ch = this._decouper(v.charge, n), rp = this._decouper(v.reps, n);
+    return lib.map((l, j) => `
+            <div class="ss-duo ${n > 1 ? 'multi' : ''}">
+              ${n > 1 ? `<span class="ss-duo-lib">${l}</span>` : ''}
+              <textarea rows="${n > 1 ? 1 : 2}" placeholder="Charge" data-cle="${cle}" data-champ="charge"
+                oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">${escHtml(ch[j])}</textarea>
+              <textarea rows="${n > 1 ? 1 : 2}" placeholder="Reps" data-cle="${cle}" data-champ="reps"
+                oninput="CoachSeanceStudioPage.saisir('${e.id}', ${k})">${escHtml(rp[j])}</textarea>
+            </div>`).join('');
+  },
+
+  // Valeurs d'une case : plusieurs champs « charge » (ou « reps ») = « 80 / 85 / 90 »
+  _lireCase(cle) {
+    const vals = {};
+    document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => { (vals[el.dataset.champ] = vals[el.dataset.champ] || []).push(el.value.trim()); });
+    const champs = {};
+    for (const [c, l] of Object.entries(vals)) {
+      while (l.length > 1 && !l[l.length - 1]) l.pop();
+      champs[c] = l.join(' / ').trim() || null;
+    }
+    return champs;
+  },
+
   _etat(texte, erreur = false) {
     const el = document.getElementById('ssEtat');
     if (!el) return;
@@ -266,8 +319,7 @@ const CoachSeanceStudioPage = {
     this._etat('Enregistrement…');
     // Valeurs relevées à la frappe et gardées en mémoire tout de suite : un nouvel
     // affichage (↑ ↓, ajout d'exercice) ne les efface plus avant l'enregistrement
-    const champs = {};
-    document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+    const champs = this._lireCase(cle);
     this._attente = this._attente || {};
     this._attente[cle] = champs;
     const d = this.data;
@@ -294,8 +346,7 @@ const CoachSeanceStudioPage = {
     let champs = this._attente?.[cle];
     if (this._attente) delete this._attente[cle];
     if (!champs) {
-      champs = {};
-      document.querySelectorAll(`[data-cle="${cle}"]`).forEach(el => { champs[el.dataset.champ] = el.value.trim() || null; });
+      champs = this._lireCase(cle);
     }
     try {
       await db.saveSaisieStudio(exerciceId, semaine, champs);
@@ -324,6 +375,27 @@ const CoachSeanceStudioPage = {
   // ── Modifier la séance depuis la grille ────────────────────────────────────
 
   _fermerModal() { this._choix = null; document.getElementById('ssModal').innerHTML = ''; },
+
+  // Vidéo YouTube dans une fenêtre sur la grille (plus d'onglet YouTube) ; autre lien : nouvel onglet
+  voirVideo(ev, exerciceId) {
+    const e = this.data.exercices.find(x => x.id === exerciceId);
+    const url = e?.exercices_bdd?.youtube_url || '';
+    const vid = (url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/) || [])[1];
+    if (!vid) return true;
+    ev.preventDefault();
+    document.getElementById('ssModal').innerHTML = `
+      <div class="modal-overlay" onclick="if (event.target === this) CoachSeanceStudioPage._fermerModal()">
+        <div class="modal ss-modal-video">
+          <div class="modal-title">${escHtml(e.exercices_bdd?.nom || 'Exercice')}
+            <button class="modal-close" onclick="CoachSeanceStudioPage._fermerModal()">×</button>
+          </div>
+          <div class="sa-video"><iframe src="https://www.youtube.com/embed/${vid}?rel=0&playsinline=1&autoplay=1" frameborder="0"
+            allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+          ${e.notes ? `<div class="ss-exo-notes" style="margin-top:10px;">${escHtml(e.notes)}</div>` : ''}
+        </div>
+      </div>`;
+    return false;
+  },
 
   // Remplacer un exercice (il garde ses charges) ou en ajouter un
   async choisirExercice(mode, exerciceId = null) {
@@ -394,7 +466,7 @@ const CoachSeanceStudioPage = {
     const e = this.data.exercices.find(x => x.id === exerciceId);
     if (!e) return;
     const te = e.type_effort || 'reps';
-    const sd = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
+    const sd = this._valeursSeries(e);
     const reps = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : (e.reps_cible || '');
     const types = [['reps', 'Séries × reps'], ['amrap', 'Max de reps en un temps'], ['temps', 'Durée'], ['distance', 'Distance']];
     document.getElementById('ssModal').innerHTML = `
@@ -408,11 +480,15 @@ const CoachSeanceStudioPage = {
           </div>
           <div class="field-row" style="display:grid;grid-template-columns:1fr 1.4fr;gap:10px;">
             <div class="field"><label class="field-label">Séries</label><input class="input" type="number" min="1" id="ssmSeries" value="${e.series || 1}"></div>
-            <div class="field"><label class="field-label">Reps / objectif</label><input class="input" id="ssmReps" value="${escHtml(te === 'reps' ? reps : (e.reps_cible || ''))}" placeholder="10, 8/8/6, 5 min…"></div>
+            <div class="field"><label class="field-label">Reps / objectif</label><input class="input" id="ssmReps" value="${escHtml(reps)}" placeholder="10, 8/8/6, 5:00/4:00…"></div>
           </div>
           <div class="field-row" style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px;">
             <div class="field"><label class="field-label">Charge cible</label><input class="input" id="ssmCharge" value="${escHtml(e.charge_cible || '')}"></div>
             <div class="field"><label class="field-label">Repos (secondes)</label><input class="input" type="number" min="0" step="15" id="ssmRepos" value="${e.repos_secondes ?? 90}"></div>
+          </div>
+          <div class="field-row" style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px;">
+            <div class="field"><label class="field-label">2e effort (reps, vide = aucun)</label><input class="input" id="ssmReps2" value="${escHtml(e.reps_secondaire || '')}" placeholder="max, 6…"></div>
+            <div class="field"><label class="field-label">Pause avant (s)</label><input class="input" type="number" min="0" max="300" id="ssmReposIntra" value="${e.repos_intra_sec ?? ''}"></div>
           </div>
           <div class="field"><label class="field-label">Notes</label>
             <textarea class="input" id="ssmNotes" rows="2" style="height:auto;" placeholder="Objectif 40-60 reps, tempo…">${escHtml(e.notes || '')}</textarea>
@@ -432,17 +508,15 @@ const CoachSeanceStudioPage = {
     const patch = {
       type_effort: te, series, charge_cible: charge || null,
       repos_secondes: parseInt(v('ssmRepos')) || 0, notes: v('ssmNotes') || null,
+      // 2e effort (Rest-Pause, Drop Set…) : seulement en séries × reps
+      reps_secondaire: te === 'reps' ? (v('ssmReps2') || null) : null,
+      repos_intra_sec: te === 'reps' && v('ssmReps2') ? (parseInt(v('ssmReposIntra')) || null) : null,
     };
-    if (te === 'reps') {
-      // « 8/8/6 » = une valeur par série ; « 10 » = la même pour toutes
-      const parts = repsTxt.split('/').map(x => x.trim()).filter(Boolean);
-      const parSerie = Array.from({ length: series }, (_, i) => parts[i] || parts[parts.length - 1] || '10');
-      patch.reps_cible = parSerie[0];
-      patch.series_data = parSerie.map(r => ({ reps: r, charge: charge || '' }));
-    } else {
-      patch.reps_cible = repsTxt || null;
-      patch.series_data = null;
-    }
+    // « 8/8/6 » ou « 5:00/4:00/3:00 » = une valeur par série ; « 10 » = la même pour toutes (tous les types)
+    const parts = repsTxt.split('/').map(x => x.trim()).filter(Boolean);
+    const parSerie = Array.from({ length: series }, (_, i) => parts[i] || parts[parts.length - 1] || (te === 'reps' ? '10' : ''));
+    patch.reps_cible = parSerie[0] || null;
+    patch.series_data = parSerie.map(r => ({ reps: r, charge: charge || '' }));
     try {
       const maj = await db.updateClientExercice(exerciceId, patch);
       const i = this.data.exercices.findIndex(e => e.id === exerciceId);

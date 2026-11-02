@@ -48,6 +48,8 @@ const EntrainementPage = {
         db.getCardioValidations(profile.id).catch(() => []),
         db.getMesPlansCardio().catch(() => []),
       ]);
+      // Séances commencées pas encore enregistrées (« Reprendre »)
+      this._enCours = new Set((await db.getSeancesEnCours(profile.id).catch(() => [])).map(x => x.seance_id));
       this._renderContent();
     } catch (e) {
       document.getElementById('trainContent').innerHTML =
@@ -376,7 +378,6 @@ const EntrainementPage = {
   },
 
   _seanceCard(seance) {
-    const exos     = seance.exercices || [];
     const jourLabel = seance.jour > 0
       ? `<span style="font-size:11px;color:var(--gray-muted);margin-left:6px;">· ${this._jours[(seance.jour - 1) % 7]}</span>`
       : '';
@@ -472,83 +473,17 @@ const EntrainementPage = {
         </div>`;
     }
 
+    // Carte réduite au nom : le détail est dans l'aperçu de la séance (seance-active.js)
     return `
-      <div class="card" style="margin-bottom:0.75rem;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="card" style="margin-bottom:0.75rem;cursor:pointer;"
+        onclick="EntrainementPage._startSeance('${seance.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
           <div style="font-weight:700;font-size:15px;">${seance.nom}${jourLabel}</div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button class="btn btn-ghost btn-small" style="font-size:12px;"
-              onclick="EntrainementPage._openApercu('${seance.id}')">
-              👁 Aperçu
-            </button>
-            <button class="btn btn-primary btn-small" style="font-size:12px;"
-              onclick="EntrainementPage._startSeance('${seance.id}')">
-              ▶ Démarrer
-            </button>
-          </div>
+          <button class="btn btn-primary btn-small" style="font-size:12px;flex-shrink:0;">
+            ${this._enCours?.has(seance.id) ? '⏸ Reprendre' : '▶ Démarrer'}
+          </button>
         </div>
-        ${seance.notes_coach ? `
-          <div style="font-size:12px;color:var(--gold);background:var(--gold-bg,#fffbeb);
-               border-left:3px solid var(--gold);padding:6px 10px;border-radius:4px;margin-bottom:10px;">
-            📌 ${seance.notes_coach}
-          </div>` : ''}
-        <div style="display:flex;flex-direction:column;gap:0;">
-          ${exos.map((e, i) => this._exoRow(e, exos, i)).join('')}
-        </div>
-        ${exos.length === 0
-          ? '<div style="font-size:13px;color:var(--gray-muted);">Aucun exercice.</div>'
-          : ''}
       </div>`;
-  },
-
-  _ssColor(group) {
-    const colors = ['#F59E0B','#3B82F6','#10B981','#EC4899','#8B5CF6','#F97316'];
-    return group ? colors[(group.charCodeAt(0) - 65) % colors.length] : null;
-  },
-
-  _exoRow(e, exos, i) {
-    const nom    = e.exercices_bdd?.nom || '—';
-    const series = e.series || 3;
-    // Reps réelles dérivées de series_data (reps_cible peut être obsolète)
-    const sd     = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
-    // Ne pas dédupliquer : [10,10,8] doit rester '10/10/8' (ne pas masquer le vrai schéma). #33
-    const repsS  = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : null;
-    const reps   = repsS || e.reps_cible || '10';
-    const charge = e.charge_cible ? ` · ${e.charge_cible} kg` : '';
-    const te     = e.type_effort || 'reps';
-    const label  = te === 'amrap'    ? `AMRAP ${e.reps_cible || reps}`
-                 : te === 'temps'    ? `${series}×${e.reps_cible}`
-                 : te === 'distance' ? `${series}×${e.reps_cible}`
-                 : `${series}×${reps}${charge}`;
-
-    const ssGroup  = e.superset_groupe;
-    const ssColor  = this._ssColor(ssGroup);
-    const nextInSS = ssGroup && exos && i < exos.length - 1 && exos[i + 1]?.superset_groupe === ssGroup;
-    const ssBadge  = ssGroup
-      ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;
-           background:${ssColor}22;color:${ssColor};margin-left:5px;vertical-align:middle;">SS</span>`
-      : '';
-    const rowStyle = ssGroup
-      ? `border-left:3px solid ${ssColor};padding-left:8px;`
-      : '';
-
-    const notes = e.notes?.trim();
-    return `
-      <div style="padding:7px 0;border-bottom:${nextInSS ? 'none' : '1px solid var(--border)'};${rowStyle}">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="flex:1;font-size:13px;font-weight:500;color:var(--black);">${nom}${ssBadge}</div>
-          <div style="font-size:12px;color:var(--gray-muted);white-space:nowrap;">${label}</div>
-        </div>
-        ${notes ? `
-          <div style="font-size:12px;color:var(--gold);margin-top:3px;font-style:italic;">
-            💬 ${notes}
-          </div>` : ''}
-      </div>
-      ${nextInSS ? `
-        <div style="text-align:center;font-size:10px;font-weight:700;color:${ssColor};
-             padding:2px 0;letter-spacing:.05em;">
-          🔗 superset
-        </div>` : ''}`;
   },
 
   _openConsignes(progId) {
@@ -594,117 +529,8 @@ ${text.replace(/</g,'&lt;')}</div>
   },
 
   _startSeance(seanceId) {
-    this._closeApercu();
     const seance = this._findSeance(seanceId);
     Router.navigate('seance-active', { seanceId, programmeId: seance?._prog?.id });
-  },
-
-  _openApercu(seanceId) {
-    const seance = this._findSeance(seanceId);
-    if (!seance) return;
-    const exos = seance.exercices || [];
-
-    const modal = document.createElement('div');
-    modal.id = 'apercuModal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;';
-
-    modal.innerHTML = `
-      <!-- Header fixe -->
-      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;
-                  background:var(--white);border-bottom:1px solid var(--border);flex-shrink:0;">
-        <button onclick="EntrainementPage._closeApercu()"
-          style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);padding:4px 8px;">←</button>
-        <div style="flex:1;">
-          <div style="font-size:11px;color:var(--gray-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Aperçu</div>
-          <div style="font-size:16px;font-weight:700;color:var(--black);">${seance.nom}</div>
-        </div>
-        <div style="font-size:12px;color:var(--gray-muted);">${exos.length} exercice${exos.length > 1 ? 's' : ''}</div>
-      </div>
-
-      <!-- Corps scrollable -->
-      <div style="flex:1;overflow-y:auto;padding:16px 16px 8px;">
-        ${exos.length === 0
-          ? '<div style="text-align:center;color:var(--gray-muted);padding:40px 0;">Aucun exercice dans cette séance.</div>'
-          : exos.map((e, i) => this._apercuExoCard(e, i, exos)).join('')
-        }
-      </div>
-
-      <!-- Footer fixe -->
-      <div style="padding:16px;background:var(--white);border-top:1px solid var(--border);flex-shrink:0;
-                  padding-bottom:calc(16px + env(safe-area-inset-bottom));">
-        <button onclick="EntrainementPage._startSeance('${seanceId}')"
-          style="width:100%;height:54px;background:var(--gold);color:#fff;border:none;
-                 border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;font-family:var(--font);">
-          ▶ Démarrer la séance
-        </button>
-      </div>`;
-
-    document.body.appendChild(modal);
-  },
-
-  _closeApercu() {
-    document.getElementById('apercuModal')?.remove();
-  },
-
-  _apercuExoCard(e, i, exos) {
-    const nom    = e.exercices_bdd?.nom || '—';
-    const muscle = e.exercices_bdd?.muscle_principal || '';
-    const ytUrl  = e.exercices_bdd?.youtube_url || null;
-    const ytId   = ytUrl ? (ytUrl.match(/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/) || [])[1] : null;
-    const te     = e.type_effort || 'reps';
-    const series = e.series || 3;
-    const sd     = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
-    // Ne pas dédupliquer : [10,10,8] doit rester '10/10/8' (ne pas masquer le vrai schéma). #33
-    const repsS  = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : null;
-    const reps   = repsS || e.reps_cible || '10';
-    const label  = te === 'amrap'    ? `AMRAP ${e.reps_cible || reps}`
-                 : te === 'temps'    ? `${series} × ${e.reps_cible}`
-                 : te === 'distance' ? `${series} × ${e.reps_cible}`
-                 : `${series} × ${reps} reps`;
-
-    const ssGroup  = e.superset_groupe;
-    const ssColor  = this._ssColor(ssGroup);
-    const nextInSS = ssGroup && exos && i < exos.length - 1 && exos[i + 1]?.superset_groupe === ssGroup;
-    const borderLeft = ssGroup ? `border-left:3px solid ${ssColor};` : '';
-    const ssBadge  = ssGroup
-      ? `<span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;
-           background:${ssColor}22;color:${ssColor};">🔗 Superset</span>`
-      : '';
-
-    return `
-      <div style="background:var(--white);border-radius:14px;padding:14px;
-                  margin-bottom:${nextInSS ? '2px' : '12px'};
-                  border:1px solid var(--border);${borderLeft}">
-        <div style="display:flex;align-items:flex-start;gap:10px;${ytId ? 'margin-bottom:10px;' : ''}">
-          <div style="font-size:13px;font-weight:800;color:var(--gray-muted);
-                      min-width:24px;margin-top:2px;">${i + 1}.</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:15px;font-weight:700;color:var(--black);margin-bottom:5px;">${nom}</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              ${muscle ? `<span style="font-size:11px;padding:2px 9px;border-radius:10px;
-                background:var(--gold-bg,#fffbeb);color:var(--gold);font-weight:600;">${muscle}</span>` : ''}
-              <span style="font-size:11px;padding:2px 9px;border-radius:10px;
-                background:var(--card-bg);color:var(--gray);font-weight:600;">${label}</span>
-              ${ssBadge}
-            </div>
-            ${e.notes ? `<div style="font-size:12px;color:var(--gray);margin-top:6px;font-style:italic;">
-              💬 ${e.notes}</div>` : ''}
-          </div>
-        </div>
-        ${ytId ? `
-        <div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:10px;
-                    overflow:hidden;background:#000;">
-          <iframe src="https://www.youtube.com/embed/${ytId}?rel=0"
-            frameborder="0" loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-            style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;">
-          </iframe>
-        </div>` : ''}
-      </div>
-      ${nextInSS ? `
-        <div style="text-align:center;font-size:11px;font-weight:700;color:${ssColor};
-             margin-bottom:2px;letter-spacing:.05em;">🔗 superset</div>` : ''}`;
   },
 
   // ── Onglet Historique ────────────────────────────────────────────────────────

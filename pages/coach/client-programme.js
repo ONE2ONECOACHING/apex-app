@@ -275,12 +275,15 @@ const CoachClientProgrammePage = {
           ${exos.slice(0, 4).map(e => {
             const te  = e.type_effort || 'reps';
             // Reps réelles : dérivées de series_data (reps_cible peut être obsolète)
-            const sd  = Array.isArray(e.series_data) ? e.series_data.map(x => x.reps).filter(Boolean) : [];
+            // (hors reps, seulement si elles vont avec le nombre de séries et la 1re valeur)
+            const sd  = (Array.isArray(e.series_data) && ((e.type_effort || 'reps') === 'reps'
+              || (e.series_data.length === (e.series || 1) && String(e.series_data[0]?.reps ?? '') === String(e.reps_cible ?? '')))
+              ? e.series_data.map(x => x.reps).filter(Boolean) : []);
             // Ne pas dédupliquer : [10,10,8] doit rester '10/10/8'. #33
             const reps = sd.length ? (new Set(sd).size <= 1 ? sd[0] : sd.join('/')) : (e.reps_cible || '10');
-            const qty = te === 'amrap'    ? `AMRAP ${e.reps_cible}`
-                      : te === 'temps'    ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)
-                      : te === 'distance' ? (e.series > 1 ? `${e.series}×${e.reps_cible}` : e.reps_cible)
+            const qty = te === 'amrap'    ? (e.series > 1 ? `${e.series} AMRAP ${reps}` : `AMRAP ${reps}`)
+                      : te === 'temps'    ? (e.series > 1 ? `${e.series}×${reps}` : reps)
+                      : te === 'distance' ? (e.series > 1 ? `${e.series}×${reps}` : reps)
                       : `${e.series}×${reps}`;
             return `<div style="font-size:12px;color:var(--gray-muted);padding:1px 0;">
               · ${escHtml(e.exercices_bdd?.nom || '—')} — ${qty}
