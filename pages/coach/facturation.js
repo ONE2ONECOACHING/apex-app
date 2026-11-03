@@ -118,7 +118,9 @@ const CoachFacturationPage = {
         const e = etats[cus];
         if (!e) { td.innerHTML = '<span class="fa-sous">introuvable</span>'; continue; }
         const mode = this._d.clients.find(c => c.id === td.dataset.client)?.mode_facturation;
-        const morceaux = [e.moyen ? `<span class="cf-statut ok">💳 ···· ${escHtml(e.moyen.fin || '')}</span>` : '<span class="cf-statut ko">Pas de carte</span>'];
+        const carte = e.moyen ? etatCarte(e.moyen.expire) : '';
+        const morceaux = [!e.moyen ? '<span class="cf-statut ko">Pas de carte</span>'
+          : `<span class="cf-statut ${carte ? 'ko' : 'ok'}">💳 ···· ${escHtml(e.moyen.fin || '')}${carte === 'expiree' ? ' expirée' : carte === 'bientot' ? ' expire ce mois-ci' : ''}</span>`];
         if (mode === 'abonnement' || mode === 'mixte') {
           morceaux.push(e.abonnements.length
             ? e.abonnements.map(a => `<span class="cf-statut ${STRIPE_ABO_OK.includes(a.statut) ? 'ok' : 'ko'}">Abo ${(STRIPE_ABO[a.statut] || a.statut).toLowerCase()}</span>`).join(' ')

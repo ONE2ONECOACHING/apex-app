@@ -10,6 +10,14 @@ const STRIPE_ABO = { active: 'À jour', trialing: 'Essai', past_due: 'Paiement e
 const STRIPE_ABO_OK = ['active', 'trialing'];
 const STRIPE_PAIEMENT = { succeeded: 'Payé', failed: 'Refusé', pending: 'En cours' };
 const RYTHME = { month: 'mois', year: 'an', week: 'semaine', day: 'jour' };
+// Carte « MM/AAAA » : 'expiree' (mois passé), 'bientot' (expire ce mois-ci) ou ''
+function etatCarte(expire) {
+  const m = /^(\d{2})\/(\d{4})$/.exec(expire || '');
+  if (!m) return '';
+  const auj = new Date();
+  const fin = Number(m[2]) * 12 + Number(m[1]), maintenant = auj.getFullYear() * 12 + auj.getMonth() + 1;
+  return fin < maintenant ? 'expiree' : fin === maintenant ? 'bientot' : '';
+}
 let _stripeClients = null;   // liste des clients Stripe, chargée une fois par visite
 
 const CoachClientFacturationPage = {
@@ -147,7 +155,7 @@ const CoachClientFacturationPage = {
         </div>
 
         <div class="cf-bloc-titre">Moyen de paiement</div>
-        ${f.moyens.length ? f.moyens.map(m => `<div class="cf-stripe-ligne">💳 ${escHtml(m.marque || m.type)} ···· ${escHtml(m.fin || '')}${m.expire ? ` · expire ${escHtml(m.expire)}` : ''}${m.defaut ? ' · <b>par défaut</b>' : ''}</div>`).join('')
+        ${f.moyens.length ? f.moyens.map(m => { const e = etatCarte(m.expire); return `<div class="cf-stripe-ligne ${e ? 'cf-stripe-alerte' : ''}">💳 ${escHtml(m.marque || m.type)} ···· ${escHtml(m.fin || '')}${m.expire ? ` · ${e === 'expiree' ? '<b>expirée</b> depuis' : e === 'bientot' ? '<b>expire ce mois-ci</b>,' : 'expire'} ${escHtml(m.expire)}` : ''}${m.defaut ? ' · <b>par défaut</b>' : ''}</div>`; }).join('')
           : '<div class="cf-stripe-ligne cf-stripe-alerte">Aucune carte ni RIB enregistré : impossible de prélever ce client.</div>'}
 
         <div class="cf-bloc-titre" style="margin-top:12px;">Abonnements Stripe</div>
