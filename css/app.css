@@ -1843,6 +1843,43 @@ body.resume-replie .fr-replier { right: 5px; }
 .fa-prelev .btn { width: auto; white-space: nowrap; }
 .fa-prelev-actions { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
 .fa-modal { max-width: 520px; }
+
+/* ── Tableau de bord gérants (pages/coach/gerants.js) ─────────────────── */
+.ge-tuiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.ge-tuile { background: var(--white); border: 1px solid var(--border-solid); border-radius: 14px; padding: 12px 14px; }
+.ge-tuile-titre { font-size: 12px; font-weight: 600; color: var(--gray); }
+.ge-tuile-val { font-size: 26px; font-weight: 800; margin: 4px 0 2px; color: var(--black); }
+.ge-tuile-val small { font-size: 13px; font-weight: 600; color: var(--gray); }
+.ge-tuile-sous { font-size: 11px; color: var(--gray-light); min-height: 14px; }
+.ge-var { font-weight: 700; }
+.ge-var.up { color: #2E7D32; }
+.ge-var.down { color: var(--error); }
+.ge-plus { color: #2E7D32; }
+.ge-moins { color: var(--error); }
+.ge-attente { color: var(--gray-light); font-weight: 400; }
+.ge-graphes { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.ge-graphe-bloc { min-width: 0; }
+.ge-svg { width: 100%; height: auto; display: block; }
+.ge-grille { stroke: #EEF0F3; stroke-width: 1; }
+.ge-axe { font-size: 10px; fill: #9CA3AF; }
+.ge-survol:hover { fill: rgba(0, 74, 173, 0.05); }
+.ge-legende { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--gray); margin-bottom: 6px; }
+.ge-legende i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.ge-note { font-size: 11px; color: var(--gray-light); margin-top: 6px; }
+.ge-bulle { position: fixed; display: none; z-index: 300; pointer-events: none; background: #1F2937; color: #fff; font-size: 12px;
+  padding: 6px 9px; border-radius: 8px; max-width: 360px; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+.ge-bas { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; }
+.ge-table td, .ge-table th { padding: 8px 6px; }
+.ge-pastille { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.ge-part { display: inline-block; width: 90px; height: 6px; background: #EEF0F3; border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.ge-part div { height: 100%; border-radius: 3px; }
+.ge-surv-titre { font-size: 13px; font-weight: 700; margin: 12px 0 4px; }
+.ge-surv-titre:first-child { margin-top: 0; }
+.ge-surv-titre span { color: var(--gray-light); font-weight: 600; margin-left: 4px; }
+.ge-surv-ligne { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; padding: 6px 4px;
+  border-top: 1px solid var(--border-solid); cursor: pointer; }
+.ge-surv-ligne:hover { background: var(--gold-light); }
+.ge-surv-ok { font-size: 12px; color: var(--gray-light); padding: 2px 4px; }
 .fa-mois { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 16px; font-weight: 700; }
 .fa-totaux { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
 .fa-total { background: var(--white); border: 1px solid var(--border-solid); border-radius: 12px; padding: 12px 14px; }

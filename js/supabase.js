@@ -288,6 +288,15 @@ const db = {
     return data;
   },
 
+  // Clients pour le tableau de bord gérants (arrivées, départs, référents)
+  async getClientsTableau() {
+    const { data, error } = await getSupabase()
+      .from('profiles').select('id, prenom, nom, email, type_client, mode_facturation, actif, created_at, inactif_depuis, coach_referent_id')
+      .eq('role', 'client');
+    if (error) throw error;
+    return data || [];
+  },
+
   // Tous les clients (actifs ou non, tous types), pour la facturation du mois
   async getClientsFacturation() {
     const { data, error } = await getSupabase()

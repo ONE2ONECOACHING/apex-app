@@ -7,6 +7,8 @@
 //                                           refus : lien de paiement Stripe (24 h) à envoyer
 //   { action: 'nouveau_lien', id }        → nouveau lien pour un prélèvement refusé
 //   { action: 'actualiser', ids: [...] }  → relit l'état des prélèvements en cours ou refusés
+//   { action: 'tableau' }                 → revenu encaissé par mois (depuis janvier de l'an dernier),
+//                                           abonnements en cours et impayés (tableau de bord gérants)
 // Les prélèvements sont notés dans la table prelevements (écrite seulement ici).
 // Secret à poser dans Supabase › Edge Functions › Secrets : STRIPE_SECRET_KEY
 // (clé limitée « rk_… » : lecture des clients, moyens de paiement, abonnements
@@ -303,6 +305,48 @@ serve(async (req) => {
         } else sortie.push(p);
       }
       resultat = sortie;
+
+    } else if (body.action === 'tableau') {
+      const moisParis = (t: number) => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit' }).format(new Date(t * 1000));
+      const anDernier = Number(moisParis(Date.now() / 1000).slice(0, 4)) - 1;
+      const depuis = Math.floor(Date.UTC(anDernier, 0, 1) / 1000) - 7200;
+      const [paiements, abos] = await Promise.all([
+        tout('charges', { 'created[gte]': String(depuis) }),
+        tout('subscriptions', { status: 'all' }),
+      ]);
+      // Revenu encaissé = paiements réussis, moins les remboursements
+      const revenus: Record<string, { montant: number; nb: number }> = {};
+      for (const c of paiements) {
+        if (c.status !== 'succeeded' || c.currency !== 'eur') continue;
+        const m = moisParis(c.created);
+        if (m < `${anDernier}-01`) continue;
+        revenus[m] ??= { montant: 0, nb: 0 };
+        revenus[m].montant += (c.amount - (c.amount_refunded || 0)) / 100;
+        revenus[m].nb++;
+      }
+      // Abonnements en cours : montant ramené au mois
+      const parMois = (it: any) => {
+        const r = it.price?.recurring;
+        const montant = (it.price?.unit_amount || 0) * (it.quantity || 1) / 100;
+        if (!r) return 0;
+        const n = r.interval_count || 1;
+        return r.interval === 'year' ? montant / (12 * n) : r.interval === 'week' ? montant * 52 / (12 * n)
+          : r.interval === 'day' ? montant * 365 / (12 * n) : montant / n;
+      };
+      const enCours = abos.filter((x: any) => ['active', 'trialing', 'past_due', 'unpaid'].includes(x.status));
+      resultat = {
+        revenus,
+        abonnements: {
+          nb: enCours.length,
+          mensuel: Math.round(enCours.reduce((t: number, x: any) => t + (x.items?.data || []).reduce((u: number, it: any) => u + parMois(it), 0), 0) * 100) / 100,
+          impayes: enCours.filter((x: any) => ['past_due', 'unpaid'].includes(x.status)).map((x: any) => ({
+            customer: x.customer, statut: x.status,
+            montant: (x.items?.data || []).reduce((u: number, it: any) => u + parMois(it), 0),
+          })),
+          arretes: abos.filter((x: any) => x.status === 'canceled' && x.ended_at)
+            .map((x: any) => ({ customer: x.customer, mois: moisParis(x.ended_at) })),
+        },
+      };
 
     } else {
       throw new Error('Action inconnue');
