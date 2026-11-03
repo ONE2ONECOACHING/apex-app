@@ -1839,6 +1839,10 @@ body.resume-replie .fr-replier { right: 5px; }
 .fa-relier { margin-top: 8px; }
 .fa-relier-ligne { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; cursor: pointer; }
 .fa-stripe { white-space: nowrap; }
+.fa-prelev { min-width: 150px; cursor: default; }
+.fa-prelev .btn { width: auto; white-space: nowrap; }
+.fa-prelev-actions { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.fa-modal { max-width: 520px; }
 .fa-mois { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 16px; font-weight: 700; }
 .fa-totaux { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
 .fa-total { background: var(--white); border: 1px solid var(--border-solid); border-radius: 12px; padding: 12px 14px; }

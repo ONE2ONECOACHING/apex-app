@@ -22,7 +22,8 @@ const CoachFacturationPage = {
         <span id="faMois"></span>
         <button class="btn btn-secondary btn-small" onclick="CoachFacturationPage.changerMois(1)">›</button>
       </div>
-      <div id="faContent"><div class="spinner" style="margin-top:2rem;"></div></div>`;
+      <div id="faContent"><div class="spinner" style="margin-top:2rem;"></div></div>
+      <div id="faModal"></div>`;
   },
 
   init() {
@@ -46,16 +47,18 @@ const CoachFacturationPage = {
     document.getElementById('faMois').textContent = titre.charAt(0).toUpperCase() + titre.slice(1);
     document.getElementById('faContent').innerHTML = '<div class="spinner" style="margin-top:2rem;"></div>';
     try {
-      const [clients, factus, formules, coachings, suppressions, coachs] = await Promise.all([
+      const [clients, factus, formules, coachings, suppressions, coachs, prelevements] = await Promise.all([
         db.getClientsFacturation(), db.getFacturationsClients(), db.getFormules(),
         db.getCoachingsPeriode(debut.toISOString(), fin.toISOString()),
         db.getSuppressionsPeriode(debut.toISOString(), fin.toISOString()),
         db.getCoachs(),
+        db.getPrelevements(this._moisCle() + '-01').catch(() => []),
       ]);
       if (jeton !== this._jeton) return;
-      this._d = { clients, factus, formules, coachings, suppressions, coachs, debut, fin };
+      this._d = { clients, factus, formules, coachings, suppressions, coachs, prelevements, debut, fin };
       this._render(this._d);
       this._etatsStripe(jeton);
+      this._actualiserPrelevements(jeton);
     } catch (e) {
       if (jeton !== this._jeton) return;
       document.getElementById('faContent').innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
@@ -99,6 +102,152 @@ const CoachFacturationPage = {
       });
     }
     return { lignes, aCompleter };
+  },
+
+  // ── Prélèvement des séances (étape 6b-2) ──────────────────────────────────
+  _moisCle() {
+    return `${this.mois.getFullYear()}-${String(this.mois.getMonth() + 1).padStart(2, '0')}`;
+  },
+
+  _moisTermine() {
+    const auj = new Date();
+    return this.mois < new Date(auj.getFullYear(), auj.getMonth(), 1);
+  },
+
+  // Prélèvement qui compte pour ce client : réussi ou en cours d'abord, sinon le dernier refus
+  _prelev(clientId) {
+    const siens = (this._d?.prelevements || []).filter(p => p.client_id === clientId);
+    return siens.find(p => p.statut !== 'refuse') || siens[0] || null;
+  },
+
+  _cellulePrelev(l) {
+    if (!l.montantSeances) return '';
+    const p = this._prelev(l.cl.id);
+    const date = iso => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    if (p?.statut === 'reussi') return `<span class="cf-statut ok">✓ Prélevé ${euros(p.montant)}</span><div class="fa-sous">le ${date(p.maj_le)}</div>`;
+    if (p?.statut === 'en_cours') return `<span class="cf-statut">⏳ En cours ${euros(p.montant)}</span><div class="fa-sous">prélèvement bancaire, quelques jours</div>`;
+    if (p?.statut === 'refuse') {
+      const lienValide = p.lien_url && new Date(p.lien_expire) > new Date();
+      return `<span class="cf-statut ko">Refusé ${euros(p.montant)}</span>
+        <div class="fa-sous">${escHtml(p.erreur || '')}</div>
+        <div class="fa-prelev-actions">
+          ${lienValide ? `<button class="btn btn-secondary btn-small" onclick="CoachFacturationPage.copierLien('${p.id}')">📋 Copier le lien</button>`
+            : `<button class="btn btn-secondary btn-small" onclick="CoachFacturationPage.nouveauLien('${p.id}')">🔗 Nouveau lien</button>`}
+          <button class="btn btn-secondary btn-small" onclick="CoachFacturationPage.ouvrirPrelever('${l.cl.id}')">Réessayer</button>
+        </div>`;
+    }
+    if (!this._moisTermine()) return '<span class="fa-sous">après la fin du mois</span>';
+    if (!this._cus(l.cl.id)) return '<span class="fa-sous">pas relié à Stripe</span>';
+    return `<button class="btn btn-primary btn-small" onclick="CoachFacturationPage.ouvrirPrelever('${l.cl.id}')">Prélever ${euros(l.montantSeances)}</button>`;
+  },
+
+  _majCellule(clientId) {
+    const l = (this._lignesAffichees || []).find(x => x.cl.id === clientId);
+    const td = document.getElementById('faPr_' + clientId);
+    if (l && td) td.innerHTML = this._cellulePrelev(l);
+  },
+
+  _remplacerPrelev(p) {
+    const liste = this._d.prelevements.filter(x => x.id !== p.id);
+    this._d.prelevements = [p, ...liste].sort((a, b) => b.cree_le.localeCompare(a.cree_le));
+    this._majCellule(p.client_id);
+  },
+
+  // Prélèvements bancaires en cours ou liens envoyés : relire leur état dans Stripe
+  async _actualiserPrelevements(jeton) {
+    const ids = this._d.prelevements
+      .filter(p => (p.statut === 'en_cours' && p.stripe_payment_intent) || (p.statut === 'refuse' && p.lien_session))
+      .map(p => p.id);
+    if (!ids.length) return;
+    try {
+      const lignes = await db.stripe('actualiser', { ids });
+      if (jeton !== this._jeton) return;
+      lignes.forEach(p => this._remplacerPrelev(p));
+    } catch (e) { /* l'état sera relu à la prochaine ouverture */ }
+  },
+
+  ouvrirPrelever(clientId) {
+    const l = this._lignesAffichees.find(x => x.cl.id === clientId);
+    if (!l || !this._moisTermine()) return;
+    const titre = this.mois.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    document.getElementById('faModal').innerHTML = `
+      <div class="modal-overlay" onclick="if (event.target === this) CoachFacturationPage.fermerModal()">
+        <div class="modal fa-modal">
+          <div class="modal-title">Prélever ${escHtml(l.nom)}
+            <button class="modal-close" onclick="CoachFacturationPage.fermerModal()">×</button>
+          </div>
+          <div class="cf-aide" style="font-size:13px;">Séances de ${titre} : ${l.nb} × ${euros(l.prix)} = <b>${euros(l.montantSeances)}</b>${l.mode === 'mixte' ? ' (séances « en plus » seulement, l\'abonnement est prélevé par Stripe)' : ''}</div>
+          <div class="field" style="max-width:220px;">
+            <label class="field-label">Montant à prélever (€)</label>
+            <input class="input" id="faMontant" type="number" min="0.5" step="0.01" value="${l.montantSeances}"
+              oninput="document.getElementById('faGo').textContent = 'Prélever ' + (Number(this.value) || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })">
+          </div>
+          <div class="cf-aide">La carte enregistrée dans Stripe est débitée tout de suite, et le client reçoit un reçu par email. Si elle est refusée, l'app crée un lien de paiement à lui envoyer.</div>
+          <div id="faModalMsg"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+            <button class="btn btn-secondary btn-small" onclick="CoachFacturationPage.fermerModal()">Annuler</button>
+            <button class="btn btn-primary btn-small" id="faGo" onclick="CoachFacturationPage.prelever('${clientId}')">Prélever ${euros(l.montantSeances)}</button>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  fermerModal() { document.getElementById('faModal').innerHTML = ''; },
+
+  async prelever(clientId) {
+    const l = this._lignesAffichees.find(x => x.cl.id === clientId);
+    const montant = Math.round(Number(document.getElementById('faMontant').value) * 100) / 100;
+    const msg = document.getElementById('faModalMsg');
+    if (!(montant > 0)) { msg.innerHTML = '<div class="alert alert-error">Montant invalide.</div>'; return; }
+    const bouton = document.getElementById('faGo');
+    bouton.disabled = true;
+    bouton.textContent = 'Prélèvement…';
+    try {
+      const p = await db.stripe('prelever', {
+        client_id: clientId, mois: this._moisCle(), montant,
+        detail: montant === l.montantSeances ? `${l.nb} × ${euros(l.prix)}` : '',
+      });
+      this._remplacerPrelev(p);
+      if (p.statut === 'reussi') { this.fermerModal(); toast(`${euros(p.montant)} prélevés`, 'success'); }
+      else if (p.statut === 'en_cours') { this.fermerModal(); toast('Prélèvement bancaire lancé (quelques jours)', 'success'); }
+      else this._afficherRefus(p);
+    } catch (e) {
+      msg.innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>';
+      bouton.disabled = false;
+      bouton.textContent = 'Prélever ' + euros(montant);
+      // Un refus a pu être noté : relire les prélèvements du mois
+      db.getPrelevements(this._moisCle() + '-01').then(liste => { this._d.prelevements = liste; this._majCellule(clientId); }).catch(() => {});
+    }
+  },
+
+  _afficherRefus(p) {
+    document.querySelector('#faModal .modal').innerHTML = `
+      <div class="modal-title">Paiement refusé
+        <button class="modal-close" onclick="CoachFacturationPage.fermerModal()">×</button>
+      </div>
+      <div class="alert alert-error">${escHtml(p.erreur || 'Paiement refusé')}</div>
+      ${p.lien_url ? `
+        <div class="cf-aide" style="font-size:13px;margin-top:10px;">Envoie ce lien à ${escHtml(p.client_nom || 'ton client')} (WhatsApp, SMS…). Il paie ${euros(p.montant)} en ligne et sa nouvelle carte est enregistrée pour les prochaines fois. Le lien est valable 24 h ; ensuite, « 🔗 Nouveau lien ».</div>
+        <input class="input" readonly value="${escHtml(p.lien_url)}" onclick="this.select()">
+        <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+          <button class="btn btn-primary btn-small" onclick="CoachFacturationPage.copierLien('${p.id}')">📋 Copier le lien</button>
+        </div>` : ''}`;
+  },
+
+  async copierLien(id) {
+    const p = this._d.prelevements.find(x => x.id === id);
+    if (!p?.lien_url) return;
+    try { await navigator.clipboard.writeText(p.lien_url); toast('Lien copié', 'success'); }
+    catch (e) { prompt('Copie ce lien :', p.lien_url); }
+  },
+
+  async nouveauLien(id) {
+    try {
+      const p = await db.stripe('nouveau_lien', { id });
+      this._remplacerPrelev(p);
+      document.getElementById('faModal').innerHTML = '<div class="modal-overlay" onclick="if (event.target === this) CoachFacturationPage.fermerModal()"><div class="modal fa-modal"></div></div>';
+      this._afficherRefus(p);
+    } catch (e) { toast('Erreur : ' + e.message, 'error'); }
   },
 
   _cus(clientId) {
@@ -188,6 +337,7 @@ const CoachFacturationPage = {
 
   _render(d) {
     const { lignes, aCompleter } = this._lignes(d);
+    this._lignesAffichees = lignes;
     const modes = { abonnement: 'Abonnement', consommation: 'Consommation', mixte: 'Mixte' };
     const total = lignes.reduce((s, l) => s + l.total, 0);
     const totalAbo = lignes.reduce((s, l) => s + l.montantAbo, 0);
@@ -211,7 +361,7 @@ const CoachFacturationPage = {
       </div>
       <div class="card" style="padding:0;overflow-x:auto;">
         <table class="fa-table">
-          <thead><tr><th>Client</th><th>Mode</th><th>Stripe</th><th class="num">Abonnement</th><th class="num">Séances</th><th class="num">Total</th></tr></thead>
+          <thead><tr><th>Client</th><th>Mode</th><th>Stripe</th><th class="num">Abonnement</th><th class="num">Séances</th><th class="num">Total</th><th>Prélèvement des séances</th></tr></thead>
           <tbody>
             ${lignes.map(l => `
               <tr class="fa-ligne" onclick="${fiche(l.cl.id)}">
@@ -221,7 +371,8 @@ const CoachFacturationPage = {
                 <td class="num">${l.abo ? euros(l.montantAbo) : '—'}${l.incluses ? `<div class="fa-sous">${l.incluses} séance${l.incluses > 1 ? 's' : ''} incluse${l.incluses > 1 ? 's' : ''}</div>` : ''}</td>
                 <td class="num">${l.nb ? `${l.nb} × ${euros(l.prix)}<div class="fa-sous">${euros(l.montantSeances)}${l.aVenir ? ` · ${l.aVenir} à venir` : ''}</div>` : '—'}</td>
                 <td class="num fa-tot">${euros(l.total)}</td>
-              </tr>`).join('') || '<tr><td colspan="6" class="fo-vide">Rien à facturer ce mois-ci.</td></tr>'}
+                <td class="fa-prelev" id="faPr_${l.cl.id}" onclick="event.stopPropagation()">${this._cellulePrelev(l)}</td>
+              </tr>`).join('') || '<tr><td colspan="7" class="fo-vide">Rien à facturer ce mois-ci.</td></tr>'}
           </tbody>
         </table>
       </div>

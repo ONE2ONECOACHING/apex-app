@@ -268,6 +268,14 @@ const db = {
     return json;
   },
 
+  // Prélèvements Stripe d'un mois (« AAAA-MM-01 »), le plus récent d'abord
+  async getPrelevements(mois) {
+    const { data, error } = await getSupabase()
+      .from('prelevements').select('*').eq('mois', mois).order('cree_le', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
   // Relie (ou délie, cus = null) un client de l'app à son client Stripe
   async relierStripe(clientId, cus) {
     const { data, error } = await getSupabase()
