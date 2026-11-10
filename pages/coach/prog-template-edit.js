@@ -68,6 +68,11 @@ const CoachProgTemplateEditPage = {
       <div id="tplExoPicker"></div>`;
   },
 
+  _titre(texte) {
+    const el = document.getElementById('tplEditTitle');
+    if (el) el.textContent = texte;
+  },
+
   _goBack() {
     if (this._clientMode) {
       Router.navigate('coach-client-programme', { clientId: this._clientId });
@@ -1200,7 +1205,7 @@ const CoachProgTemplateEditPage = {
         await db.saveClientProgrammeNom(this._clientProgrammeId, nomClient);
         await db.saveClientProgrammeSeances(this._clientProgrammeId, this.seances);
         await db.saveClientProgrammeConsignes(this._clientProgrammeId, this.templateData.consignes.trim() || null);
-        document.getElementById('tplEditTitle').textContent = nomClient;
+        this._titre(nomClient);
 
         // Recharger pour obtenir les vrais IDs
         const prog = await db.getClientProgrammeById(this._clientProgrammeId);
@@ -1245,11 +1250,12 @@ const CoachProgTemplateEditPage = {
           cardio:      s.cardio || false,
           cardio_weeks: Array.isArray(s.cardio_weeks) ? s.cardio_weeks : [],
         }));
-        document.getElementById('tplEditTitle').textContent = nom;
+        this._titre(nom);
       }
 
       this._saving = false;
-      this.renderContent();
+      // Écran quitté pendant l'enregistrement (Retour) : tout est enregistré, rien à redessiner
+      if (document.getElementById('tplEditContent')) this.renderContent();
 
       toast('✓ Programme enregistré !', 'success');
 
