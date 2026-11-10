@@ -1,4 +1,4 @@
-// APEX APP — Edge Function : rappel-coachings
+// APEX APP — Edge Function : rappel-coaching
 // Lancée toutes les 5 minutes (Supabase › Integrations › Cron), avec
 // Authorization: Bearer CRON_SECRET. Envoie à chaque coach une notification
 // une demi-heure avant ses coachings et rendez-vous prospect :

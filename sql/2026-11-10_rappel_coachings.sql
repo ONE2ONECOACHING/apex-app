@@ -2,7 +2,7 @@
 -- APEX APP — Rappel des coachings aux coachs, 30 minutes avant (10 novembre 2026)
 -- À coller dans Supabase → SQL Editor → Run.
 --
--- L'Edge Function rappel-coachings (lancée toutes les 5 minutes) envoie au
+-- L'Edge Function rappel-coaching (lancée toutes les 5 minutes) envoie au
 -- coach une notification « Tu vas coacher … » une demi-heure avant chaque
 -- coaching ou rendez-vous prospect. Pour ne pas l'envoyer deux fois, elle note
 -- ici l'heure de début pour laquelle le rappel est parti : si le créneau est
