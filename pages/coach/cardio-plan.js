@@ -433,6 +433,19 @@ const CoachCardioPlanPage = {
     // Lâché sur une pastille : juste après elle
     const surPastille = e.target.closest?.('.cpm');
     if (surPastille && editeur.contains(surPastille)) { plage = document.createRange(); plage.setStartAfter(surPastille); plage.collapse(true); }
+    // Lâché sous la dernière ligne : le mouvement va sur une nouvelle ligne, pas au bout de la précédente
+    if (editeur.textContent.trim() || editeur.querySelector('.cpm')) {
+      const tout = document.createRange();
+      tout.selectNodeContents(editeur);
+      if (e.clientY > tout.getBoundingClientRect().bottom + 2) {
+        const dernier = editeur.lastChild;
+        const finDeLigne = dernier && (dernier.nodeName === 'BR' || (dernier.nodeType === 3 && dernier.nodeValue.endsWith('\n')));
+        if (!finDeLigne) editeur.appendChild(document.createTextNode('\n'));
+        plage = document.createRange();
+        plage.selectNodeContents(editeur);
+        plage.collapse(false);
+      }
+    }
     this._plage = plage && editeur.contains(plage.startContainer) ? plage : null;
     const span = this._placerMouvement(editeur, m, null);
     if (span) this._editerCoef(span, editeur);
