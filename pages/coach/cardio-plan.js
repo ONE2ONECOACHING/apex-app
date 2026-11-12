@@ -132,6 +132,7 @@ const CoachCardioPlanPage = {
           oninput="CoachCardioPlanPage.saisirContenu(this)" onfocus="CoachCardioPlanPage._champ = this"
           onkeydown="CoachCardioPlanPage._touche(event, this)" onpaste="CoachCardioPlanPage._coller(event)"
           onclick="CoachCardioPlanPage._clicEditeur(event, this)"
+          ondragover="CoachCardioPlanPage._survolGlisser(event)" ondrop="CoachCardioPlanPage._deposer(event, this)"
           data-champ="contenu" data-seance="${s.id}">${cardioContenuHtml(s.contenu, phase.mouvements, true)}</div>
         ${plan ? `<textarea class="cpc-note" rows="2" placeholder="Note (temps réalisé, remarques…)"
           oninput="CoachCardioPlanPage.saisir('${s.id}', 'note', this.value)" onfocus="CoachCardioPlanPage._champ = this" data-champ="note" data-seance="${s.id}">${escHtml(s.note || '')}</textarea>` : ''}
@@ -259,6 +260,8 @@ const CoachCardioPlanPage = {
       <span class="cpm-titre" title="Comme les cases de couleur du Google Sheet : un mouvement changé ici change dans toutes les séances de la phase">Mouvements de la phase</span>
       ${liste.map(m => `
         <span class="cpm-item" style="background:${escHtml(m.couleur)}">
+          <span class="cpm-poignee" draggable="true" title="Glisser dans le texte d'une séance"
+            ondragstart="CoachCardioPlanPage._debutGlisser(event, '${m.id}')" ondragend="CoachCardioPlanPage._glisseMvt = null">⠿</span>
           <button class="cpm-couleur" title="Changer la couleur" onclick="CoachCardioPlanPage.couleurMouvement('${m.id}')">🎨</button>
           <input value="${escHtml(m.nom || '')}" placeholder="Mouvement" size="${Math.max(6, (m.nom || '').length + 1)}"
             oninput="this.size = Math.max(6, this.value.length + 1); CoachCardioPlanPage.renommerMouvement('${m.id}', this.value)">
@@ -267,7 +270,7 @@ const CoachCardioPlanPage = {
           <button class="cpm-retirer" title="Retirer ce mouvement" onclick="CoachCardioPlanPage.retirerMouvement('${m.id}')">×</button>
         </span>`).join('')}
       <button class="btn btn-secondary btn-small" onclick="CoachCardioPlanPage.ajouterMouvement()">+ Mouvement</button>
-      ${liste.length ? `<span class="cpm-aide">Dans une séance : 🎨 ou « @ » pour placer un mouvement, avec un coefficient (0,5 = la moitié du score) ; clic sur un mouvement placé pour changer son coefficient.${this.cote === 'plan' ? ' « score » = résultat du client à la séance 1.' : ''}</span>` : ''}`;
+      ${liste.length ? `<span class="cpm-aide">Dans une séance : glisse un mouvement par ⠿ à l'endroit voulu, ou 🎨 / « @ » pour le placer au curseur, avec un coefficient (0,5 = la moitié du score) ; clic sur un mouvement placé pour changer son coefficient.${this.cote === 'plan' ? ' « score » = résultat du client à la séance 1.' : ''}</span>` : ''}`;
   },
 
   _sauverMouvements(phase) {
@@ -395,12 +398,53 @@ const CoachCardioPlanPage = {
     span.style.background = m.couleur;
     span.innerHTML = cardioPastilleHtml(m, coef, true);
     this._insererDans(editeur, span);
+    return span;
+  },
+
+  // ── Glisser un mouvement de la barre dans le texte d'une séance ──────────
+  _glisseMvt: null,
+
+  _debutGlisser(e, id) {
+    this._glisseMvt = id;
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/plain', '');
+  },
+
+  _survolGlisser(e) {
+    if (!this._glisseMvt) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  },
+
+  // Déposé : le mouvement se place à l'endroit du lâcher, puis on demande son coefficient
+  _deposer(e, editeur) {
+    const id = this._glisseMvt;
+    if (!id) return;
+    e.preventDefault();
+    this._glisseMvt = null;
+    const m = (this._phaseCourante().mouvements || []).find(x => x.id === id);
+    if (!m) return;
+    let plage = null;
+    if (document.caretRangeFromPoint) plage = document.caretRangeFromPoint(e.clientX, e.clientY);
+    else if (document.caretPositionFromPoint) {
+      const p = document.caretPositionFromPoint(e.clientX, e.clientY);
+      if (p) { plage = document.createRange(); plage.setStart(p.offsetNode, p.offset); plage.collapse(true); }
+    }
+    // Lâché sur une pastille : juste après elle
+    const surPastille = e.target.closest?.('.cpm');
+    if (surPastille && editeur.contains(surPastille)) { plage = document.createRange(); plage.setStartAfter(surPastille); plage.collapse(true); }
+    this._plage = plage && editeur.contains(plage.startContainer) ? plage : null;
+    const span = this._placerMouvement(editeur, m, null);
+    if (span) this._editerCoef(span, editeur);
   },
 
   // Clic sur un mouvement placé : changer son coefficient
   _clicEditeur(e, editeur) {
     const pastille = e.target.closest('.cpm');
-    if (!pastille) return;
+    if (pastille) this._editerCoef(pastille, editeur);
+  },
+
+  _editerCoef(pastille, editeur) {
     const m = (this._phaseCourante().mouvements || []).find(x => x.id === pastille.dataset.m);
     if (!m) return;
     this.fermerMenu();
