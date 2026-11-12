@@ -181,7 +181,7 @@ const EntrainementPage = {
                 <span style="color:var(--gray-muted);">${ouv ? '⌃' : '›'}</span>
               </div>
               ${ouv ? `
-              <div class="pc-contenu">${escHtml(s.contenu || 'Pas de détail pour cette séance.')}</div>
+              <div class="pc-contenu">${s.contenu ? cardioContenuHtml(s.contenu, ph.mouvements) : 'Pas de détail pour cette séance.'}</div>
               <button class="btn ${s.faite ? 'btn-secondary' : 'btn-primary'} btn-small" style="width:100%;margin-top:10px;"
                 onclick="EntrainementPage._pcCocher('${s.id}', ${!s.faite})">${s.faite ? 'Annuler : pas encore faite' : '✓ J\'ai fait cette séance'}</button>` : ''}
             </div>`;

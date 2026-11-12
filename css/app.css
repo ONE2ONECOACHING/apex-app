@@ -1740,6 +1740,26 @@ body.resume-replie .fr-replier { right: 5px; }
   font-family: var(--font); font-size: 13px; line-height: 1.45; padding: 8px; resize: vertical; color: var(--black); }
 .cpc-contenu { flex: 1; min-height: 260px; }
 .cpc-note { font-size: 12px; background: #FFFDF5; }
+/* Mouvements de la phase (couleurs des Google Sheets) */
+.cpc-editeur { white-space: pre-wrap; overflow-y: auto; outline: none; cursor: text; }
+.cpc-editeur:focus { border-color: var(--gold); background: var(--white); }
+.cpc-editeur:empty::before { content: attr(data-placeholder); color: #A1A1AA; white-space: pre-wrap; }
+.cpm { display: inline-block; padding: 0 5px; border-radius: 4px; color: #1F2937; font-weight: 600; line-height: 1.45; }
+.cpm-barre { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.cpm-titre { font-size: 12px; font-weight: 700; color: var(--gray); margin-right: 2px; }
+.cpm-item { display: inline-flex; align-items: center; gap: 2px; border-radius: 8px; padding: 2px 4px; }
+.cpm-item input { border: none; background: transparent; font-family: var(--font); font-size: 13px; font-weight: 600; color: #1F2937; outline: none; padding: 3px 2px; }
+.cpm-item button { border: none; background: none; cursor: pointer; font-size: 12px; padding: 2px 3px; border-radius: 5px; opacity: .55; }
+.cpm-item button:hover { opacity: 1; background: rgba(255,255,255,.6); }
+.cpm-barre > .btn { width: auto; }
+.cpm-aide { font-size: 11px; color: var(--gray-light); }
+.cpm-menu { position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: 4px; min-width: 190px; max-height: 320px; overflow-y: auto;
+  background: var(--white); border: 1px solid var(--border-solid); border-radius: 10px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.cpm-menu > button { text-align: left; border: none; background: none; padding: 4px; border-radius: 6px; cursor: pointer; }
+.cpm-menu > button:hover { background: var(--bg); }
+.cpm-menu-nouveau { display: flex; gap: 4px; border-top: 1px solid var(--border-light); padding-top: 6px; }
+.cpm-menu-nouveau input { flex: 1; min-width: 0; border: 1px solid var(--border-solid); border-radius: 6px; padding: 4px 6px; font-family: var(--font); font-size: 13px; }
+.cpm-menu-nouveau button { border: none; background: var(--gold); color: #fff; border-radius: 6px; width: 28px; cursor: pointer; font-weight: 700; }
 .cpc-modifier { font-size: 11px; color: #A1A1AA; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .cpc-seance.a-modifier .cpc-modifier { color: #B45309; font-weight: 700; }
 .cpc-ajout-seance { flex: 0 0 140px; border: 2px dashed var(--border-solid); border-radius: 12px; background: none; color: var(--gray);

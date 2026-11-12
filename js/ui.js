@@ -197,3 +197,19 @@ function setNavBadge(href, visible) {
 document.addEventListener('DOMContentLoaded', () => {
   initRipple();
 });
+
+// ── Plans cardio : mouvements de la phase ({{m:id}} dans le texte des séances) ──
+// Couleurs proches des cases des Google Sheets du studio, dans cet ordre
+const CARDIO_COULEURS = ['#F4C7C3', '#D9EAD3', '#FCE5CD', '#C9DAF8', '#D9D2E9', '#EAD1DC', '#FFF2CC', '#D0E0E3', '#E6B8AF', '#B6D7A8'];
+
+// Texte d'une séance en HTML : mouvements en pastille de couleur, retours à la ligne gardés
+function cardioContenuHtml(contenu, mouvements) {
+  const parId = new Map((mouvements || []).map(m => [m.id, m]));
+  return String(contenu || '').split(/(\{\{m:[A-Za-z0-9]+\}\})/).map(bout => {
+    const r = /^\{\{m:([A-Za-z0-9]+)\}\}$/.exec(bout);
+    if (!r) return escHtml(bout);
+    const m = parId.get(r[1]);
+    if (!m) return '';
+    return `<span class="cpm" contenteditable="false" data-m="${escHtml(m.id)}" style="background:${escHtml(m.couleur || CARDIO_COULEURS[0])}">${escHtml(m.nom || 'Mouvement')}</span>`;
+  }).join('');
+}
