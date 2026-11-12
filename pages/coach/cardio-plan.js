@@ -4,8 +4,10 @@
 // (date, coach), note (temps réalisé…), repère « à modifier ». Tout s'enregistre
 // tout seul, comme la grille du studio. Tous les coachs ; le client ne voit rien.
 // Mouvements de la phase (12 novembre 2026) : liste de mouvements en couleur
-// (phase.mouvements), placés dans le texte des séances ({{m:id}}) ; changer un
-// mouvement dans la liste le change dans toutes les séances de la phase.
+// (phase.mouvements), placés dans le texte des séances ({{m:id}} ou {{m:id*0.5}}) ;
+// changer un mouvement dans la liste le change dans toutes les séances de la phase.
+// Plan d'un client : score de la séance 1 par mouvement ; un mouvement placé avec un
+// coefficient affiche coefficient × score (comme =PRODUIT($A$8;0,5) dans les Sheets).
 //   route coach-cardio-modele : { modeleId }        (bibliothèque)
 //   route coach-cardio-plan   : { clientId, planId } (fiche › Entraînement)
 
@@ -129,7 +131,8 @@ const CoachCardioPlanPage = {
         <div class="cpc-contenu cpc-editeur" contenteditable="true" data-placeholder="For Time&#10;1000m Run&#10;3 rounds…"
           oninput="CoachCardioPlanPage.saisirContenu(this)" onfocus="CoachCardioPlanPage._champ = this"
           onkeydown="CoachCardioPlanPage._touche(event, this)" onpaste="CoachCardioPlanPage._coller(event)"
-          data-champ="contenu" data-seance="${s.id}">${cardioContenuHtml(s.contenu, phase.mouvements)}</div>
+          onclick="CoachCardioPlanPage._clicEditeur(event, this)"
+          data-champ="contenu" data-seance="${s.id}">${cardioContenuHtml(s.contenu, phase.mouvements, true)}</div>
         ${plan ? `<textarea class="cpc-note" rows="2" placeholder="Note (temps réalisé, remarques…)"
           oninput="CoachCardioPlanPage.saisir('${s.id}', 'note', this.value)" onfocus="CoachCardioPlanPage._champ = this" data-champ="note" data-seance="${s.id}">${escHtml(s.note || '')}</textarea>` : ''}
         <label class="cpc-modifier"><input type="checkbox" ${s.a_modifier ? 'checked' : ''}
@@ -259,16 +262,18 @@ const CoachCardioPlanPage = {
           <button class="cpm-couleur" title="Changer la couleur" onclick="CoachCardioPlanPage.couleurMouvement('${m.id}')">🎨</button>
           <input value="${escHtml(m.nom || '')}" placeholder="Mouvement" size="${Math.max(6, (m.nom || '').length + 1)}"
             oninput="this.size = Math.max(6, this.value.length + 1); CoachCardioPlanPage.renommerMouvement('${m.id}', this.value)">
+          ${this.cote === 'plan' ? `<input class="cpm-score" inputmode="decimal" placeholder="score" value="${m.score != null ? escHtml(cardioNombre(m.score)) : ''}"
+            title="Score du client à la séance 1 (test)" oninput="CoachCardioPlanPage.scoreMouvement('${m.id}', this.value)">` : ''}
           <button class="cpm-retirer" title="Retirer ce mouvement" onclick="CoachCardioPlanPage.retirerMouvement('${m.id}')">×</button>
         </span>`).join('')}
       <button class="btn btn-secondary btn-small" onclick="CoachCardioPlanPage.ajouterMouvement()">+ Mouvement</button>
-      ${liste.length ? '<span class="cpm-aide">Dans une séance : 🎨 ou « @ » pour placer un mouvement.</span>' : ''}`;
+      ${liste.length ? `<span class="cpm-aide">Dans une séance : 🎨 ou « @ » pour placer un mouvement, avec un coefficient (0,5 = la moitié du score) ; clic sur un mouvement placé pour changer son coefficient.${this.cote === 'plan' ? ' « score » = résultat du client à la séance 1.' : ''}</span>` : ''}`;
   },
 
   _sauverMouvements(phase) {
     const cote = this.cote, id = phase.id, liste = phase.mouvements;
     this._programmer(`mvt_${id}`, () => db.majCardioPhase(cote, id, {
-      mouvements: liste.map(m => ({ id: m.id, nom: (m.nom || '').trim(), couleur: m.couleur })),
+      mouvements: liste.map(m => ({ id: m.id, nom: (m.nom || '').trim(), couleur: m.couleur, ...(m.score != null ? { score: m.score } : {}) })),
     }));
   },
 
@@ -294,7 +299,21 @@ const CoachCardioPlanPage = {
     const m = (phase.mouvements || []).find(x => x.id === id);
     if (!m) return;
     m.nom = nom;
-    document.querySelectorAll(`.cpc-editeur .cpm[data-m="${id}"]`).forEach(el => { el.textContent = nom || 'Mouvement'; });
+    this._majPastilles(m);
+    this._sauverMouvements(phase);
+  },
+
+  _majPastilles(m) {
+    document.querySelectorAll(`.cpc-editeur .cpm[data-m="${m.id}"]`).forEach(el => { el.innerHTML = cardioPastilleHtml(m, el.dataset.coef, true); });
+  },
+
+  scoreMouvement(id, valeur) {
+    const phase = this._phaseCourante();
+    const m = (phase.mouvements || []).find(x => x.id === id);
+    if (!m) return;
+    const n = parseFloat(String(valeur).replace(',', '.'));
+    m.score = valeur.trim() === '' || isNaN(n) ? null : n;
+    this._majPastilles(m);
     this._sauverMouvements(phase);
   },
 
@@ -313,11 +332,12 @@ const CoachCardioPlanPage = {
     const phase = this._phaseCourante();
     const m = (phase.mouvements || []).find(x => x.id === id);
     if (!m) return;
-    const jeton = `{{m:${id}}}`;
-    const utilisees = phase.seances.filter(s => (s.contenu || '').includes(jeton));
+    const jeton = new RegExp(`\\{\\{m:${id}(?:\\*([0-9.]+))?\\}\\}`, 'g');
+    const utilisees = phase.seances.filter(s => new RegExp(jeton.source).test(s.contenu || ''));
     if (utilisees.length && !confirm(`« ${m.nom || 'Mouvement'} » est placé dans ${utilisees.length} séance${utilisees.length > 1 ? 's' : ''}.\n\nIl y restera écrit en texte simple, sans lien avec la liste. Le retirer ?`)) return;
     phase.mouvements = phase.mouvements.filter(x => x.id !== id);
-    for (const s of utilisees) this.saisir(s.id, 'contenu', s.contenu.split(jeton).join(m.nom || ''));
+    for (const s of utilisees) this.saisir(s.id, 'contenu',
+      s.contenu.replace(jeton, (_, coef) => (coef ? cardioNombre(coef) + ' × ' : '') + (m.nom || '')));
     this._sauverMouvements(phase);
     this._render();
   },
@@ -332,19 +352,22 @@ const CoachCardioPlanPage = {
     const menu = document.createElement('div');
     menu.className = 'cpm-menu';
     menu.innerHTML = `
+      <label class="cpm-menu-coef">Coefficient <input inputmode="decimal" placeholder="ex. 0,5"></label>
       ${(phase.mouvements || []).map(m => `
         <button data-m="${escHtml(m.id)}"><span class="cpm" style="background:${escHtml(m.couleur)}">${escHtml(m.nom || 'Mouvement')}</span></button>`).join('')}
       <div class="cpm-menu-nouveau"><input placeholder="Nouveau mouvement…"><button>+</button></div>`;
     document.body.appendChild(menu);
     menu.style.left = Math.min(r.left, window.innerWidth - menu.offsetWidth - 8) + 'px';
     menu.style.top = Math.min(r.bottom + 4, window.innerHeight - menu.offsetHeight - 8) + 'px';
-    const placer = m => { this.fermerMenu(); this._placerMouvement(editeur, m); };
+    const coefChamp = menu.querySelector('.cpm-menu-coef input');
+    const placer = m => { const coef = this._lireCoef(coefChamp.value); this.fermerMenu(); this._placerMouvement(editeur, m, coef); };
     menu.querySelectorAll('button[data-m]').forEach(b => b.onclick = () => placer(phase.mouvements.find(x => x.id === b.dataset.m)));
-    const champ = menu.querySelector('input');
+    const champ = menu.querySelector('.cpm-menu-nouveau input');
     const creer = () => { const nom = champ.value.trim(); if (nom) placer(this.ajouterMouvement(nom, true)); };
     menu.querySelector('.cpm-menu-nouveau button').onclick = creer;
     champ.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); creer(); } else if (e.key === 'Escape') this.fermerMenu(); };
-    if (!(phase.mouvements || []).length) champ.focus();
+    if (!(phase.mouvements || []).length) champ.focus(); else coefChamp.focus();
+    coefChamp.onkeydown = e => { if (e.key === 'Escape') this.fermerMenu(); };
     setTimeout(() => document.addEventListener('pointerdown', this._fermerSiDehors = e => {
       if (!menu.contains(e.target)) this.fermerMenu();
     }), 0);
@@ -356,15 +379,56 @@ const CoachCardioPlanPage = {
     this._fermerSiDehors = null;
   },
 
-  _placerMouvement(editeur, m) {
+  // « 0,5 » → '0.5' ; vide ou invalide → null (mouvement sans calcul)
+  _lireCoef(valeur) {
+    const v = String(valeur || '').trim().replace(',', '.');
+    return /^[0-9]+(\.[0-9]+)?$/.test(v) && Number(v) > 0 ? String(Number(v)) : null;
+  },
+
+  _placerMouvement(editeur, m, coef = null) {
     if (!m) return;
     const span = document.createElement('span');
     span.className = 'cpm';
     span.contentEditable = 'false';
     span.dataset.m = m.id;
+    if (coef) span.dataset.coef = coef;
     span.style.background = m.couleur;
-    span.textContent = m.nom || 'Mouvement';
+    span.innerHTML = cardioPastilleHtml(m, coef, true);
     this._insererDans(editeur, span);
+  },
+
+  // Clic sur un mouvement placé : changer son coefficient
+  _clicEditeur(e, editeur) {
+    const pastille = e.target.closest('.cpm');
+    if (!pastille) return;
+    const m = (this._phaseCourante().mouvements || []).find(x => x.id === pastille.dataset.m);
+    if (!m) return;
+    this.fermerMenu();
+    const r = pastille.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'cpm-menu';
+    menu.innerHTML = `
+      <div style="font-size:12px;font-weight:700;">${escHtml(m.nom || 'Mouvement')}</div>
+      <label class="cpm-menu-coef">Coefficient <input inputmode="decimal" placeholder="aucun" value="${pastille.dataset.coef ? cardioNombre(pastille.dataset.coef) : ''}"></label>
+      <div class="cpm-menu-nouveau"><button class="cpm-ok" style="flex:1;width:auto;">OK</button></div>`;
+    document.body.appendChild(menu);
+    menu.style.left = Math.min(r.left, window.innerWidth - menu.offsetWidth - 8) + 'px';
+    menu.style.top = Math.min(r.bottom + 4, window.innerHeight - menu.offsetHeight - 8) + 'px';
+    const champ = menu.querySelector('input');
+    const valider = () => {
+      const coef = this._lireCoef(champ.value);
+      if (coef) pastille.dataset.coef = coef; else delete pastille.dataset.coef;
+      pastille.innerHTML = cardioPastilleHtml(m, coef, true);
+      this.fermerMenu();
+      this.saisirContenu(editeur);
+    };
+    menu.querySelector('.cpm-ok').onclick = valider;
+    champ.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); valider(); } else if (ev.key === 'Escape') this.fermerMenu(); };
+    champ.focus();
+    champ.select();
+    setTimeout(() => document.addEventListener('pointerdown', this._fermerSiDehors = ev => {
+      if (!menu.contains(ev.target)) this.fermerMenu();
+    }), 0);
   },
 
   // ── Champ de séance éditable (texte + pastilles de mouvements) ───────────
@@ -403,7 +467,7 @@ const CoachCardioPlanPage = {
       for (const n of noeud.childNodes) {
         if (n.nodeType === 3) texte += n.nodeValue.replace(/\u00A0/g, ' ');
         else if (n.nodeName === 'BR') texte += '\n';
-        else if (n.classList?.contains('cpm')) texte += `{{m:${n.dataset.m}}}`;
+        else if (n.classList?.contains('cpm')) texte += `{{m:${n.dataset.m}${n.dataset.coef ? '*' + n.dataset.coef : ''}}}`;
         else if (n.nodeName === 'DIV' || n.nodeName === 'P') {
           if (texte && !texte.endsWith('\n')) texte += '\n';
           lire(n);

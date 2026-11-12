@@ -198,18 +198,35 @@ document.addEventListener('DOMContentLoaded', () => {
   initRipple();
 });
 
-// ── Plans cardio : mouvements de la phase ({{m:id}} dans le texte des séances) ──
+// ── Plans cardio : mouvements de la phase ──────────────────────────────────
+// Dans le texte d'une séance : {{m:id}} (le mouvement seul) ou {{m:id*0.5}} (avec un
+// coefficient : 0,5 × le score du client à la séance 1, comme =PRODUIT($A$8;0,5)
+// dans les Google Sheets). mouvements = [{ id, nom, couleur, score }].
 // Couleurs proches des cases des Google Sheets du studio, dans cet ordre
 const CARDIO_COULEURS = ['#F4C7C3', '#D9EAD3', '#FCE5CD', '#C9DAF8', '#D9D2E9', '#EAD1DC', '#FFF2CC', '#D0E0E3', '#E6B8AF', '#B6D7A8'];
+const CARDIO_JETON = /\{\{m:([A-Za-z0-9]+)(?:\*([0-9]+(?:\.[0-9]+)?))?\}\}/;
+
+function cardioNombre(n) { return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 2 }); }
+
+// Intérieur d'une pastille : « 10 KB Swing » (score × coefficient, arrondi), « 0,5 × KB Swing »
+// sans score, ou le nom seul sans coefficient. Côté coach (editeur), le coefficient reste visible.
+function cardioPastilleHtml(m, coef, editeur = false) {
+  const nom = escHtml(m.nom || 'Mouvement');
+  if (coef == null || coef === '') return nom;
+  const score = m.score === '' || m.score == null ? null : Number(m.score);
+  if (score == null || isNaN(score)) return `${cardioNombre(coef)} × ${nom}`;
+  return `<b>${Math.round(score * Number(coef))}</b> ${nom}${editeur ? ` <small>×${cardioNombre(coef)}</small>` : ''}`;
+}
 
 // Texte d'une séance en HTML : mouvements en pastille de couleur, retours à la ligne gardés
-function cardioContenuHtml(contenu, mouvements) {
+function cardioContenuHtml(contenu, mouvements, editeur = false) {
   const parId = new Map((mouvements || []).map(m => [m.id, m]));
-  return String(contenu || '').split(/(\{\{m:[A-Za-z0-9]+\}\})/).map(bout => {
-    const r = /^\{\{m:([A-Za-z0-9]+)\}\}$/.exec(bout);
-    if (!r) return escHtml(bout);
+  return String(contenu || '').split(/(\{\{m:[A-Za-z0-9]+(?:\*[0-9.]+)?\}\})/).map(bout => {
+    const r = CARDIO_JETON.exec(bout);
+    if (!r || r[0] !== bout) return escHtml(bout);
     const m = parId.get(r[1]);
     if (!m) return '';
-    return `<span class="cpm" contenteditable="false" data-m="${escHtml(m.id)}" style="background:${escHtml(m.couleur || CARDIO_COULEURS[0])}">${escHtml(m.nom || 'Mouvement')}</span>`;
+    return `<span class="cpm" contenteditable="false" data-m="${escHtml(m.id)}"${r[2] ? ` data-coef="${r[2]}"` : ''}
+      style="background:${escHtml(m.couleur || CARDIO_COULEURS[0])}">${cardioPastilleHtml(m, r[2], editeur)}</span>`;
   }).join('');
 }
