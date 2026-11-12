@@ -1754,7 +1754,7 @@ body.resume-replie .fr-replier { right: 5px; }
 .cpm-barre > .btn { width: auto; }
 .cpm-aide { font-size: 11px; color: var(--gray-light); flex-basis: 100%; }
 .cpm small { font-size: 10px; font-weight: 500; opacity: .65; }
-.cpc-editeur .cpm { cursor: pointer; }
+.cpc-editeur .cpm { cursor: pointer; display: inline; padding: 1px 5px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .cpm-poignee { cursor: grab; font-size: 13px; color: rgba(31,41,55,.55); padding: 0 2px; user-select: none; -webkit-user-drag: element; }
 .cpm-poignee:active { cursor: grabbing; }
 .cpm-item .cpm-score { width: 46px; background: rgba(255,255,255,.7); border-radius: 5px; text-align: center; font-weight: 700; }

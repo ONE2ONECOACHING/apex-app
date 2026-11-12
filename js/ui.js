@@ -218,7 +218,9 @@ function cardioPastilleHtml(m, coef, editeur = false) {
   return `<b>${Math.round(score * Number(coef))}</b> ${nom}${editeur ? ` <small>×${cardioNombre(coef)}</small>` : ''}`;
 }
 
-// Texte d'une séance en HTML : mouvements en pastille de couleur, retours à la ligne gardés
+// Texte d'une séance en HTML : mouvements en pastille de couleur, retours à la ligne gardés.
+// Côté coach (editeur), un caractère invisible suit chaque pastille : sans lui, le curseur
+// ne peut pas se poser juste après une pastille (surtout en fin de ligne, dans Safari).
 function cardioContenuHtml(contenu, mouvements, editeur = false) {
   const parId = new Map((mouvements || []).map(m => [m.id, m]));
   return String(contenu || '').split(/(\{\{m:[A-Za-z0-9]+(?:\*[0-9.]+)?\}\})/).map(bout => {
@@ -227,6 +229,6 @@ function cardioContenuHtml(contenu, mouvements, editeur = false) {
     const m = parId.get(r[1]);
     if (!m) return '';
     return `<span class="cpm" contenteditable="false" data-m="${escHtml(m.id)}"${r[2] ? ` data-coef="${r[2]}"` : ''}
-      style="background:${escHtml(m.couleur || CARDIO_COULEURS[0])}">${cardioPastilleHtml(m, r[2], editeur)}</span>`;
+      style="background:${escHtml(m.couleur || CARDIO_COULEURS[0])}">${cardioPastilleHtml(m, r[2], editeur)}</span>${editeur ? '\u200B' : ''}`;
   }).join('');
 }

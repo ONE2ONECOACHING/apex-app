@@ -397,7 +397,11 @@ const CoachCardioPlanPage = {
     if (coef) span.dataset.coef = coef;
     span.style.background = m.couleur;
     span.innerHTML = cardioPastilleHtml(m, coef, true);
-    this._insererDans(editeur, span);
+    // Caractère invisible après la pastille : le curseur peut s'y poser (voir cardioContenuHtml)
+    const apres = document.createTextNode('\u200B');
+    const groupe = document.createDocumentFragment();
+    groupe.append(span, apres);
+    this._insererDans(editeur, groupe, apres);
     return span;
   },
 
@@ -496,7 +500,7 @@ const CoachCardioPlanPage = {
     if (sel.rangeCount && sel.anchorNode && sel.anchorNode.parentElement?.closest('.cpc-editeur')) this._plage = sel.getRangeAt(0).cloneRange();
   },
 
-  _insererDans(editeur, noeud) {
+  _insererDans(editeur, noeud, dernier = noeud) {
     let plage = this._plage;
     if (!plage || !editeur.contains(plage.startContainer)) {
       plage = document.createRange();
@@ -506,7 +510,7 @@ const CoachCardioPlanPage = {
     plage.deleteContents();
     plage.insertNode(noeud);
     // Curseur juste après ce qui vient d'être placé
-    plage.setStartAfter(noeud);
+    plage.setStartAfter(dernier);
     plage.collapse(true);
     editeur.focus();
     const sel = window.getSelection();
@@ -522,7 +526,7 @@ const CoachCardioPlanPage = {
     let texte = '';
     const lire = noeud => {
       for (const n of noeud.childNodes) {
-        if (n.nodeType === 3) texte += n.nodeValue.replace(/\u00A0/g, ' ');
+        if (n.nodeType === 3) texte += n.nodeValue.replace(/\u00A0/g, ' ').replace(/\u200B/g, '');
         else if (n.nodeName === 'BR') texte += '\n';
         else if (n.classList?.contains('cpm')) texte += `{{m:${n.dataset.m}${n.dataset.coef ? '*' + n.dataset.coef : ''}}}`;
         else if (n.nodeName === 'DIV' || n.nodeName === 'P') {
@@ -540,6 +544,18 @@ const CoachCardioPlanPage = {
   },
 
   _touche(e, el) {
+    // Retour arrière juste après une pastille : le caractère invisible part avec elle (un seul appui)
+    if (e.key === 'Backspace') {
+      const sel = window.getSelection();
+      const n = sel.anchorNode, o = sel.anchorOffset;
+      if (sel.isCollapsed && n?.nodeType === 3 && o > 0 && n.nodeValue[o - 1] === '\u200B') {
+        n.deleteData(o - 1, 1);
+        const r = document.createRange();
+        r.setStart(n, o - 1);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      }
+    }
     if (e.key === 'Enter') { e.preventDefault(); document.execCommand('insertLineBreak'); }
     else if (e.key === '@') {
       e.preventDefault();
