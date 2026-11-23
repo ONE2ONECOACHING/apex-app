@@ -528,9 +528,9 @@ const CoachCrmPage = {
   rappel(id) {
     const l = this.leads.find(x => x.id === id);
     const dans1h = new Date(Date.now() + 3600e3);
-    const soir = new Date(); soir.setHours(18, 0, 0, 0);
+    const soir = new Date(); soir.setHours(20, 0, 0, 0);
     const demain = new Date(); demain.setDate(demain.getDate() + 1); demain.setHours(10, 0, 0, 0);
-    const choix = [['Dans 1 h', dans1h], ...(soir > new Date() ? [['Ce soir 18:00', soir]] : []), ['Demain 10:00', demain]];
+    const choix = [['Dans 1 h', dans1h], ...(soir > new Date() ? [['Ce soir 20:00', soir]] : []), ['Demain 10:00', demain]];
     this._modal(`Rappeler ${escHtml(CRM.nom(l))}`, `
       <div class="crm-aide">Tu recevras une notification à l'heure du rappel.</div>
       <div class="crm-boutons" style="margin-bottom:12px;">
