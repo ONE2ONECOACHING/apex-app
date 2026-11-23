@@ -2101,6 +2101,8 @@ body.resume-replie .fr-replier { right: 5px; }
 .crm-etapes { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0; }
 .crm-pas { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-solid); color: var(--gray-light); }
 .crm-pas.fait { color: var(--success); border-color: #BBF7D0; background: var(--success-bg); }
+.crm-pas.retour { cursor: pointer; font-family: inherit; }
+.crm-pas.retour:hover { background: #DCFCE7; border-color: var(--success); }
 .crm-pas.on { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 700; }
 .crm-pas.perdu { background: var(--error); border-color: var(--error); color: #fff; font-weight: 700; }
 .crm-bloc { border-top: 1px solid var(--border-light); padding: 12px 0 4px; }

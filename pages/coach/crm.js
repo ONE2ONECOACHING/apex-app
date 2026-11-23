@@ -313,7 +313,9 @@ const CoachCrmPage = {
       </div>
 
       <div class="crm-etapes">
-        ${CRM.ETAPES.map((e, i) => `<span class="crm-pas ${e.id === l.etape ? 'on' : (idxEtape >= 0 && i < idxEtape) || l.etape === 'vente' ? 'fait' : ''}">${e.label}</span>`).join('')}
+        ${CRM.ETAPES.map((e, i) => enCours && idxEtape >= 0 && i < idxEtape
+          ? `<button class="crm-pas fait retour" data-info="Revenir à « ${e.label} »" onclick="CoachCrmPage.revenir('${l.id}', '${e.id}')">${e.label}</button>`
+          : `<span class="crm-pas ${e.id === l.etape ? 'on' : (idxEtape >= 0 && i < idxEtape) || l.etape === 'vente' ? 'fait' : ''}">${e.label}</span>`).join('')}
         ${l.etape === 'perdu' || l.etape === 'sans_reponse' ? `<span class="crm-pas perdu">${CRM.CLOS[l.etape]}</span>` : ''}
       </div>
 
@@ -486,6 +488,25 @@ const CoachCrmPage = {
       : { etape: l.venu_le ? 'venu' : l.rdv_le ? 'setting' : l.setting_le ? 'setting' : 'a_contacter', clos_le: null,
           prochaine_le: new Date().toISOString() };
     this._maj(id, patch, 'Lead repris');
+  },
+
+  // Retour à une étape précédente (clic sur une étape verte) : les dates des
+  // étapes suivantes sont effacées (chiffres justes). Retour à « À contacter » :
+  // les relances repartent de l'appel 1. Le créneau du RDV reste dans l'agenda.
+  revenir(id, etape) {
+    const l = this.leads.find(x => x.id === id);
+    if (!l) return;
+    const cible = CRM.ETAPES.findIndex(e => e.id === etape);
+    const actuelle = CRM.ETAPES.findIndex(e => e.id === l.etape);
+    if (cible < 0 || cible >= actuelle) return;
+    const label = CRM.ETAPES[cible].label;
+    const garderRdv = etape === 'rdv';
+    if (!confirm(`Revenir à l'étape « ${label} » ?`
+      + (l.rdv_creneau_id && !garderRdv ? '\n\nLe RDV reste dans l\'agenda : supprime-le là-bas s\'il n\'a plus lieu.' : ''))) return;
+    const patch = { etape, venu_le: null };
+    if (!garderRdv) patch.rdv_le = null;
+    if (etape === 'a_contacter') Object.assign(patch, { setting_le: null, relances: 0, prochaine_le: new Date().toISOString() });
+    this._maj(id, patch, `Retour à « ${label} »`);
   },
 
   finRappel(id) {
