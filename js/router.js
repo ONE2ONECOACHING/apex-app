@@ -416,7 +416,7 @@ const MENU_COACH = [
   { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
       'coach-exercices', 'coach-bilan-templates', 'coach-formations', 'coach-cardio-modeles', 'coach-cardio-modele'] },
   { route: 'coach-gerants',         icone: '📊', label: 'Chiffres du studio', ecrans: ['coach-gerants'], gerant: true },
-  { route: 'coach-crm',             icone: '🎯', label: 'Leads',           ecrans: ['coach-crm'], gerant: true },
+  { route: 'coach-crm',             icone: '🎯', label: 'Leads',           ecrans: ['coach-crm'], gerant: true, compteurLeads: true },
   { route: 'coach-equipe',          icone: '🧑‍🤝‍🧑', label: 'Équipe',     ecrans: ['coach-equipe'], gerant: true },
   { route: 'coach-facturation',     icone: '💶', label: 'Facturation',     ecrans: ['coach-facturation'], gerant: true },
   { route: 'coach-formules',        icone: '🏷️', label: 'Formules',        ecrans: ['coach-formules'], gerant: true },
@@ -438,7 +438,7 @@ function afficherMenuCoach(hash) {
   }
   document.body.classList.add('coach-layout');
   const lien = m => `<a href="#${m.route}" class="coach-menu-item ${m.ecrans.includes(hash) ? 'on' : ''}">
-      <span class="coach-menu-icone">${m.icone}</span>${m.label}${m.compteur ? '<span class="coach-menu-badge" data-compteur-messages hidden></span>' : ''}${m.compteurSuivi ? '<span class="coach-menu-badge" data-compteur-suivi hidden></span>' : ''}</a>`;
+      <span class="coach-menu-icone">${m.icone}</span>${m.label}${m.compteur ? '<span class="coach-menu-badge" data-compteur-messages hidden></span>' : ''}${m.compteurSuivi ? '<span class="coach-menu-badge" data-compteur-suivi hidden></span>' : ''}${m.compteurLeads ? '<span class="coach-menu-badge" data-compteur-leads hidden></span>' : ''}</a>`;
   const coachs = MENU_COACH.filter(m => !m.gerant);
   const gerants = MENU_COACH.filter(m => m.gerant && me.is_gerant);
   nav.innerHTML = `
@@ -451,6 +451,7 @@ function afficherMenuCoach(hash) {
     </div>`;
   if (typeof rafraichirCompteurMessages === 'function') rafraichirCompteurMessages();
   if (typeof rafraichirCompteurSuivi === 'function') rafraichirCompteurSuivi();
+  if (typeof rafraichirCompteurLeads === 'function') rafraichirCompteurLeads();
 }
 
 // Onglets de la bibliothèque (programmes, exercices, modèles de bilans, formations)

@@ -9,6 +9,32 @@
 // ou perdu (pas de vente, avec un motif) ; ou pas de réponse après l'appel 3.
 // Rappel programmé : notification au responsable à l'heure dite (rappel-coaching).
 
+// Compteur du menu « Leads » (gérants) : nouveaux leads sans responsable +
+// mes leads dont la relance ou le rappel tombe aujourd'hui (comme le bloc
+// « Leads à traiter » du tableau de bord). Relu au plus toutes les minutes ;
+// l'écran Leads le recalcule lui-même à chaque changement.
+let _compteurLeads = { n: 0, le: 0 };
+function _nbLeadsATraiter(leads, moiId) {
+  const fin = new Date(); fin.setHours(23, 59, 59, 999);
+  return leads.filter(l => ['a_contacter', 'setting', 'rdv'].includes(l.etape) && (!l.responsable_id
+    || l.responsable_id === moiId && CRM.echeance(l) && new Date(CRM.echeance(l)) <= fin)).length;
+}
+function _afficherCompteurLeads() {
+  document.querySelectorAll('[data-compteur-leads]').forEach(el => {
+    el.textContent = String(_compteurLeads.n);
+    el.hidden = !_compteurLeads.n;
+  });
+}
+async function rafraichirCompteurLeads() {
+  const moi = Router.userProfile;
+  if (!moi || moi.role !== 'coach' || !moi.is_gerant) return;
+  if (Date.now() - _compteurLeads.le > 60000) {
+    const leads = await db.getLeadsDuJour(moi.id).catch(() => null);
+    if (leads) _compteurLeads = { n: leads.length, le: Date.now() };
+  }
+  _afficherCompteurLeads();
+}
+
 const CRM = {
   ETAPES: [
     { id: 'a_contacter', label: 'À contacter' },
@@ -174,6 +200,8 @@ const CoachCrmPage = {
 
   _render() {
     const nb = v => this._liste(v).length;
+    _compteurLeads = { n: _nbLeadsATraiter(this.leads, Router.userProfile.id), le: Date.now() };
+    _afficherCompteurLeads();
     const vues = [['mes', 'Mes leads'], ['nouveaux', 'Nouveaux'], ['tous', 'Tous en cours'],
       ['vente', 'Ventes'], ['perdu', 'Perdus'], ['sans_reponse', 'Pas de réponse'], ['chiffres', '📊 Chiffres']];
     document.getElementById('crmVues').innerHTML = vues.map(([v, t]) => `
