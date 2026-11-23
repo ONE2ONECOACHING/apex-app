@@ -9,7 +9,7 @@ const AGENDA_COULEUR_FORMATION = '#1E293B';   // formation de l'équipe (tous le
 const AGENDA_JOURS       = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 const CoachAgendaPage = {
-  vue: 'semaine',        // 'semaine' | 'jour'
+  vue: 'semaine',        // 'semaine' | 'trois' (3 jours à partir de la date) | 'jour' ; mémorisée dans le navigateur
   date: null,            // jour affiché (vue jour) ou un jour de la semaine affichée
   coachs: [],
   clients: [],
@@ -57,6 +57,7 @@ const CoachAgendaPage = {
     this.creneaux = [];
     this._edit    = null;
     if (!this.date) this.date = this._debutJour(new Date());
+    try { const v = localStorage.getItem('agenda_vue'); if (['jour', 'trois', 'semaine'].includes(v)) this.vue = v; } catch (_) {}
 
     try {
       [this.coachs, this.clients] = await Promise.all([db.getCoachs(), db.getClientsAgenda()]);
@@ -110,6 +111,7 @@ const CoachAgendaPage = {
 
   _jours() {
     if (this.vue === 'jour') return [this.date];
+    if (this.vue === 'trois') return [0, 1, 2].map(i => this._ajouterJours(this.date, i));
     const lundi = this._lundi(this.date);
     return Array.from({ length: 7 }, (_, i) => this._ajouterJours(lundi, i));
   },
@@ -166,7 +168,15 @@ const CoachAgendaPage = {
 
   // ── Navigation ───────────────────────────────────────────────────────────
 
-  setVue(vue) { this.vue = vue; this._renderToolbar(); this._charger(); },
+  setVue(vue) {
+    this.vue = vue;
+    try { localStorage.setItem('agenda_vue', vue); } catch (_) {}
+    this._renderToolbar();
+    this._charger();
+  },
+
+  // Décalage d'une période : 1 jour, 3 jours ou une semaine
+  _pasJours() { return this.vue === 'jour' ? 1 : this.vue === 'trois' ? 3 : 7; },
 
   aujourdhui() {
     const cible = this._debutJour(new Date());
@@ -178,7 +188,7 @@ const CoachAgendaPage = {
 
   decaler(sens) {
     this._anim = sens;
-    this.date = this._ajouterJours(this.date, sens * (this.vue === 'jour' ? 1 : 7));
+    this.date = this._ajouterJours(this.date, sens * this._pasJours());
     this._renderToolbar();
     this._charger();
   },
@@ -188,7 +198,7 @@ const CoachAgendaPage = {
     const fmt = { day: 'numeric', month: 'long' };
     const label = this.vue === 'jour'
       ? this.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-      : `${jours[0].toLocaleDateString('fr-FR', fmt)} – ${jours[6].toLocaleDateString('fr-FR', fmt)} ${jours[6].getFullYear()}`;
+      : `${jours[0].toLocaleDateString('fr-FR', fmt)} – ${jours[jours.length - 1].toLocaleDateString('fr-FR', fmt)} ${jours[jours.length - 1].getFullYear()}`;
 
     const chips = this.coachs.map(co => {
       const on = this.visibles.has(co.id);
@@ -209,6 +219,7 @@ const CoachAgendaPage = {
           <button class="ag-tb-auj" aria-label="Aujourd'hui" onclick="CoachAgendaPage.aujourdhui()">${new Date().getDate()}</button>
           <div class="ag-switch">
             <button class="${this.vue === 'jour' ? 'on' : ''}" onclick="CoachAgendaPage.setVue('jour')">J</button>
+            <button class="${this.vue === 'trois' ? 'on' : ''}" onclick="CoachAgendaPage.setVue('trois')">3J</button>
             <button class="${this.vue === 'semaine' ? 'on' : ''}" onclick="CoachAgendaPage.setVue('semaine')">S</button>
           </div>
           <button class="ag-tb-btn ${this._coachsOuverts ? 'on' : ''}" aria-label="Coachs affichés"
@@ -230,6 +241,7 @@ const CoachAgendaPage = {
         <div class="ag-nav">
           <div class="ag-switch">
             <button class="${this.vue === 'jour' ? 'on' : ''}" onclick="CoachAgendaPage.setVue('jour')">Jour</button>
+            <button class="${this.vue === 'trois' ? 'on' : ''}" onclick="CoachAgendaPage.setVue('trois')">3 jours</button>
             <button class="${this.vue === 'semaine' ? 'on' : ''}" onclick="CoachAgendaPage.setVue('semaine')">Semaine</button>
           </div>
           <button class="btn btn-secondary btn-small" title="Ouvrir en onglets les fiches de mes clients encore à venir aujourd'hui"
@@ -273,7 +285,7 @@ const CoachAgendaPage = {
 
   // Colonnes : un jour par colonne (semaine) ou un coach par colonne (jour)
   _colonnes() {
-    if (this.vue === 'semaine' || this._mobile) {
+    if (this.vue !== 'jour' || this._mobile) {
       return this._jours().map(j => ({
         date: j,
         titre: `${AGENDA_JOURS[(j.getDay() + 6) % 7]} ${j.getDate()}`,
@@ -374,18 +386,18 @@ const CoachAgendaPage = {
                   onclick="event.stopPropagation()" oncontextmenu="event.preventDefault()" onpointerdown="CoachAgendaPage.debutDrag(event, '${c.id}')" title="${escHtml(titre + ' · ' + heure)}">
           <div class="ag-poignee haut"></div><div class="ag-poignee bas"></div>
           <div class="ag-bloc-titre">${this._aNotePassation(c) ? '📌 ' : ''}${escHtml(titre)}${c.serie_id ? ' ↻' : ''}${c.en_plus ? ' · en plus' : ''}</div>
-          <div class="ag-bloc-sub">${heure}${(this.vue === 'semaine' || this._mobile) && c.type !== 'formation' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}</div>
+          <div class="ag-bloc-sub">${heure}${(this.vue !== 'jour' || this._mobile) && c.type !== 'formation' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}</div>
         </div>`;
       }).join('');
 
       const bandeau = journee.map(c => `
         <div class="ag-journee ${c.type === 'formation' ? 'formation' : ''}" style="--c:${this._couleurCreneau(c)}" onclick="event.stopPropagation();CoachAgendaPage.ouvrir('${c.id}')">
-          ${escHtml(this._titreCreneau(c))}${this.vue === 'semaine' && c.type !== 'formation' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}
+          ${escHtml(this._titreCreneau(c))}${this.vue !== 'jour' && c.type !== 'formation' ? ' · ' + escHtml(this._nomCoach(c.coach_id)) : ''}
         </div>`).join('');
 
       return `
         <div class="ag-col">
-          <div class="ag-col-titre ${(this.vue === 'semaine' || this._mobile) && this._ymd(col.date) === today ? 'today' : ''}">${this._mobile && col.lettre
+          <div class="ag-col-titre ${(this.vue !== 'jour' || this._mobile) && this._ymd(col.date) === today ? 'today' : ''}">${this._mobile && col.lettre
             ? `<span class="ag-jl">${col.lettre}</span><span class="ag-jn">${col.date.getDate()}</span>`
             : escHtml(col.titre)}</div>
           <div class="ag-col-journee" style="cursor:pointer;height:${hJournee}px;" title="Indisponibilité sur la journée" onclick="CoachAgendaPage.nouvelleJournee(${i})">${bandeau}</div>
@@ -394,7 +406,7 @@ const CoachAgendaPage = {
     }).join('');
 
     el.innerHTML = `
-      <div class="ag-grille ${this._mobile ? 'ag-m' : ''} ${this._mobile && this.vue === 'jour' ? 'ag-m-jour' : ''}">
+      <div class="ag-grille ${this._mobile ? 'ag-m' : ''} ${this._mobile && this.vue !== 'semaine' ? 'ag-m-jour' : ''}">
         <div class="ag-heures">
           <div class="ag-col-titre">&nbsp;</div>
           <div class="ag-col-journee" style="height:${hJournee}px;"></div>
@@ -447,7 +459,8 @@ const CoachAgendaPage = {
     if (!grille) return;
     grille.classList.remove('ag-bord-prec', 'ag-bord-suiv');
     if (!sens) return;
-    const unite = this.vue === 'jour' ? ['Jour précédent', 'Jour suivant'] : ['Semaine précédente', 'Semaine suivante'];
+    const unite = this.vue === 'jour' ? ['Jour précédent', 'Jour suivant']
+      : this.vue === 'trois' ? ['3 jours précédents', '3 jours suivants'] : ['Semaine précédente', 'Semaine suivante'];
     grille.dataset.bord = sens > 0 ? `${unite[1]} ›` : `‹ ${unite[0]}`;
     grille.classList.add(sens > 0 ? 'ag-bord-suiv' : 'ag-bord-prec');
   },
@@ -606,7 +619,7 @@ const CoachAgendaPage = {
     const g = this._drag;
     if (!g || g.sensBord !== sens) return;
     this._anim = sens;
-    this.date = this._ajouterJours(this.date, sens * (this.vue === 'jour' ? 1 : 7));
+    this.date = this._ajouterJours(this.date, sens * this._pasJours());
     this._fantome = null;
     g.cible = null;
     this._renderToolbar();

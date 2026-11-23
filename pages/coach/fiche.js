@@ -71,6 +71,9 @@ const FicheOnglets = {
     if (actif) {
       const voisin = liste[i] || liste[i - 1];
       if (voisin) this.aller(voisin.id); else window.location.hash = '#coach-clients';
+    } else if (!liste.length && document.body.classList.contains('onglets-ouverts')) {
+      document.body.classList.remove('onglets-ouverts');
+      document.getElementById('ficheOnglets')?.remove();
     } else this.afficher(Router.getParams().clientId);
   },
 
@@ -378,13 +381,23 @@ function afficherFiche(hash) {
   const fiche = Router.userProfile?.role === 'coach' && ECRANS_FICHE.includes(hash) && clientId;
   let barre = document.getElementById('ficheOnglets');
   let resume = document.getElementById('ficheResume');
+  const app = document.getElementById('app');
+  const creerBarre = () => {
+    if (!barre) { barre = document.createElement('div'); barre.id = 'ficheOnglets'; barre.className = 'fiche-onglets'; document.body.insertBefore(barre, app); }
+  };
   if (!fiche) {
     document.body.classList.remove('fiche-ouverte');
-    barre?.remove(); resume?.remove();
+    resume?.remove();
+    // Ailleurs dans l'espace coach (agenda, clients…), les fiches ouvertes restent en onglets
+    const garder = Router.userProfile?.role === 'coach' && hash.startsWith('coach-') && FicheOnglets.lire().length > 0;
+    document.body.classList.toggle('onglets-ouverts', garder);
+    if (!garder) { barre?.remove(); return; }
+    creerBarre();
+    FicheOnglets.afficher(null);
     return;
   }
-  const app = document.getElementById('app');
-  if (!barre) { barre = document.createElement('div'); barre.id = 'ficheOnglets'; barre.className = 'fiche-onglets'; document.body.insertBefore(barre, app); }
+  document.body.classList.remove('onglets-ouverts');
+  creerBarre();
   if (!resume) {
     resume = document.createElement('aside'); resume.id = 'ficheResume'; resume.className = 'fiche-resume';
     resume.innerHTML = `<button class="fr-replier" onclick="FicheResume.replier()"></button><div id="ficheResumeCorps"></div>`;
