@@ -345,7 +345,8 @@ const CoachCrmPage = {
       case 'vente': {
         const f = this.formules.find(x => x.id === l.formule_id);
         return `<div class="crm-bloc crm-vendu">
-          <div>Vente le ${escHtml(new Date(l.vente_le || l.maj_le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }))}${f ? ` · <b>${escHtml(f.nom)}</b> (${escHtml(euros(f.prix_mensuel))} / mois)` : ''}</div>
+          <div>Vente le ${escHtml(new Date(l.vente_le || l.maj_le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }))}${f ? ` · <b>${escHtml(f.nom)}</b> (${escHtml(euros(f.prix_mensuel))} / mois)`
+            : l.vente_libelle || l.vente_montant != null ? ` · <b>${escHtml(l.vente_libelle || 'Formule personnalisée')}</b>${l.vente_montant != null ? ` (${escHtml(euros(l.vente_montant))} / ${l.vente_unite === 'seance' ? 'séance' : 'mois'})` : ''}` : ''}</div>
           <div class="crm-boutons">
             ${l.client_id
               ? `<button class="btn btn-primary btn-small" onclick="Router.navigate('coach-client-facturation',{clientId:'${l.client_id}'})">💶 Facturation du client</button>
@@ -604,24 +605,54 @@ const CoachCrmPage = {
   vente(id) {
     const l = this.leads.find(x => x.id === id);
     const formules = this.formules.filter(f => f.actif || f.id === l.formule_id);
+    const autre = !l.formule_id && (l.vente_libelle || l.vente_montant != null);
     this._modal(`Vente · ${escHtml(CRM.nom(l))}`, `
       <div class="field"><label class="field-label">Formule vendue</label>
-        <select class="input" id="crmFormule"><option value="">— Choisir —</option>
+        <select class="input" id="crmFormule" onchange="document.getElementById('crmAutre').style.display=this.value==='autre'?'':'none'">
+          <option value="">— Choisir —</option>
           ${formules.map(f => `<option value="${f.id}" ${f.id === l.formule_id ? 'selected' : ''}>${escHtml(f.nom)} · ${escHtml(euros(f.prix_mensuel))}${f.duree_mois ? ` · ${f.duree_mois} mois` : ''}</option>`).join('')}
+          <option value="autre" ${autre ? 'selected' : ''}>Autre (formule ou tarif personnalisé)</option>
         </select></div>
+      <div id="crmAutre" style="${autre ? '' : 'display:none'}">
+        <div class="field"><label class="field-label">Nom</label>
+          <input class="input" id="crmAutreNom" value="${escHtml(l.vente_libelle || '')}" placeholder="Coaching duo, 10 séances…"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field"><label class="field-label">Montant (€)</label>
+            <input class="input" id="crmAutreMontant" type="text" inputmode="decimal" placeholder="45" value="${l.vente_montant ?? ''}"></div>
+          <div class="field"><label class="field-label">Par</label>
+            <select class="input" id="crmAutreUnite">
+              <option value="mois" ${l.vente_unite !== 'seance' ? 'selected' : ''}>mois (abonnement)</option>
+              <option value="seance" ${l.vente_unite === 'seance' ? 'selected' : ''}>séance (à la consommation)</option>
+            </select></div>
+        </div>
+      </div>
       ${formules.length ? '' : '<div class="crm-aide">Aucune formule : crée-les dans Gérants › Formules.</div>'}`,
     'Enregistrer la vente', async () => {
-      const formule = document.getElementById('crmFormule').value || null;
-      const f = this.formules.find(x => x.id === formule);
-      const r = await this._maj(id, { etape: 'vente', formule_id: formule, vente_le: l.vente_le || new Date().toISOString(), rappel_le: null, clos_le: null },
-        `Vente${f ? ' : ' + f.nom : ''}`);
+      const choix = document.getElementById('crmFormule').value;
+      let patch, quoi;
+      if (choix === 'autre') {
+        const nom = document.getElementById('crmAutreNom').value.trim();
+        const brut = document.getElementById('crmAutreMontant').value.replace(',', '.');
+        const montant = brut === '' ? null : Number(brut);
+        if (!nom && montant == null) return this._erreur('Indique au moins le nom ou le montant.');
+        if (montant != null && (!isFinite(montant) || montant < 0)) return this._erreur('Montant invalide.');
+        const unite = document.getElementById('crmAutreUnite').value;
+        patch = { formule_id: null, vente_libelle: nom || null, vente_montant: montant, vente_unite: unite };
+        quoi = `Vente : ${nom || 'formule personnalisée'}${montant != null ? ` (${euros(montant)} / ${unite === 'seance' ? 'séance' : 'mois'})` : ''}`;
+      } else {
+        const f = this.formules.find(x => x.id === choix);
+        patch = { formule_id: choix || null, vente_libelle: null, vente_montant: null, vente_unite: null };
+        quoi = `Vente${f ? ' : ' + f.nom : ''}`;
+      }
+      const r = await this._maj(id, { ...patch, etape: 'vente', vente_le: l.vente_le || new Date().toISOString(), rappel_le: null, clos_le: null }, quoi);
       return r ? true : false;
     });
   },
 
   // Création du client depuis la vente : fenêtre « Nouveau client » de la page
   // Clients, déjà remplie ; ensuite le lead est relié au client et la formule
-  // vendue est posée dans sa facturation (montant mensuel, début aujourd'hui).
+  // vendue est posée dans sa facturation (montant mensuel, début aujourd'hui ;
+  // « Autre » : montant mensuel ou prix de la séance, nom dans la note).
   creerClient(id) {
     const l = this.leads.find(x => x.id === id);
     CoachClientsPage.showCreateModal();
@@ -630,9 +661,13 @@ const CoachCrmPage = {
     CoachClientsPage._apresCreation = async profileId => {
       await this._maj(id, { client_id: profileId }, 'Client créé');
       const f = this.formules.find(x => x.id === l.formule_id);
-      if (f) await db.saveFacturationClient(profileId, {
-        formule_id: f.id, montant_abonnement: f.prix_mensuel, debut_abonnement: formatDate(new Date()),
-      }).catch(e => toast('Facturation à remplir à la main : ' + e.message, 'error'));
+      let factu = null;
+      if (f) factu = { formule_id: f.id, montant_abonnement: f.prix_mensuel, debut_abonnement: formatDate(new Date()) };
+      else if (l.vente_montant != null) factu = l.vente_unite === 'seance'
+        ? { prix_seance: l.vente_montant, note: l.vente_libelle || null }
+        : { montant_abonnement: l.vente_montant, debut_abonnement: formatDate(new Date()), note: l.vente_libelle || null };
+      if (factu) await db.saveFacturationClient(profileId, factu)
+        .catch(e => toast('Facturation à remplir à la main : ' + e.message, 'error'));
     };
   },
 
