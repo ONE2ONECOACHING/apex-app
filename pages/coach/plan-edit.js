@@ -64,6 +64,11 @@ const CoachPlanEditPage = {
     const notesEl = document.getElementById('peNotes');
     if (notesEl && this.currentPlan) this.currentPlan.notes = notesEl.value;
 
+    // Garder aussi les objectifs macros tapés (sinon « Générer » ou l'ajout
+    // d'un aliment réaffichaient les anciennes valeurs enregistrées)
+    const lu = id => { const el = document.getElementById(id); return el && el.value !== '' ? +el.value : null; };
+    const tape = { cal: lu('peKcal'), prot: lu('peProt'), gluc: lu('peGluc'), lip: lu('peLip') };
+
     const c = this.client;
     const p = this.currentPlan;
 
@@ -75,10 +80,12 @@ const CoachPlanEditPage = {
     </div>`;
 
     // Macros cibles
-    const cal = p ? p.calories_cible : (c.tdee ? (c.objectif === 'perte' ? c.tdee - 350 : c.tdee) : 2000);
-    const prot = p ? p.proteines_cible : Math.round((c.poids || 80) * 2);
-    const gluc = p ? p.glucides_cible : Math.round((cal - prot * 4 - Math.round(cal * 0.25 / 9) * 9) / 4);
-    const lip = p ? p.lipides_cible : Math.round(cal * 0.25 / 9);
+    const cal0 = p ? p.calories_cible : (c.tdee ? (c.objectif === 'perte' ? c.tdee - 350 : c.tdee) : 2000);
+    const prot0 = p ? p.proteines_cible : Math.round((c.poids || 80) * 2);
+    const cal = tape.cal ?? cal0;
+    const prot = tape.prot ?? prot0;
+    const gluc = tape.gluc ?? (p ? p.glucides_cible : Math.round((cal0 - prot0 * 4 - Math.round(cal0 * 0.25 / 9) * 9) / 4));
+    const lip = tape.lip ?? (p ? p.lipides_cible : Math.round(cal0 * 0.25 / 9));
 
     html += `<div class="card">
       <div class="card-title">Objectifs macros</div>
