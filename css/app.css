@@ -2139,3 +2139,4 @@ body.resume-replie .fr-replier { right: 5px; }
   .crm-retour { display: block; }
   .crm-entete { flex-direction: column; }
 }
+.crm-dh { display: grid; grid-template-columns: minmax(0, 1fr) 90px 76px; gap: 8px; }

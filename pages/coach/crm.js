@@ -72,8 +72,35 @@ const CRM = {
   },
 };
 
-// Valeur d'un <input type="datetime-local"> en heure locale
-const crmLocal = d => { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); };
+// Date et heure : une case date + deux menus (heure, minutes). Safari n'a pas
+// de sélecteur d'heure pour <input type="datetime-local">.
+const crmDeux = n => String(n).padStart(2, '0');
+function crmChampDateHeure(id, d, pas = 5) {
+  const m = Math.round(d.getMinutes() / pas) * pas;
+  const date = new Date(d); date.setMinutes(0, 0, 0);
+  if (m >= 60) date.setHours(date.getHours() + 1);
+  const h = date.getHours(), min = m % 60;
+  const ymd = `${date.getFullYear()}-${crmDeux(date.getMonth() + 1)}-${crmDeux(date.getDate())}`;
+  const heures = []; for (let i = 6; i <= 22; i++) heures.push(i);
+  if (!heures.includes(h)) heures.push(h), heures.sort((a, b) => a - b);
+  const minutes = []; for (let i = 0; i < 60; i += pas) minutes.push(i);
+  return `<div class="crm-dh">
+    <input class="input" id="${id}D" type="date" value="${ymd}">
+    <select class="input" id="${id}H">${heures.map(x => `<option value="${x}" ${x === h ? 'selected' : ''}>${crmDeux(x)} h</option>`).join('')}</select>
+    <select class="input" id="${id}M">${minutes.map(x => `<option value="${x}" ${x === min ? 'selected' : ''}>${crmDeux(x)}</option>`).join('')}</select>
+  </div>`;
+}
+function crmLireDateHeure(id) {
+  const ymd = document.getElementById(id + 'D').value;
+  if (!ymd) return null;
+  const [a, mo, j] = ymd.split('-').map(Number);
+  return new Date(a, mo - 1, j, Number(document.getElementById(id + 'H').value), Number(document.getElementById(id + 'M').value));
+}
+// Remplace les trois champs (boutons « Dans 1 h », « Demain 10:00 »…)
+function crmPoserDateHeure(id, iso, pas = 5) {
+  const zone = document.getElementById(id + 'D')?.closest('.crm-dh');
+  if (zone) zone.outerHTML = crmChampDateHeure(id, new Date(iso), pas);
+}
 
 const CoachCrmPage = {
   leads: [],
@@ -507,14 +534,13 @@ const CoachCrmPage = {
     this._modal(`Rappeler ${escHtml(CRM.nom(l))}`, `
       <div class="crm-aide">Tu recevras une notification à l'heure du rappel.</div>
       <div class="crm-boutons" style="margin-bottom:12px;">
-        ${choix.map(([t, d]) => `<button class="btn btn-secondary btn-small" onclick="document.getElementById('crmQuand').value='${crmLocal(d)}'">${t}</button>`).join('')}
+        ${choix.map(([t, d]) => `<button class="btn btn-secondary btn-small" onclick="crmPoserDateHeure('crmQuand','${d.toISOString()}')">${t}</button>`).join('')}
       </div>
       <div class="field"><label class="field-label">Date et heure</label>
-        <input class="input" id="crmQuand" type="datetime-local" value="${crmLocal(l.rappel_le ? new Date(l.rappel_le) : dans1h)}"></div>`,
+        ${crmChampDateHeure('crmQuand', l.rappel_le ? new Date(l.rappel_le) : dans1h)}</div>`,
     'Programmer le rappel', async () => {
-      const val = document.getElementById('crmQuand').value;
-      if (!val) return this._erreur('Choisis la date et l\'heure.');
-      const d = new Date(val);
+      const d = crmLireDateHeure('crmQuand');
+      if (!d) return this._erreur('Choisis la date.');
       const r = await this._maj(id, { rappel_le: d.toISOString(), rappel_envoye_pour: null,
         responsable_id: l.responsable_id || Router.userProfile.id }, `Rappel programmé ${CRM.quand(d.toISOString())}`);
       return r ? true : false;
@@ -541,7 +567,7 @@ const CoachCrmPage = {
     if (!d) { d = new Date(); d.setDate(d.getDate() + 1); d.setHours(18, 0, 0, 0); }
     this._modal(`RDV studio · ${escHtml(CRM.nom(l))}`, `
       <div class="field"><label class="field-label">Date et heure</label>
-        <input class="input" id="crmRdv" type="datetime-local" step="900" value="${crmLocal(d)}"></div>
+        ${crmChampDateHeure('crmRdv', d, 15)}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="field"><label class="field-label">Durée</label>
           <select class="input" id="crmDuree">${[30, 45, 60, 90].map(m => `<option value="${m}" ${m === 60 ? 'selected' : ''}>${m} min</option>`).join('')}</select></div>
@@ -550,9 +576,8 @@ const CoachCrmPage = {
       </div>
       <div class="crm-aide">Un rendez-vous prospect (jaune) est ajouté dans l'agenda.</div>`,
     l.rdv_creneau_id ? 'Déplacer le RDV' : 'Prendre le RDV', async () => {
-      const val = document.getElementById('crmRdv').value;
-      if (!val) return this._erreur('Choisis la date et l\'heure.');
-      const debut = new Date(val);
+      const debut = crmLireDateHeure('crmRdv');
+      if (!debut) return this._erreur('Choisis la date.');
       const fin = new Date(debut.getTime() + Number(document.getElementById('crmDuree').value) * 60000);
       const coach = document.getElementById('crmCoach').value;
       let creneauId = l.rdv_creneau_id;
