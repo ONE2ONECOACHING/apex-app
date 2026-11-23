@@ -213,6 +213,45 @@ const db = {
     return json; // { profileId }
   },
 
+  // ── CRM : leads (gérants seulement : la base refuse les autres) ──────────
+
+  async getLeads() {
+    const lignes = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await getSupabase().from('leads').select('*')
+        .order('cree_le', { ascending: false }).range(de, de + 999);
+      if (error) throw error;
+      lignes.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    return lignes;
+  },
+
+  async creerLead(champs) {
+    const { data, error } = await getSupabase().from('leads').insert(champs).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async majLead(id, patch) {
+    const { data, error } = await getSupabase().from('leads').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Leads à traiter aujourd'hui pour un gérant (tableau de bord) : ses leads en
+  // cours dont la relance, le rappel ou le RDV tombe aujourd'hui ou avant, et
+  // les nouveaux leads que personne n'a encore pris
+  async getLeadsDuJour(gerantId) {
+    const fin = new Date(); fin.setHours(23, 59, 59, 999);
+    const { data, error } = await getSupabase().from('leads')
+      .select('id, prenom, nom, telephone, etape, relances, prochaine_le, rappel_le, rdv_le, responsable_id, cree_le')
+      .in('etape', ['a_contacter', 'setting', 'rdv'])
+      .or(`responsable_id.eq.${gerantId},responsable_id.is.null`);
+    if (error) throw error;
+    return (data || []).filter(l => !l.responsable_id || CRM.echeance(l) && new Date(CRM.echeance(l)) <= fin);
+  },
+
   // ── Facturation (gérants seulement : la base refuse les autres) ──────────
 
   async getFormules() {

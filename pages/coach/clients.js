@@ -214,7 +214,10 @@ const CoachClientsPage = {
 
   // ── Création client ──────────────────────────────────────────────────────
 
+  // _apresCreation : posée par l'écran des leads (CRM) pour relier le lead au
+  // client créé ; remise à zéro à chaque ouverture de la fenêtre
   showCreateModal() {
+    this._apresCreation = null;
     document.getElementById('coachModal').innerHTML = `
       <div class="modal-overlay">
         <div class="modal">
@@ -278,6 +281,7 @@ const CoachClientsPage = {
         const { profileId } = await db.createStudioClient({
           prenom, nom, telephone: document.getElementById('newTel').value.trim(), email,
         });
+        await this._lancerApresCreation(profileId);
         document.getElementById('coachModal').innerHTML = '';
         toast(`Fiche de ${prenom} créée`, 'success');
         Router.navigate('coach-client-edit', { clientId: profileId });
@@ -293,6 +297,7 @@ const CoachClientsPage = {
       const { profileId, password } = await db.createClientAccount(email, prenom, nom, typeClient);
       // Le coach qui crée le client en devient le référent (modifiable sur la fiche)
       await db.updateProfile(profileId, { coach_referent_id: Router.userProfile.id }).catch(() => {});
+      await this._lancerApresCreation(profileId);
       const appUrl  = APP_CONFIG.APP_URL;
       const message = `Bonjour ${prenom} 👊\n\nTon espace ONE2ONE est prêt !\n\n🔗 ${appUrl}\n📧 ${email}\n🔑 ${password}\n\nConnecte-toi avec ce mot de passe : l'app te demandera aussitôt d'en choisir un nouveau.`;
       this._message = message;   // gardé ici : une apostrophe casserait un onclick
@@ -310,7 +315,7 @@ const CoachClientsPage = {
           <div>🔑 <b>Mot de passe :</b> ${escHtml(password)}</div>
         </div>
         <button class="btn btn-primary" style="width:100%;margin-bottom:0.5rem;" onclick="CoachClientsPage.copyCredentials()">📋 Copier le message WhatsApp</button>
-        <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('coachModal').innerHTML='';CoachClientsPage.init()">Fermer</button>
+        <button class="btn btn-secondary" style="width:100%;" onclick="CoachClientsPage.fermerCreation()">Fermer</button>
       `;
     } catch (e) {
       document.getElementById('createError').innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
@@ -319,7 +324,20 @@ const CoachClientsPage = {
     }
   },
 
-  copyCredentials() {
+  async _lancerApresCreation(profileId) {
+    const apres = this._apresCreation;
+    this._apresCreation = null;
+    if (apres) await apres(profileId).catch(e => toast('Erreur : ' + e.message, 'error'));
+  },
+
+  // Fermer après création : recharger l'écran d'où vient la demande
+  fermerCreation() {
+    document.getElementById('coachModal').innerHTML = '';
+    if (Router.currentPage === 'coach-crm') CoachCrmPage._render();
+    else this.init();
+  },
+
+    copyCredentials() {
     const msg = this._message || '';
     navigator.clipboard.writeText(msg).then(() => {
       const btn = document.querySelector('#inviteResult .btn-primary');
