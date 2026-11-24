@@ -245,7 +245,7 @@ const db = {
   async getLeadsDuJour(gerantId) {
     const fin = new Date(); fin.setHours(23, 59, 59, 999);
     const { data, error } = await getSupabase().from('leads')
-      .select('id, prenom, nom, telephone, etape, relances, prochaine_le, rappel_le, rdv_le, responsable_id, cree_le')
+      .select('id, prenom, nom, telephone, etape, relances, prochaine_le, rappel_le, rdv_le, rdv_rappele_le, responsable_id, cree_le')
       .in('etape', ['a_contacter', 'setting', 'rdv'])
       .or(`responsable_id.eq.${gerantId},responsable_id.is.null`);
     if (error) throw error;

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Réserve ton bilan offert · ONE2ONE</title>
+<meta name="description" content="Bilan personnalisé et séance d'essai offerts au studio ONE2ONE, à Saint-Estève.">
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Pixel Meta (le même que la page systeme.io) -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1483076663534462');
+fbq('track', 'PageView');
+</script>
+<style>
+  :root {
+    --bleu: #004aad; --bleu-fonce: #002d80; --bleu-clair: #EBF3FF; --fond: #F4F3EF;
+    --texte: #18181B; --gris: #52525B; --gris-clair: #A1A1AA; --bord: #E4E4E7; --blanc: #fff;
+    --vert: #15803D; --rouge: #B91C1C;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte); font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  .logo { font-weight: 800; letter-spacing: .18em; color: var(--bleu); font-size: 15px; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 18px 0 8px; }
+  .sous { color: var(--gris); font-size: 15px; line-height: 1.5; margin: 0 0 20px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .badge { background: var(--blanc); border: 1px solid var(--bord); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+  .carte { background: var(--blanc); border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 16px; }
+  .etape { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--bleu); margin-bottom: 12px; }
+  .jours { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .jours::-webkit-scrollbar { display: none; }
+  .jour { flex: 0 0 auto; min-width: 64px; border: 1.5px solid var(--bord); background: var(--blanc); border-radius: 12px; padding: 8px 10px;
+          text-align: center; cursor: pointer; font-family: inherit; color: var(--texte); }
+  .jour b { display: block; font-size: 18px; }
+  .jour span { font-size: 12px; color: var(--gris); text-transform: capitalize; }
+  .jour.on { border-color: var(--bleu); background: var(--bleu); color: #fff; }
+  .jour.on span { color: #DCE8FF; }
+  .jour:disabled { opacity: .35; cursor: default; }
+  .heures { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 16px; }
+  .heure { border: 1.5px solid var(--bord); background: var(--blanc); border-radius: 10px; padding: 11px 0; font-size: 15px; font-weight: 600;
+           cursor: pointer; font-family: inherit; color: var(--texte); }
+  .heure:hover { border-color: var(--bleu); }
+  .heure.on { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+  .vide { color: var(--gris); font-size: 14px; margin-top: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+  label small { color: var(--gris-clair); font-weight: 500; }
+  input { width: 100%; font: inherit; font-size: 16px; padding: 12px 14px; border: 1.5px solid var(--bord); border-radius: 10px; background: var(--blanc); color: var(--texte); }
+  input:focus { outline: none; border-color: var(--bleu); }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .piege { position: absolute; left: -5000px; }
+  .choix { background: var(--bleu-clair); border-radius: 10px; padding: 12px 14px; font-size: 15px; font-weight: 600; color: var(--bleu-fonce); }
+  .bouton { display: block; width: 100%; margin-top: 18px; border: 0; border-radius: 12px; padding: 16px; font: inherit; font-size: 16px; font-weight: 700;
+            background: var(--bleu); color: #fff; cursor: pointer; text-align: center; text-decoration: none; }
+  .bouton:disabled { opacity: .5; cursor: default; }
+  .bouton.second { background: var(--blanc); color: var(--bleu); border: 1.5px solid var(--bleu); margin-top: 10px; }
+  .erreur { color: var(--rouge); font-size: 14px; margin-top: 12px; }
+  .legal { color: var(--gris-clair); font-size: 12px; line-height: 1.5; margin-top: 14px; }
+  .legal a, .aide a { color: var(--gris); }
+  .aide { color: var(--gris); font-size: 14px; text-align: center; margin-top: 20px; }
+  .ok { text-align: center; }
+  .ok .rond { width: 64px; height: 64px; border-radius: 50%; background: #DCFCE7; color: var(--vert); font-size: 32px; line-height: 64px; margin: 8px auto 12px; }
+  .ok h2 { margin: 0 0 6px; font-size: 22px; }
+  .ok p { color: var(--gris); line-height: 1.5; margin: 6px 0; }
+  .ok .quand { color: var(--texte); font-weight: 700; font-size: 17px; }
+  .chargement { color: var(--gris); font-size: 14px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 420px) { .deux { grid-template-columns: 1fr; } h1 { font-size: 23px; } }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="logo">ONE2ONE</div>
+
+  <section id="reservation">
+    <h1>Réserve ton bilan offert</h1>
+    <p class="sous">Un rendez-vous d'1 heure au studio avec ton coach : on fait le point sur ta situation et tes objectifs, puis tu testes une séance d'entraînement privée.</p>
+    <div class="badges">
+      <span class="badge">🎁 Offert</span><span class="badge">⏱ 1 heure</span><span class="badge">📍 Studio de Saint-Estève</span>
+    </div>
+
+    <div class="carte">
+      <div class="etape">1 · Choisis ton jour et ton heure</div>
+      <div id="chargement" class="chargement">Chargement des créneaux disponibles…</div>
+      <div class="jours" id="jours"></div>
+      <div class="heures" id="heures"></div>
+      <div class="vide" id="vide" hidden></div>
+    </div>
+
+    <form class="carte" id="formulaire" hidden novalidate>
+      <div class="etape">2 · Tes coordonnées</div>
+      <div class="choix" id="choix"></div>
+      <div class="deux">
+        <div><label for="prenom">Prénom</label><input id="prenom" autocomplete="given-name" required></div>
+        <div><label for="nom">Nom</label><input id="nom" autocomplete="family-name"></div>
+      </div>
+      <label for="telephone">Téléphone</label>
+      <input id="telephone" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" required>
+      <label for="email">Email <small>(facultatif)</small></label>
+      <input id="email" type="email" inputmode="email" autocomplete="email">
+      <input class="piege" id="site" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="bouton" id="valider" type="submit">Confirmer mon rendez-vous</button>
+      <div class="erreur" id="erreur" hidden></div>
+      <p class="legal">Tes coordonnées servent uniquement à organiser ton rendez-vous et à te recontacter à ce sujet.
+        <a href="https://one2onecoachingonline.systeme.io/politique-de-confidentialitee-47bb76fb-e3100509" target="_blank" rel="noopener">Politique de confidentialité</a></p>
+    </form>
+  </section>
+
+  <section class="carte ok" id="confirmation" hidden>
+    <div class="rond">✓</div>
+    <h2>C'est réservé !</h2>
+    <p class="quand" id="quand"></p>
+    <p>Ton bilan et ta séance d'essai sont notés. On te contactera la veille pour te le rappeler.</p>
+    <p>Prévois une tenue de sport, une bouteille d'eau et une serviette.</p>
+    <a class="bouton" id="google" target="_blank" rel="noopener">📅 Ajouter à Google Agenda</a>
+    <a class="bouton second" id="ics" download="bilan-one2one.ics">📅 Ajouter à mon calendrier (iPhone, Outlook)</a>
+  </section>
+
+  <p class="aide" id="aide">Aucun créneau ne te convient ? <a id="whatsapp" target="_blank" rel="noopener">Écris-nous sur WhatsApp</a></p>
+</main>
+
+<script>
+const API = 'https://ahbeturxnnyukkuytesc.supabase.co/functions/v1/reservation-bilan';
+const WHATSAPP = '33676355686';
+const source = new URLSearchParams(location.search).get('src') || 'meta';
+const $ = id => document.getElementById(id);
+let creneaux = [], jourChoisi = null, debutChoisi = null;
+
+$('whatsapp').href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent("Bonjour, je souhaiterais réserver un bilan personnalisé et une séance d'essai offerts, mais aucun créneau ne me convient.");
+
+const cleJour = d => d.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });           // 2026-11-25
+const heure = d => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+const dateLongue = d => d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' });
+
+async function charger() {
+  $('chargement').hidden = false;
+  try {
+    const r = await fetch(API);
+    const d = await r.json();
+    creneaux = (d.creneaux || []).map(x => new Date(x));
+  } catch (e) { creneaux = []; }
+  $('chargement').hidden = true;
+  afficherJours();
+}
+
+function afficherJours() {
+  // Les 7 prochains jours (demain → J+7), même ceux sans créneau
+  const jours = [];
+  for (let i = 1; i <= 7; i++) jours.push(new Date(Date.now() + i * 864e5));
+  const parJour = {};
+  creneaux.forEach(c => { (parJour[cleJour(c)] = parJour[cleJour(c)] || []).push(c); });
+  if (!jourChoisi || !parJour[jourChoisi]) jourChoisi = jours.map(cleJour).find(k => parJour[k]) || null;
+  $('jours').innerHTML = jours.map(d => {
+    const k = cleJour(d), n = (parJour[k] || []).length;
+    return `<button type="button" class="jour ${k === jourChoisi ? 'on' : ''}" ${n ? '' : 'disabled'} onclick="choisirJour('${k}')">
+      <span>${d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short' })}</span>
+      <b>${d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric' })}</b>
+      <span>${d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', month: 'short' })}</span></button>`;
+  }).join('');
+  const liste = jourChoisi ? parJour[jourChoisi] : [];
+  $('heures').innerHTML = liste.map(c => `<button type="button" class="heure ${debutChoisi && +debutChoisi === +c ? 'on' : ''}"
+      onclick="choisirHeure('${c.toISOString()}')">${heure(c)}</button>`).join('');
+  $('vide').hidden = creneaux.length > 0;
+  $('vide').textContent = 'Plus aucun créneau libre cette semaine : écris-nous sur WhatsApp, on te trouve un moment.';
+}
+
+function choisirJour(k) { jourChoisi = k; debutChoisi = null; $('formulaire').hidden = true; afficherJours(); }
+
+function choisirHeure(iso) {
+  debutChoisi = new Date(iso);
+  afficherJours();
+  $('choix').textContent = `📅 ${dateLongue(debutChoisi)} à ${heure(debutChoisi)}`;
+  $('formulaire').hidden = false;
+  $('erreur').hidden = true;
+  $('formulaire').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => $('prenom').focus({ preventScroll: true }), 400);
+}
+
+function erreur(t) { $('erreur').textContent = t; $('erreur').hidden = false; }
+
+$('formulaire').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const prenom = $('prenom').value.trim(), tel = $('telephone').value.trim(), email = $('email').value.trim();
+  if (!prenom) return erreur('Indique ton prénom.');
+  if (tel.replace(/\D/g, '').length < 9) return erreur('Indique un numéro de téléphone valide.');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return erreur("L'email ne semble pas valide.");
+  $('valider').disabled = true; $('valider').textContent = 'Réservation…'; $('erreur').hidden = true;
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ debut: debutChoisi.toISOString(), prenom, nom: $('nom').value.trim(), telephone: tel, email,
+        source, site: $('site').value }) });
+    const d = await r.json().catch(() => ({}));
+    if (d.ok) return confirmer();
+    if (d.erreur === 'pris') {
+      erreur('Oups, ce créneau vient d\'être pris. Choisis-en un autre.');
+      debutChoisi = null; await charger(); return;
+    }
+    if (d.erreur === 'deja') {
+      const le = new Date(d.rdv_le);
+      return erreur(`Tu as déjà un rendez-vous le ${dateLongue(le)} à ${heure(le)}. Pour le changer, écris-nous sur WhatsApp.`);
+    }
+    if (d.erreur === 'champs') return erreur('Vérifie ton prénom et ton téléphone.');
+    erreur('La réservation n\'a pas pu aboutir. Réessaie dans un instant ou écris-nous sur WhatsApp.');
+  } catch (e) {
+    erreur('Pas de connexion. Réessaie dans un instant.');
+  } finally {
+    $('valider').disabled = false; $('valider').textContent = 'Confirmer mon rendez-vous';
+  }
+});
+
+function confirmer() {
+  try { fbq('track', 'Schedule'); } catch (e) {}
+  const fin = new Date(+debutChoisi + 3600e3);
+  const z = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const titre = 'Bilan + séance d\'essai ONE2ONE', lieu = 'Studio ONE2ONE, Saint-Estève';
+  const t = `${dateLongue(debutChoisi)} à ${heure(debutChoisi)}`;
+  $('quand').textContent = t.charAt(0).toUpperCase() + t.slice(1);
+  $('aide').hidden = true;
+  $('google').href = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(titre)
+    + '&dates=' + z(debutChoisi) + '/' + z(fin) + '&location=' + encodeURIComponent(lieu);
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ONE2ONE//Bilan//FR', 'BEGIN:VEVENT',
+    'UID:' + z(debutChoisi) + '-' + Math.random().toString(36).slice(2) + '@one2onecoaching.fr', 'DTSTAMP:' + z(new Date()),
+    'DTSTART:' + z(debutChoisi), 'DTEND:' + z(fin), 'SUMMARY:' + titre, 'LOCATION:' + lieu,
+    'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:' + titre, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  $('ics').href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  $('reservation').hidden = true;
+  $('confirmation').hidden = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+charger();
+</script>
+</body>
+</html>

@@ -58,7 +58,7 @@ const CRM = {
   echeance(l) {
     if (l.rappel_le) return l.rappel_le;
     if (l.etape === 'a_contacter') return l.prochaine_le || l.cree_le;
-    if (l.etape === 'rdv') return l.rdv_le;
+    if (l.etape === 'rdv') return CRM.rappelRdvAFaire(l) ? CRM.rappelRdvLe(l) : l.rdv_le;
     if (l.etape === 'setting') return l.setting_le || l.cree_le;
     return null;
   },
@@ -68,9 +68,26 @@ const CRM = {
     if (l.rappel_le) return `Rappel ${CRM.quand(l.rappel_le)}`;
     if (l.etape === 'a_contacter') return `${CRM.RELANCES[l.relances] || 'Appel'} · ${CRM.quand(l.prochaine_le || l.cree_le)}`;
     if (l.etape === 'setting') return 'Setting : proposer un RDV studio';
-    if (l.etape === 'rdv') return `RDV studio ${CRM.quand(l.rdv_le)}`;
+    if (l.etape === 'rdv') return CRM.rappelRdvAFaire(l) && new Date(CRM.rappelRdvLe(l)) <= new Date()
+      ? `💬 Rappeler le RDV (${CRM.quand(l.rdv_le)}) sur WhatsApp` : `RDV studio ${CRM.quand(l.rdv_le)}`;
     if (l.etape === 'venu') return 'Venu : vente ou perdu ?';
     return CRM.CLOS[l.etape] || '';
+  },
+
+  // Rappel WhatsApp du RDV : la veille à 10:00 (ou tout de suite si le RDV est
+  // pris après), tant qu'il n'a pas été envoyé
+  rappelRdvLe(l) {
+    const d = new Date(l.rdv_le); d.setDate(d.getDate() - 1); d.setHours(10, 0, 0, 0);
+    return d.toISOString();
+  },
+  rappelRdvAFaire: l => l.etape === 'rdv' && !!l.rdv_le && !l.rdv_rappele_le && new Date(l.rdv_le) > new Date(),
+
+  messageRappelRdv(l) {
+    const d = new Date(l.rdv_le);
+    const jour = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const h = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+    return `Bonjour ${l.prenom || ''}, petit rappel : on t'attend ${jour} à ${h} au studio ONE2ONE pour ton bilan et ta séance d'essai offerts. `
+      + `Prévois une tenue de sport, une bouteille d'eau et une serviette. À très vite ! 💪`;
   },
 
   nom: l => `${l.prenom || ''} ${l.nom || ''}`.trim() || l.email || l.telephone || 'Sans nom',
@@ -361,6 +378,10 @@ const CoachCrmPage = {
           </div></div>`;
       case 'rdv':
         return `<div class="crm-bloc"><div class="crm-aide">RDV studio <b>${escHtml(new Date(l.rdv_le).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }))}</b>${l.rdv_creneau_id ? ' · dans l\'agenda' : ''}</div>
+          ${CRM.rappelRdvAFaire(l) && l.telephone ? `<div class="crm-boutons" style="margin-bottom:8px;">
+            <a class="btn btn-secondary btn-small" href="${escHtml(CRM.whatsapp(l.telephone) + '?text=' + encodeURIComponent(CRM.messageRappelRdv(l)))}"
+              target="_blank" rel="noopener" onclick="CoachCrmPage.rdvRappele('${id}')">💬 Envoyer le rappel WhatsApp</a></div>`
+            : l.rdv_rappele_le ? `<div class="crm-aide">✓ Rappel envoyé le ${escHtml(new Date(l.rdv_rappele_le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</div>` : ''}
           <div class="crm-boutons">
             <button class="btn btn-primary btn-small" onclick="CoachCrmPage.venu('${id}')">✓ Venu</button>
             <button class="btn btn-secondary btn-small" onclick="CoachCrmPage.rdv('${id}')">Déplacer le RDV</button>
@@ -509,6 +530,10 @@ const CoachCrmPage = {
     this._maj(id, patch, `Retour à « ${label} »`);
   },
 
+  rdvRappele(id) {
+    this._maj(id, { rdv_rappele_le: new Date().toISOString() }, 'Rappel du RDV envoyé sur WhatsApp');
+  },
+
   finRappel(id) {
     this._maj(id, { rappel_le: null }, null);
   },
@@ -645,7 +670,7 @@ const CoachCrmPage = {
         }]);
         creneauId = c?.id || null;
       }
-      const r = await this._maj(id, { etape: 'rdv', rdv_le: debut.toISOString(), rdv_creneau_id: creneauId, rappel_le: null,
+      const r = await this._maj(id, { etape: 'rdv', rdv_le: debut.toISOString(), rdv_creneau_id: creneauId, rappel_le: null, rdv_rappele_le: null,
         responsable_id: l.responsable_id || me }, `RDV studio ${CRM.quand(debut.toISOString())} avec ${this._gerant(coach)}`);
       return r ? true : false;
     });
