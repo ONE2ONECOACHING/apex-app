@@ -86,8 +86,7 @@ const CRM = {
     const d = new Date(l.rdv_le);
     const jour = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     const h = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
-    return `Bonjour ${l.prenom || ''}, petit rappel : on t'attend ${jour} à ${h} au studio ONE2ONE pour ton bilan et ta séance d'essai offerts. `
-      + `Prévois une tenue de sport, une bouteille d'eau et une serviette. À très vite ! 💪`;
+    return `Bonjour ${l.prenom || ''}, petit rappel : on t'attend ${jour} à ${h} au studio ONE2ONE pour ton bilan offert. À très vite ! 💪`;
   },
 
   nom: l => `${l.prenom || ''} ${l.nom || ''}`.trim() || l.email || l.telephone || 'Sans nom',
@@ -176,9 +175,10 @@ const CoachCrmPage = {
     const q = new URLSearchParams((window.location.hash.split('?')[1]) || '');
     if (q.get('lead')) this.choisi = q.get('lead');
     try {
-      const [leads, coachs, formules] = await Promise.all([
-        db.getLeads(), db.getCoachs(), db.getFormules().catch(() => []),
+      const [leads, coachs, formules, audits] = await Promise.all([
+        db.getLeads(), db.getCoachs(), db.getFormules().catch(() => []), db.getAuditsLeads().catch(() => []),
       ]);
+      this.audits = audits;
       if (jeton !== this._jeton) return;
       this.leads = leads;
       this.coachs = coachs.filter(c => c.id !== COMPTE_PARTAGE_ID);
@@ -340,6 +340,8 @@ const CoachCrmPage = {
 
       ${enCours ? this._blocRappel(l) : ''}
 
+      ${this._blocAudit(l)}
+
       ${formulaire.length ? `<div class="crm-bloc"><div class="crm-label">Formulaire</div>
         ${formulaire.map(([k, v]) => `<div class="crm-form-ligne"><span>${escHtml(k.replace(/_/g, ' '))}</span>${escHtml(String(v))}</div>`).join('')}</div>` : ''}
 
@@ -416,6 +418,61 @@ const CoachCrmPage = {
         </div>`;
     }
     return '';
+  },
+
+  // Questionnaire d'audit et audit rédigé par Claude (le plus récent)
+  _blocAudit(l) {
+    const a = (this.audits || []).find(x => x.lead_id === l.id);
+    const titre = '<div class="crm-label">📋 Questionnaire d\'audit</div>';
+    if (!a) return `<div class="crm-bloc">${titre}
+      <div class="crm-boutons"><button class="btn btn-secondary btn-small" onclick="CoachCrmPage.creerAudit('${l.id}')">Créer le lien du questionnaire</button></div></div>`;
+    if (a.statut === 'attente') {
+      const lien = `${location.origin}/audit.html?j=${a.jeton}`;
+      const msg = `Bonjour ${l.prenom || ''}, pour préparer ton bilan au studio, peux-tu remplir ce petit questionnaire (5 à 10 minutes) ? ${lien} Merci ! 🙏`;
+      const wa = l.telephone ? CRM.whatsapp(l.telephone) : '';
+      return `<div class="crm-bloc">${titre}<div class="crm-aide">Pas encore rempli.</div>
+        <div class="crm-boutons">
+          ${wa ? `<a class="btn btn-primary btn-small" href="${escHtml(wa + '?text=' + encodeURIComponent(msg))}" target="_blank" rel="noopener">💬 Envoyer sur WhatsApp</a>` : ''}
+          <button class="btn btn-secondary btn-small" onclick="CoachCrmPage.copierLienAudit('${escHtml(lien)}')">🔗 Copier le lien</button>
+        </div></div>`;
+    }
+    if (a.statut === 'en_cours') {
+      const bloque = a.rempli_le && Date.now() - new Date(a.rempli_le) > 10 * 60e3;
+      return `<div class="crm-bloc">${titre}<div class="crm-aide">⏳ Questionnaire rempli, audit en cours de rédaction…</div>
+        ${bloque ? `<div class="crm-boutons"><button class="btn btn-secondary btn-small" onclick="CoachCrmPage.relancerAudit('${a.id}')">↻ Relancer la rédaction</button></div>` : ''}</div>`;
+    }
+    if (a.statut === 'erreur') return `<div class="crm-bloc">${titre}
+      <div class="crm-aide" style="color:var(--error)">L'audit n'a pas pu être rédigé : ${escHtml(a.erreur || '')}</div>
+      <div class="crm-boutons"><button class="btn btn-secondary btn-small" onclick="CoachCrmPage.relancerAudit('${a.id}')">↻ Relancer la rédaction</button></div></div>`;
+    return `<div class="crm-bloc">${titre}<div class="crm-aide">✓ Audit prêt${a.genere_le ? ' depuis le ' + escHtml(new Date(a.genere_le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) : ''}.</div>
+      <div class="crm-boutons"><button class="btn btn-primary btn-small" onclick="Router.navigate('coach-audit', { id: '${a.id}' })">📋 Voir l'audit</button></div></div>`;
+  },
+
+  async creerAudit(leadId) {
+    try {
+      const a = await db.creerLienAudit(leadId);
+      this.audits = [a, ...(this.audits || [])];
+      this._render();
+    } catch (e) {
+      toast('Erreur : ' + e.message, 'error');
+    }
+  },
+
+  async copierLienAudit(lien) {
+    try { await navigator.clipboard.writeText(lien); toast('Lien copié'); }
+    catch (e) { prompt('Copie ce lien :', lien); }
+  },
+
+  async relancerAudit(auditId) {
+    try {
+      await db.regenererAudit(auditId);
+      const a = (this.audits || []).find(x => x.id === auditId);
+      if (a) { a.statut = 'en_cours'; a.erreur = null; a.rempli_le = new Date().toISOString(); }
+      this._render();
+      toast('Rédaction relancée : une notification arrive quand c\'est prêt.');
+    } catch (e) {
+      toast('Erreur : ' + e.message, 'error');
+    }
   },
 
   _blocRappel(l) {

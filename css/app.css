@@ -2142,3 +2142,74 @@ body.resume-replie .fr-replier { right: 5px; }
   .crm-entete { flex-direction: column; }
 }
 .crm-dh { display: grid; grid-template-columns: minmax(0, 1fr) 90px 76px; gap: 8px; }
+
+/* ── Audit du bilan (js/audit-rendu.js, pages/coach/audit.js) ─────────────── */
+.au-barre { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.au-barre-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.au { max-width: 1100px; margin: 0 auto; color: var(--black); line-height: 1.6; }
+.au p { margin: 0 0 12px; font-size: 15px; }
+.au-entete { background: var(--gold-gradient); color: #fff; border-radius: 14px; padding: 36px 32px; margin-bottom: 20px; }
+.au-entete h1 { font-size: 34px; line-height: 1.15; margin: 10px 0 4px; color: #fff; }
+.au-date { opacity: .8; font-size: 14px; }
+.au-badge { display: inline-block; background: #fff; color: var(--gold); border-radius: 4px; padding: 3px 10px; font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+.au-badge-clair { background: rgba(255,255,255,.18); color: #fff; }
+.au-profil { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.au-pastille { background: rgba(255,255,255,.16); border-radius: 8px; padding: 8px 14px; font-size: 14px; font-weight: 600; }
+.au-pastille.au-alerte { background: rgba(254,202,202,.28); box-shadow: inset 0 0 0 1px rgba(254,202,202,.7); }
+.au-pastille.au-bon { background: rgba(187,247,208,.22); box-shadow: inset 0 0 0 1px rgba(187,247,208,.6); }
+.au-section { background: var(--white); border: 1px solid var(--border-solid); border-radius: 12px; padding: 28px 30px; margin-bottom: 16px; break-inside: avoid-page; }
+.au-section h2 { display: flex; align-items: center; gap: 12px; font-size: 22px; margin: 0 0 16px; }
+.au-num { width: 32px; height: 32px; border-radius: 50%; background: var(--gold); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: 0 0 auto; }
+.au-donnees { display: grid; grid-template-columns: 220px 1fr; gap: 8px 20px; margin: 0 0 16px; }
+.au-donnees dt { font-weight: 600; color: var(--gray); font-size: 14px; }
+.au-donnees dd { margin: 0; font-size: 14px; }
+.au-cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0 0 16px; }
+.au-carte { border: 1px solid var(--border-solid); border-radius: 10px; padding: 14px 16px; font-size: 14px; }
+.au-carte-titre { font-weight: 700; color: var(--gold); margin-bottom: 4px; }
+.au-carte.au-bon { border-color: #86EFAC; background: #F0FDF4; }
+.au-carte.au-alerte { border-color: #FCA5A5; background: #FEF2F2; }
+.au-indics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 0 0 16px; }
+.au-indic { background: var(--bg); border: 1px solid var(--border-solid); border-radius: 10px; padding: 12px 14px; }
+.au-indic-label { font-size: 12px; font-weight: 600; color: var(--gray); }
+.au-indic-val { font-weight: 700; font-size: 14px; }
+.au-indic-val.au-bon { color: #15803D; } .au-indic-val.au-moyen { color: #B45309; } .au-indic-val.au-mauvais { color: #B91C1C; }
+.au-encadre { border-radius: 10px; padding: 16px 20px; margin: 14px 0 0; border: 1px solid; border-left-width: 5px; break-inside: avoid; }
+.au-encadre p { margin: 0; font-size: 14.5px; }
+.au-encadre-titre { font-weight: 700; margin-bottom: 4px; }
+.au-alerte.au-encadre { background: #FEF2F2; border-color: #FCA5A5; border-left-color: #DC2626; } .au-alerte .au-encadre-titre { color: #B91C1C; }
+.au-vigilance.au-encadre { background: #FFFBEB; border-color: #FCD34D; border-left-color: #F59E0B; } .au-vigilance .au-encadre-titre { color: #B45309; }
+.au-positif.au-encadre { background: #F0FDF4; border-color: #86EFAC; border-left-color: #16A34A; } .au-positif .au-encadre-titre { color: #15803D; }
+.au-bienveillance.au-encadre { background: #FAF5FF; border-color: #D8B4FE; border-left-color: #A855F7; } .au-bienveillance .au-encadre-titre { color: #7C3AED; }
+.au-info.au-encadre { background: var(--gold-light); border-color: var(--gold-border); border-left-color: var(--gold); } .au-info .au-encadre-titre { color: var(--gold); }
+.au-synthese { background: #0B2556; color: #fff; border-radius: 14px; padding: 36px 32px; margin-top: 24px; }
+.au-synthese h2 { color: #fff; font-size: 24px; margin: 12px 0 18px; }
+.au-synthese blockquote { margin: 0 0 18px; padding: 16px 20px; border-radius: 10px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); font-style: italic; font-size: 16px; }
+.au-resume { color: rgba(255,255,255,.9); font-size: 15.5px !important; }
+.au-levier { background: rgba(255,255,255,.09); border-radius: 10px; padding: 16px 20px; margin: 12px 0; break-inside: avoid; }
+.au-levier-titre { font-weight: 700; margin-bottom: 4px; }
+.au-levier p { margin: 0; color: rgba(255,255,255,.92); }
+.au-pied { margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.15); font-size: 13px; opacity: .7; }
+.au-coach { max-width: 1100px; margin: 0 auto 16px; background: #FFFBEB; border: 1px dashed #F59E0B; border-radius: 12px; padding: 14px 18px; font-size: 14px; }
+.au-coach-titre { font-weight: 700; color: #B45309; margin-bottom: 4px; }
+.au-coach ul { margin: 0; padding-left: 20px; }
+.au-reponses { max-width: 1100px; margin: 20px auto 0; background: var(--white); border: 1px solid var(--border-solid); border-radius: 12px; padding: 14px 20px; }
+.au-reponses summary { cursor: pointer; font-weight: 700; }
+.au-reponses h3 { font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--gold); margin: 18px 0 6px; }
+.au-rep { padding: 8px 0; border-top: 1px solid var(--border-solid); font-size: 14px; }
+.au-rep-q { color: var(--gray); }
+.au-rep-r { white-space: pre-wrap; font-weight: 500; }
+@media (max-width: 700px) {
+  .au-entete, .au-synthese { padding: 24px 18px; }
+  .au-entete h1 { font-size: 26px; }
+  .au-section { padding: 20px 16px; }
+  .au-donnees { grid-template-columns: 1fr; gap: 2px; }
+  .au-donnees dd { margin-bottom: 8px; }
+}
+@media print {
+  body.coach-layout .coach-menu, #coachMenu, .au-barre, .au-coach, .au-reponses, .onglets-ouverts, .fiche-onglets { display: none !important; }
+  body { background: #fff !important; }
+  body.coach-layout #app, body.coach-layout.onglets-ouverts #app, body.coach-wide #app { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+  .au { max-width: none; }
+  .au-entete, .au-synthese, .au-encadre, .au-carte, .au-pastille, .au-num { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { margin: 14mm; }
+}

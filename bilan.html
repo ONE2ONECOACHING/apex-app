@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Réserve ton bilan offert · ONE2ONE</title>
-<meta name="description" content="Bilan personnalisé et séance d'essai offerts au studio ONE2ONE, à Saint-Estève.">
+<meta name="description" content="Bilan personnalisé offert au studio ONE2ONE, à Saint-Estève.">
 <link rel="icon" href="/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -67,6 +67,10 @@ fbq('track', 'PageView');
   .ok h2 { margin: 0 0 6px; font-size: 22px; }
   .ok p { color: var(--gris); line-height: 1.5; margin: 6px 0; }
   .ok .quand { color: var(--texte); font-weight: 700; font-size: 17px; }
+  .audit { background: var(--bleu-clair); border-radius: 14px; padding: 16px; margin: 18px 0 4px; text-align: left; }
+  .audit b { color: var(--bleu-fonce); font-size: 16px; }
+  .audit p { margin: 6px 0 0; font-size: 14px; }
+  .audit .bouton { margin-top: 12px; }
   .chargement { color: var(--gris); font-size: 14px; }
   [hidden] { display: none !important; }
   @media (max-width: 420px) { .deux { grid-template-columns: 1fr; } h1 { font-size: 23px; } }
@@ -78,7 +82,7 @@ fbq('track', 'PageView');
 
   <section id="reservation">
     <h1>Réserve ton bilan offert</h1>
-    <p class="sous">Un rendez-vous d'1 heure au studio avec ton coach : on fait le point sur ta situation et tes objectifs, puis tu testes une séance d'entraînement privée.</p>
+    <p class="sous">Un rendez-vous d'1 heure au studio avec ton coach : on fait le point ensemble sur ta situation, tes objectifs et ce qui te bloque, et on te présente le plan le plus adapté pour obtenir des résultats durables.</p>
     <div class="badges">
       <span class="badge">🎁 Offert</span><span class="badge">⏱ 1 heure</span><span class="badge">📍 Studio de Saint-Estève</span>
     </div>
@@ -114,9 +118,13 @@ fbq('track', 'PageView');
     <div class="rond">✓</div>
     <h2>C'est réservé !</h2>
     <p class="quand" id="quand"></p>
-    <p>Ton bilan et ta séance d'essai sont notés. On te contactera la veille pour te le rappeler.</p>
-    <p>Prévois une tenue de sport, une bouteille d'eau et une serviette.</p>
-    <a class="bouton" id="google" target="_blank" rel="noopener">📅 Ajouter à Google Agenda</a>
+    <p>Ton bilan est noté. On te contactera sur WhatsApp la veille pour te le rappeler et te dire quoi prévoir.</p>
+    <div class="audit" id="blocAudit" hidden>
+      <b>Dernière étape : ton questionnaire</b>
+      <p>5 à 10 minutes pour nous parler de toi, de ton alimentation, de ta digestion et de ton sommeil. Ton coach s'en sert pour préparer ton bilan.</p>
+      <a class="bouton" id="lienAudit">📝 Remplir mon questionnaire</a>
+    </div>
+    <a class="bouton second" id="google" target="_blank" rel="noopener">📅 Ajouter à Google Agenda</a>
     <a class="bouton second" id="ics" download="bilan-one2one.ics">📅 Ajouter à mon calendrier (iPhone, Outlook)</a>
   </section>
 
@@ -130,7 +138,7 @@ const source = new URLSearchParams(location.search).get('src') || 'meta';
 const $ = id => document.getElementById(id);
 let creneaux = [], jourChoisi = null, debutChoisi = null;
 
-$('whatsapp').href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent("Bonjour, je souhaiterais réserver un bilan personnalisé et une séance d'essai offerts, mais aucun créneau ne me convient.");
+$('whatsapp').href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent("Bonjour, je souhaiterais réserver un bilan personnalisé offert, mais aucun créneau ne me convient.");
 
 const cleJour = d => d.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });           // 2026-11-25
 const heure = d => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
@@ -194,7 +202,7 @@ $('formulaire').addEventListener('submit', async ev => {
       body: JSON.stringify({ debut: debutChoisi.toISOString(), prenom, nom: $('nom').value.trim(), telephone: tel, email,
         source, site: $('site').value }) });
     const d = await r.json().catch(() => ({}));
-    if (d.ok) return confirmer();
+    if (d.ok) return confirmer(d.questionnaire);
     if (d.erreur === 'pris') {
       erreur('Oups, ce créneau vient d\'être pris. Choisis-en un autre.');
       debutChoisi = null; await charger(); return;
@@ -212,11 +220,15 @@ $('formulaire').addEventListener('submit', async ev => {
   }
 });
 
-function confirmer() {
+function confirmer(questionnaire) {
+  if (questionnaire) {
+    $('lienAudit').href = '/audit.html?j=' + encodeURIComponent(questionnaire);
+    $('blocAudit').hidden = false;
+  }
   try { fbq('track', 'Schedule'); } catch (e) {}
   const fin = new Date(+debutChoisi + 3600e3);
   const z = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const titre = 'Bilan + séance d\'essai ONE2ONE', lieu = 'Studio ONE2ONE, Saint-Estève';
+  const titre = 'Bilan ONE2ONE', lieu = 'Studio ONE2ONE, Saint-Estève';
   const t = `${dateLongue(debutChoisi)} à ${heure(debutChoisi)}`;
   $('quand').textContent = t.charAt(0).toUpperCase() + t.slice(1);
   $('aide').hidden = true;

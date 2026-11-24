@@ -150,7 +150,7 @@ const Router = {
 
     // Cloisonnement role ↔ route
     const clientRoutes = ['dashboard', 'logbook', 'plan', 'snap', 'historique', 'recettes', 'client-bilan', 'onboarding', 'set-password', 'invite', 'mesure', 'entrainement', 'seance-active', 'tutorial', 'outils', 'menu', 'formation', 'messages'];
-    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive', 'coach-suivi', 'coach-cardio-modeles', 'coach-cardio-modele', 'coach-cardio-plan', 'coach-client-notifs', 'coach-client-facturation', 'coach-formules', 'coach-facturation', 'coach-gerants', 'coach-crm'];
+    const coachRoutes = ['coach-clients', 'coach-client-edit', 'coach-plan-edit', 'coach-journal', 'coach-journal-view', 'coach-habits-edit', 'coach-bilan-templates', 'coach-bilan-client', 'coach-mesure-client', 'coach-exercices', 'coach-prog-templates', 'coach-prog-template-edit', 'coach-client-programme', 'coach-training-client', 'coach-client-suivi', 'coach-formations', 'coach-equipe', 'coach-agenda', 'coach-seance-studio', 'coach-accueil', 'coach-calcul-nutrition', 'coach-journal-suivi', 'coach-messagerie', 'coach-client-messages', 'coach-programme-archive', 'coach-suivi', 'coach-cardio-modeles', 'coach-cardio-modele', 'coach-cardio-plan', 'coach-client-notifs', 'coach-client-facturation', 'coach-formules', 'coach-facturation', 'coach-gerants', 'coach-crm', 'coach-audit'];
     if (this.userProfile) {
       if (this.userProfile.role === 'coach' && clientRoutes.includes(hash) && hash !== 'set-password') {
         window.location.hash = '#coach-accueil';
@@ -178,7 +178,7 @@ const Router = {
     if (typeof afficherFiche === 'function') afficherFiche(hash);
     // Écrans qui utilisent toute la largeur (les formulaires gardent une largeur limitée)
     document.body.classList.toggle('coach-plein', ['coach-agenda', 'coach-accueil', 'coach-messagerie',
-      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi', 'coach-client-messages', 'coach-cardio-plan', 'coach-cardio-modele', 'coach-prog-template-edit', 'coach-gerants', 'coach-crm'].includes(hash));
+      'coach-seance-studio', 'coach-journal-suivi', 'coach-clients', 'coach-suivi', 'coach-client-messages', 'coach-cardio-plan', 'coach-cardio-modele', 'coach-prog-template-edit', 'coach-gerants', 'coach-crm', 'coach-audit'].includes(hash));
 
     // Charger la page avec transition
     this.currentPage = hash;
@@ -224,6 +224,7 @@ const Router = {
         case 'coach-formules':        app.innerHTML = CoachFormulesPage.render();      CoachFormulesPage.init();      break;
         case 'coach-gerants':         app.innerHTML = CoachGerantsPage.render();       CoachGerantsPage.init();       break;
         case 'coach-crm':             app.innerHTML = CoachCrmPage.render();           CoachCrmPage.init();           break;
+        case 'coach-audit':           app.innerHTML = CoachAuditPage.render();         CoachAuditPage.init();         break;
         case 'coach-facturation':     app.innerHTML = CoachFacturationPage.render();   CoachFacturationPage.init();   break;
         case 'coach-client-facturation': app.innerHTML = CoachClientFacturationPage.render(); CoachClientFacturationPage.init(); break;
         case 'coach-agenda':          app.innerHTML = CoachAgendaPage.render();        CoachAgendaPage.init();        break;
@@ -416,7 +417,7 @@ const MENU_COACH = [
   { route: 'coach-prog-templates',  icone: '📚', label: 'Bibliothèque',    ecrans: ['coach-prog-templates', 'coach-prog-template-edit',
       'coach-exercices', 'coach-bilan-templates', 'coach-formations', 'coach-cardio-modeles', 'coach-cardio-modele'] },
   { route: 'coach-gerants',         icone: '📊', label: 'Chiffres du studio', ecrans: ['coach-gerants'], gerant: true },
-  { route: 'coach-crm',             icone: '🎯', label: 'Leads',           ecrans: ['coach-crm'], gerant: true, compteurLeads: true },
+  { route: 'coach-crm',             icone: '🎯', label: 'Leads',           ecrans: ['coach-crm', 'coach-audit'], gerant: true, compteurLeads: true },
   { route: 'coach-equipe',          icone: '🧑‍🤝‍🧑', label: 'Équipe',     ecrans: ['coach-equipe'], gerant: true },
   { route: 'coach-facturation',     icone: '💶', label: 'Facturation',     ecrans: ['coach-facturation'], gerant: true },
   { route: 'coach-formules',        icone: '🏷️', label: 'Formules',        ecrans: ['coach-formules'], gerant: true },

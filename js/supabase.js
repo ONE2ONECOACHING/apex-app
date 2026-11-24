@@ -233,6 +233,42 @@ const db = {
     return data;
   },
 
+  // ── Audits du bilan (gérants ; référent une fois client) ─────────────────
+  async getAuditsLeads() {
+    const { data, error } = await getSupabase().from('audits')
+      .select('id, lead_id, jeton, statut, rempli_le, genere_le, cree_le, erreur')
+      .order('cree_le', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getAudit(id) {
+    const { data, error } = await getSupabase().from('audits').select('*').eq('id', id).single();
+    if (error) throw error;
+    return data;
+  },
+
+  async creerLienAudit(leadId) {
+    const { data, error } = await getSupabase().from('audits').insert({ lead_id: leadId })
+      .select('id, lead_id, jeton, statut, rempli_le, genere_le, cree_le, erreur').single();
+    if (error) throw error;
+    return data;
+  },
+
+  async regenererAudit(auditId) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/audit-bilan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action: 'regenerer', audit_id: auditId }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.ok) throw new Error(json?.erreur || `Erreur serveur (${res.status})`);
+    return json;
+  },
+
   async majLead(id, patch) {
     const { data, error } = await getSupabase().from('leads').update(patch).eq('id', id).select().single();
     if (error) throw error;

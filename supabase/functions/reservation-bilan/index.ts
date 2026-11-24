@@ -1,7 +1,8 @@
 // APEX APP — Edge Function : reservation-bilan
 // Appelée par la page publique bilan.html (prospects, sans compte).
 //   GET  → créneaux libres pour le bilan + séance d'essai (1 h), de demain à J+7
-//   POST → { debut, prenom, nom, telephone, email, source, site } : réserve
+//   POST → { debut, prenom, nom, telephone, email, source, site } : réserve, et
+//          renvoie le jeton du questionnaire d'audit (page audit.html?j=…)
 // Tout le calcul est dans la base (fonctions creneaux_bilan_libres et
 // reserver_bilan, réservées à la clé de service). La page ne voit que des
 // horaires, jamais l'agenda.
@@ -80,5 +81,14 @@ Deno.serve(async (req) => {
       });
     } catch (_) { /* gérant sans téléphone abonné */ }
   }
-  return json({ ok: true, debut: r.debut });
+  // Lien du questionnaire d'audit (le même tant qu'il n'est pas rempli)
+  let jeton: string | null = null;
+  const { data: dejaAudit } = await sb.from("audits").select("jeton").eq("lead_id", r.lead_id)
+    .eq("statut", "attente").order("cree_le", { ascending: false }).limit(1).maybeSingle();
+  if (dejaAudit) jeton = dejaAudit.jeton;
+  else {
+    const { data: nv } = await sb.from("audits").insert({ lead_id: r.lead_id }).select("jeton").single();
+    jeton = nv?.jeton || null;
+  }
+  return json({ ok: true, debut: r.debut, questionnaire: jeton });
 });

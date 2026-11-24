@@ -153,6 +153,11 @@ Rien ne doit changer pour les clients pendant cette étape.
 - Choix de Benjamin : bilans avec les gérants seulement ; créneaux à l'heure et à la demi-heure, 8 h-20 h en semaine, 8 h-12 h le samedi, de demain à J+7 ; libre = au moins un gérant sans coaching, prospect ni indisponibilité (une formation bloque tout) ; si les deux sont libres, le moins chargé en RDV prospects de la semaine. Les heures non travaillées doivent être posées en indisponibilité. Lead retrouvé par les 9 derniers chiffres du téléphone ou l'email, sinon créé ; déjà un RDV à venir = refus.
 - Pas d'envoi de SMS ni d'email : la veille à 10:00, le lead en RDV remonte dans « À faire » avec « 💬 Envoyer le rappel WhatsApp » (message prérempli, pose `rdv_rappele_le`).
 
+## Audit du bilan par Claude (branche `audit-bilan`, 24 novembre 2026, pas encore en production)
+
+- Questionnaire public `audit.html?j=<jeton>` (les 48 questions du Google Form « Audit ONE2ONE 2027 », sans prénom ni nom ; 4 étapes Toi / Nutrition / Digestion / Sommeil ; rien d'obligatoire comme sur le Google Form ; case de consentement obligatoire ; réponses gardées dans le téléphone). Ouvert après une réservation en ligne (`reservation-bilan` renvoie le jeton) ou envoyé depuis le CRM (bloc « 📋 Questionnaire d'audit » : lien, WhatsApp, copier).
+- Table `audits` (`sql/2026-11-24_audits.sql`) : lecture gérants et référent une fois client, création du lien par les gérants, réponses et contenu écrits seulement par l'Edge Function `audit-bilan` (Verify JWT désactivé ; secret `ANTHROPIC_API_KEY` ; modèle `claude-opus-5-5`, effort high, sortie structurée JSON, fallbacks « default »). Le modèle rédige le contenu (bandeau, 7 sections, synthèse et leviers, « à vérifier » pour le coach) ; la mise en page est faite par `js/audit-rendu.js` aux couleurs du studio (modèle de départ : l'artefact de Benjamin). Écran `pages/coach/audit.js` (route `coach-audit?id=`) : PDF / Imprimer, réponses brutes, « Refaire l'audit ». Notification « 📋 Audit prêt » aux gérants. Environ 0,15 € par audit.
+
 ## Prochaines étapes
 
 6. Formules, facturation, Stripe (en attente : liste des formules et prix, calcul à la consommation, duos). 7. CRM (en production, en test par les gérants). Premier vrai test de « Prélever » début décembre 2026 (facturation de novembre), vérifié dans Stripe. 8. Version mobile complète des coachs.
