@@ -160,9 +160,27 @@ fbq('track', 'PageView');
   .point p { color: var(--ink-soft); font-size: .95rem; }
 
   /* Équipe */
-  .equipe { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 22px; }
-  .coach { text-align: center; font-weight: 700; font-size: .9rem; }
-  .coach img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 50%; margin-bottom: 8px; border: 3px solid #fff; box-shadow: var(--ombre); }
+  /* minmax(0, 1fr) : toutes les photos ont la même taille, même avec un prénom long (Christophe) */
+  .equipe { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 22px; }
+  .coach { text-align: center; font-weight: 700; font-size: .9rem; min-width: 0; overflow-wrap: anywhere; cursor: default;
+           -webkit-tap-highlight-color: transparent; }
+  .coach .photo { border-radius: 50%; margin-bottom: 8px; border: 3px solid #fff; box-shadow: var(--ombre); overflow: hidden;
+                  transition: transform .45s var(--ease), border-color .3s var(--ease), box-shadow .45s var(--ease); }
+  .coach img { width: 100%; aspect-ratio: 1/1; object-fit: cover; transition: transform .6s var(--ease); }
+  .coach:hover .photo, .coach:active .photo, .coach.touche .photo { transform: translateY(-4px) scale(1.07); border-color: var(--blue-light);
+            box-shadow: 0 18px 34px -16px rgba(0,74,173,.55); }
+  .coach:hover img, .coach:active img, .coach.touche img { transform: scale(1.08); }
+  .coach small { transition: color .3s; }
+  .coach:hover small, .coach.touche small { color: var(--blue); }
+
+  /* Apparition en douceur au défilement */
+  .apparait { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+  .apparait.vu { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .apparait { opacity: 1; transform: none; transition: none; } }
+
+  /* Cartes : léger soulèvement au survol, comme sur le site */
+  .et, .tcard, .avi { transition: opacity .7s var(--ease), transform .55s var(--ease), box-shadow .45s var(--ease); }
+  .et:hover, .tcard:hover, .avi:hover { transform: translateY(-4px); box-shadow: 0 26px 46px -22px rgba(10,18,48,.32); }
   .coach small { display: block; color: var(--ink-soft); font-weight: 500; font-size: .75rem; }
 
   /* Pour toi si */
@@ -222,7 +240,7 @@ fbq('track', 'PageView');
   }
   @media (max-width: 420px) {
     .deux { grid-template-columns: 1fr; }
-    .equipe { grid-template-columns: repeat(3, 1fr); gap: 14px 10px; }
+    .equipe { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; }
   }
 </style>
 </head>
@@ -376,11 +394,11 @@ fbq('track', 'PageView');
       <div class="eyebrow">L'équipe</div>
       <h2>Tes coachs</h2>
       <div class="equipe">
-        <div class="coach"><img src="/img/site/coach-ben-tete.jpg" alt="Benjamin" loading="lazy">Benjamin<small>Fondateur</small></div>
-        <div class="coach"><img src="/img/site/coach-chris-tete.jpg" alt="Christophe" loading="lazy">Christophe<small>Fondateur</small></div>
-        <div class="coach"><img src="/img/site/coach-lola-tete.jpg" alt="Lola" loading="lazy">Lola<small>Coach</small></div>
-        <div class="coach"><img src="/img/site/coach-cyril-tete.jpg" alt="Cyril" loading="lazy">Cyril<small>Coach</small></div>
-        <div class="coach"><img src="/img/site/coach-diego-tete.jpg" alt="Diego" loading="lazy">Diego<small>Coach</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-ben-tete.jpg" alt="Benjamin" loading="lazy"></div>Benjamin<small>Fondateur</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-chris-tete.jpg" alt="Christophe" loading="lazy"></div>Christophe<small>Fondateur</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-lola-tete.jpg" alt="Lola" loading="lazy"></div>Lola<small>Coach</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-cyril-tete.jpg" alt="Cyril" loading="lazy"></div>Cyril<small>Coach</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-diego-tete.jpg" alt="Diego" loading="lazy"></div>Diego<small>Coach</small></div>
       </div>
     </div>
   </section>
@@ -603,6 +621,28 @@ function confirmer(questionnaire) {
   });
   obs.observe(document.querySelector('.hero'));
   obs.observe($('reserver'));
+})();
+
+// Apparition des blocs au défilement (sans JavaScript, tout reste visible)
+(() => {
+  if (!('IntersectionObserver' in window)) return;
+  const groupes = ['.et', '.tcard', '.avi', '.studio-photos img', '.point', '.coach', '.pour div', 'details', '.bloc h2'];
+  const obs = new IntersectionObserver(entrees => entrees.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('vu'); obs.unobserve(e.target);
+    setTimeout(() => { e.target.style.transitionDelay = ''; }, 1200);   // sinon le survol attendrait aussi
+  }), { threshold: .12 });
+  groupes.forEach(sel => document.querySelectorAll('#landing ' + sel).forEach((el, i) => {
+    el.classList.add('apparait');
+    el.style.transitionDelay = (sel === '.bloc h2' ? 0 : Math.min(i % 6, 5) * 70) + 'ms';
+    obs.observe(el);
+  }));
+  // Au doigt : la photo du coach touchée grossit un instant
+  document.querySelectorAll('.coach').forEach(c => c.addEventListener('touchstart', () => {
+    document.querySelectorAll('.coach.touche').forEach(x => x.classList.remove('touche'));
+    c.classList.add('touche');
+    clearTimeout(c._t); c._t = setTimeout(() => c.classList.remove('touche'), 900);
+  }, { passive: true }));
 })();
 
 charger();
