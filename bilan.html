@@ -70,15 +70,16 @@ fbq('track', 'PageView');
   .hero h1 { font-size: clamp(3rem, 11vw, 5.6rem); margin: 14px 0 14px; }
   .hero h1 em { font-style: normal; color: var(--blue-light); }
   .hero-sub { font-size: 1.08rem; color: rgba(255,255,255,.78); max-width: 34ch; margin-bottom: 22px; }
-  .puces { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
-  .puce { border: 1px solid rgba(255,255,255,.22); border-radius: 100px; padding: 6px 13px; font-size: .86rem; font-weight: 600; color: rgba(255,255,255,.9); }
+  .infos { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0; margin-bottom: 28px;
+           font-size: .78rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.88); }
+  .infos li + li::before { content: ""; display: inline-block; width: 1px; height: 12px; background: rgba(255,255,255,.3); margin: 0 14px; vertical-align: -1px; }
   .hero .btn { width: 100%; max-width: 380px; }
   .prochain { margin-top: 12px; font-size: .92rem; color: rgba(255,255,255,.72); min-height: 1.4em; }
   .prochain b { color: #fff; }
   .preuve { display: flex; gap: 22px; margin-top: 28px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.12); }
   .preuve div { font-size: .85rem; color: rgba(255,255,255,.66); line-height: 1.35; }
   .preuve b { display: block; font-family: "Bebas Neue"; font-weight: 400; font-size: 2rem; color: #fff; letter-spacing: .02em; line-height: 1; }
-  .preuve .etoiles { color: #FBBF24; letter-spacing: 2px; }
+  .preuve .etoiles { color: #FBBF24; font-size: .8em; vertical-align: .08em; }
 
   /* Sections */
   section.bloc { padding: 56px 0; }
@@ -118,7 +119,7 @@ fbq('track', 'PageView');
   #formulaire .btn { margin-top: 20px; }
   .erreur { color: var(--rouge); font-size: .92rem; margin-top: 12px; }
   .legal { color: var(--ink-soft); font-size: .78rem; line-height: 1.5; margin-top: 14px; opacity: .85; }
-  .rassure { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; color: var(--ink-soft); font-size: .88rem; }
+  .rassure { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 20px; color: var(--ink-soft); font-size: .88rem; }
   .rassure span::before { content: "✓ "; color: var(--vert); font-weight: 700; }
   .aide { color: var(--ink-soft); font-size: .92rem; text-align: center; margin-top: 18px; }
 
@@ -159,7 +160,7 @@ fbq('track', 'PageView');
   .point p { color: var(--ink-soft); font-size: .95rem; }
 
   /* Équipe */
-  .equipe { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .equipe { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 22px; }
   .coach { text-align: center; font-weight: 700; font-size: .9rem; }
   .coach img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 50%; margin-bottom: 8px; border: 3px solid #fff; box-shadow: var(--ombre); }
   .coach small { display: block; color: var(--ink-soft); font-weight: 500; font-size: .75rem; }
@@ -247,14 +248,14 @@ fbq('track', 'PageView');
       <div class="eyebrow">Studio de coaching privé · Saint-Estève</div>
       <h1 id="titre">Ton bilan <em>offert</em> avec un coach privé</h1>
       <p class="hero-sub" id="sousTitre">1 heure au studio pour faire le point sur ton point de départ, tes objectifs et ce qui te bloque. Tu repars avec un plan clair.</p>
-      <div class="puces">
-        <span class="puce">🎁 Offert</span><span class="puce">🤝 Sans engagement</span><span class="puce">⏱ 1 heure</span><span class="puce">📍 Saint-Estève</span>
-      </div>
+      <ul class="infos">
+        <li>Offert</li><li>1 heure</li><li>Sans engagement</li><li>Saint-Estève</li>
+      </ul>
       <a class="btn btn-primary" href="#reserver">Choisir mon créneau →</a>
       <div class="prochain" id="prochain"></div>
       <div class="preuve">
         <div><b>+150</b>transformations accompagnées depuis 2023</div>
-        <div><b><span class="etoiles">★★★★★</span></b>avis clients sur Google</div>
+        <div><b>5,0 <span class="etoiles">★</span></b>76 avis Google, tous 5 étoiles</div>
       </div>
     </div>
   </section>
@@ -265,7 +266,6 @@ fbq('track', 'PageView');
       <div>
         <div class="eyebrow">Réservation</div>
         <h2>Choisis ton créneau</h2>
-        <p class="intro">Les créneaux affichés sont les vrais trous de l'agenda de nos coachs. Ça prend 30 secondes.</p>
         <div class="rassure"><span>100 % offert</span><span>Sans engagement</span><span>Aucun paiement</span></div>
       </div>
       <div>
@@ -304,7 +304,7 @@ fbq('track', 'PageView');
     <div class="wrap">
       <div class="eyebrow">Ton bilan</div>
       <h2>Ce qu'on fait ensemble pendant 1 heure</h2>
-      <p class="intro">Pas un rendez-vous commercial : un vrai temps avec un coach, pour toi. On ne programme rien avant de te connaître.</p>
+      <p class="intro">Un vrai temps avec un coach, pour toi. On ne programme rien avant de te connaître.</p>
       <div class="etapes">
         <div class="et"><div class="n">01</div><div><b>Ton point de départ</b><p>Ta situation, ton mode de vie, ton historique sportif et alimentaire.</p></div></div>
         <div class="et"><div class="n">02</div><div><b>Tes objectifs</b><p>Perte de poids, remise en forme, performance : ce que tu veux vraiment, et pour quand.</p></div></div>
@@ -336,7 +336,7 @@ fbq('track', 'PageView');
     <div class="wrap">
       <div class="eyebrow">Témoignages</div>
       <h2>Ce qu'ils en disent</h2>
-      <p class="intro">Les avis de nos clients, publiés sur Google.</p>
+      <p class="intro">76 avis publiés sur Google, tous 5 étoiles.</p>
       <div class="avis">
         <div class="avi"><div class="etoiles">★★★★★</div><p>« Après 7 ans sans sport et quelques soucis de santé, ils m'ont permis de me remettre en selle. Une équipe au top, qui s'adapte même sur les horaires, jusqu'à commencer à 5h du matin. Résultat : 7 kg en moins et une bien meilleure forme, physique comme mentale. Je recommande sans hésiter. »</p><div class="qui">Teddy <small>Avis Google</small></div></div>
         <div class="avi"><div class="etoiles">★★★★★</div><p>« Nous avons découvert le studio et nous sommes ravis. Dès les premières séances, de vrais progrès. Des coachs extrêmement professionnels, à l'écoute et attentifs à nos besoins. Un accompagnement personnalisé, motivant et efficace. Je recommande vivement ! »</p><div class="qui">Magali <small>Avis Google</small></div></div>
@@ -375,7 +375,6 @@ fbq('track', 'PageView');
     <div class="wrap">
       <div class="eyebrow">L'équipe</div>
       <h2>Tes coachs</h2>
-      <p class="intro">Des visages, pas une marque. C'est l'un d'eux qui t'accueille pour ton bilan.</p>
       <div class="equipe">
         <div class="coach"><img src="/img/site/coach-ben-tete.jpg" alt="Benjamin" loading="lazy">Benjamin<small>Fondateur</small></div>
         <div class="coach"><img src="/img/site/coach-chris-tete.jpg" alt="Christophe" loading="lazy">Christophe<small>Fondateur</small></div>
