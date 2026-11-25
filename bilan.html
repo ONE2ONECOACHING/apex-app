@@ -71,6 +71,8 @@ fbq('track', 'PageView');
   .audit b { color: var(--bleu-fonce); font-size: 16px; }
   .audit p { margin: 6px 0 0; font-size: 14px; }
   .audit .bouton { margin-top: 12px; }
+  .adresse { display: block; margin: 12px auto 4px; padding: 12px 14px; border: 1px solid var(--bord); border-radius: 14px; color: var(--texte); text-decoration: none; font-size: 15px; line-height: 1.45; }
+  .adresse span { color: var(--bleu-fonce); font-weight: 700; font-size: 14px; }
   .chargement { color: var(--gris); font-size: 14px; }
   [hidden] { display: none !important; }
   @media (max-width: 420px) { .deux { grid-template-columns: 1fr; } h1 { font-size: 23px; } }
@@ -118,6 +120,7 @@ fbq('track', 'PageView');
     <div class="rond">✓</div>
     <h2>C'est réservé !</h2>
     <p class="quand" id="quand"></p>
+    <a class="adresse" href="https://maps.google.com/?q=32+avenue+de+Torremila+66240+Saint-Est%C3%A8ve" target="_blank" rel="noopener">📍 Studio ONE2ONE<br>32 avenue de Torremila, 66240 Saint-Estève<br><span>Voir l'itinéraire ›</span></a>
     <p>Ton bilan est noté. On te contactera sur WhatsApp la veille pour te le rappeler et te dire quoi prévoir.</p>
     <div class="audit" id="blocAudit" hidden>
       <b>Dernière étape : ton questionnaire</b>
@@ -228,7 +231,7 @@ function confirmer(questionnaire) {
   try { fbq('track', 'Schedule'); } catch (e) {}
   const fin = new Date(+debutChoisi + 3600e3);
   const z = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const titre = 'Bilan ONE2ONE', lieu = 'Studio ONE2ONE, Saint-Estève';
+  const titre = 'Bilan ONE2ONE', lieu = 'Studio ONE2ONE, 32 avenue de Torremila, 66240 Saint-Estève';
   const t = `${dateLongue(debutChoisi)} à ${heure(debutChoisi)}`;
   $('quand').textContent = t.charAt(0).toUpperCase() + t.slice(1);
   $('aide').hidden = true;
@@ -236,7 +239,7 @@ function confirmer(questionnaire) {
     + '&dates=' + z(debutChoisi) + '/' + z(fin) + '&location=' + encodeURIComponent(lieu);
   const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ONE2ONE//Bilan//FR', 'BEGIN:VEVENT',
     'UID:' + z(debutChoisi) + '-' + Math.random().toString(36).slice(2) + '@one2onecoaching.fr', 'DTSTAMP:' + z(new Date()),
-    'DTSTART:' + z(debutChoisi), 'DTEND:' + z(fin), 'SUMMARY:' + titre, 'LOCATION:' + lieu,
+    'DTSTART:' + z(debutChoisi), 'DTEND:' + z(fin), 'SUMMARY:' + titre, 'LOCATION:' + lieu.replace(/,/g, '\\,'),
     'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:' + titre, 'END:VALARM',
     'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   $('ics').href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
