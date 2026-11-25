@@ -18,6 +18,19 @@ const PushNotifications = {
     try {
       const reg = await navigator.serviceWorker.ready;
 
+      // Notifications seulement sur l'adresse officielle : chaque preview
+      // Cloudflare (une adresse par branche) aurait son propre abonnement, donc
+      // une notification en double par preview ouverte un jour. Sur une
+      // preview, on retire l'abonnement de l'appareil s'il existe.
+      if (location.hostname !== 'app.one2onecoaching.fr') {
+        const ancien = await reg.pushManager.getSubscription();
+        if (ancien) {
+          await getSupabase().from('push_subscriptions').delete().eq('endpoint', ancien.endpoint);
+          await ancien.unsubscribe();
+        }
+        return;
+      }
+
       // Récupérer ou créer l'abonnement
       let sub = await reg.pushManager.getSubscription();
 
