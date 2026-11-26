@@ -10,7 +10,7 @@
 const ECRANS_FICHE = ['coach-client-edit', 'coach-client-programme', 'coach-training-client', 'coach-plan-edit',
   'coach-calcul-nutrition', 'coach-habits-edit', 'coach-journal-suivi', 'coach-journal', 'coach-journal-view',
   'coach-bilan-client', 'coach-mesure-client', 'coach-client-messages', 'coach-client-suivi',
-  'coach-seance-studio', 'coach-programme-archive', 'coach-cardio-plan', 'coach-client-notifs'];
+  'coach-seance-studio', 'coach-programme-archive', 'coach-cardio-plan', 'coach-client-notifs', 'coach-client-facturation'];
 
 const FicheOnglets = {
   _cle() { return 'ficheOnglets_' + (Router.userProfile?.id || ''); },

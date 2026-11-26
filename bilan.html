@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ton bilan offert · ONE2ONE Saint-Estève</title>
+<meta name="description" content="Bilan personnalisé offert avec un coach au studio ONE2ONE, à Saint-Estève près de Perpignan. Sans engagement.">
+<meta name="theme-color" content="#0A1230">
+<meta property="og:title" content="Ton bilan offert avec un coach · ONE2ONE">
+<meta property="og:description" content="1 heure au studio pour faire le point et repartir avec un plan clair. Sans engagement.">
+<meta property="og:image" content="https://app.one2onecoaching.fr/img/site/studio-2.jpg">
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<!-- Pixel Meta (le même que la page systeme.io) -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1483076663534462');
+fbq('track', 'PageView');
+</script>
+<style>
+  /* Aux couleurs du site one2onecoaching.fr */
+  :root {
+    --blue: #004AAD; --blue-light: #3A82FF; --blue-pale: #EAF1FC;
+    --ink: #0A1230; --ink-soft: #4A5478; --paper: #F2F5FA; --white: #fff; --line: #E2E8F2;
+    --vert: #15803D; --rouge: #B91C1C;
+    --ease: cubic-bezier(.22,.61,.36,1);
+    --ombre: 0 2px 4px -2px rgba(10,18,48,.05), 0 24px 48px -30px rgba(10,18,48,.26);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: "DM Sans", system-ui, sans-serif; color: var(--ink); background: var(--paper); line-height: 1.6; font-size: 16px;
+         -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  img, video { max-width: 100%; display: block; }
+  a { color: inherit; }
+  h1, h2, h3, .display { font-family: "Bebas Neue", sans-serif; font-weight: 400; line-height: .92; letter-spacing: .01em; text-transform: uppercase; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  .eyebrow { font-size: .74rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--blue); }
+  [hidden] { display: none !important; }
+
+  /* Boutons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .6em; font: inherit; font-weight: 700; font-size: 1rem;
+         padding: 17px 30px; border-radius: 100px; border: 1.5px solid transparent; cursor: pointer; text-decoration: none;
+         transition: transform .4s var(--ease), box-shadow .4s var(--ease), background .3s var(--ease); }
+  .btn-primary { background: var(--blue); color: #fff; box-shadow: 0 12px 34px -14px rgba(0,74,173,.55); }
+  .btn-primary:hover { transform: translateY(-2px); background: #0053c4; }
+  .btn-clair { background: #fff; color: var(--blue); border-color: var(--line); }
+  .btn-clair:hover { border-color: var(--blue); }
+  .btn:disabled { opacity: .5; cursor: default; transform: none; }
+  .btn-large { width: 100%; }
+
+  /* En-tête */
+  header.site { position: sticky; top: 0; z-index: 50; background: rgba(10,18,48,.82); backdrop-filter: blur(18px) saturate(160%);
+                -webkit-backdrop-filter: blur(18px) saturate(160%); border-bottom: 1px solid rgba(255,255,255,.08); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .nav img { height: 26px; width: auto; }
+  .nav .btn { padding: 10px 20px; font-size: .9rem; }
+
+  /* Héros */
+  .hero { position: relative; color: #fff; overflow: hidden; background: linear-gradient(160deg, #0A1230 0%, #0b1a44 55%, #071031 100%); }
+  .hero video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero .voile { position: absolute; inset: 0; background: linear-gradient(170deg, rgba(10,18,48,.78), rgba(7,16,49,.86) 60%, rgba(7,16,49,.95)); }
+  .hero-inner { position: relative; padding-top: 44px; padding-bottom: 40px; }
+  .recu { display: inline-flex; align-items: center; gap: 8px; background: rgba(34,197,94,.16); border: 1px solid rgba(74,222,128,.4); color: #BBF7D0;
+          border-radius: 100px; padding: 6px 14px; font-size: .85rem; font-weight: 600; margin-bottom: 16px; }
+  .hero .eyebrow { color: rgba(255,255,255,.62); }
+  .hero h1 { font-size: clamp(3rem, 11vw, 5.6rem); margin: 14px 0 14px; }
+  .hero h1 em { font-style: normal; color: var(--blue-light); }
+  .hero-sub { font-size: 1.08rem; color: rgba(255,255,255,.78); max-width: 34ch; margin-bottom: 22px; }
+  .infos { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0; margin-bottom: 28px;
+           font-size: .78rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.88); }
+  .infos li + li::before { content: ""; display: inline-block; width: 1px; height: 12px; background: rgba(255,255,255,.3); margin: 0 14px; vertical-align: -1px; }
+  .hero .btn { width: 100%; max-width: 380px; }
+  .prochain { margin-top: 12px; font-size: .92rem; color: rgba(255,255,255,.72); min-height: 1.4em; }
+  .prochain b { color: #fff; }
+  .preuve { display: flex; gap: 22px; margin-top: 28px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.12); }
+  .preuve div { font-size: .85rem; color: rgba(255,255,255,.66); line-height: 1.35; }
+  .preuve b { display: block; font-family: "Bebas Neue"; font-weight: 400; font-size: 2rem; color: #fff; letter-spacing: .02em; line-height: 1; }
+  .preuve .etoiles { color: #FBBF24; font-size: .8em; vertical-align: .08em; }
+
+  /* Sections */
+  section.bloc { padding: 56px 0; }
+  .bloc h2 { font-size: clamp(2.3rem, 8vw, 3.6rem); margin: 10px 0 12px; }
+  .bloc .intro { color: var(--ink-soft); font-size: 1.05rem; max-width: 52ch; margin-bottom: 28px; }
+  .blanc { background: #fff; }
+  .sombre { background: radial-gradient(900px 500px at 100% 0%, rgba(58,130,255,.22), transparent 55%), var(--ink); color: #fff; }
+  .sombre .intro { color: rgba(255,255,255,.72); }
+  .sombre .eyebrow { color: #8fb6ff; }
+
+  /* Réservation */
+  #reserver { scroll-margin-top: 72px; }
+  .carte { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 22px; box-shadow: var(--ombre); margin-bottom: 16px; }
+  .etape { font-size: .74rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--blue); margin-bottom: 14px; }
+  .jours { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .jours::-webkit-scrollbar { display: none; }
+  .jour { flex: 0 0 auto; min-width: 64px; border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 10px;
+          text-align: center; cursor: pointer; font-family: inherit; color: var(--ink); }
+  .jour b { display: block; font-size: 1.2rem; }
+  .jour span { font-size: .75rem; color: var(--ink-soft); text-transform: capitalize; }
+  .jour.on { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .jour.on span { color: #DCE8FF; }
+  .jour:disabled { opacity: .35; cursor: default; }
+  .heures { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 16px; }
+  .heure { border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 11px 0; font-size: 1rem; font-weight: 700;
+           cursor: pointer; font-family: inherit; color: var(--ink); }
+  .heure:hover { border-color: var(--blue); }
+  .heure.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .vide, .chargement { color: var(--ink-soft); font-size: .92rem; margin-top: 14px; }
+  label { display: block; font-size: .85rem; font-weight: 700; margin: 14px 0 6px; }
+  label small { color: var(--ink-soft); font-weight: 500; }
+  input { width: 100%; font: inherit; font-size: 16px; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
+  input:focus { outline: none; border-color: var(--blue); }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .piege { position: absolute; left: -5000px; }
+  .choix { background: var(--blue-pale); border-radius: 12px; padding: 12px 14px; font-size: .98rem; font-weight: 700; color: var(--blue); }
+  #formulaire .btn { margin-top: 20px; }
+  .erreur { color: var(--rouge); font-size: .92rem; margin-top: 12px; }
+  .legal { color: var(--ink-soft); font-size: .78rem; line-height: 1.5; margin-top: 14px; opacity: .85; }
+  .rassure { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 20px; color: var(--ink-soft); font-size: .88rem; }
+  .rassure span::before { content: "✓ "; color: var(--vert); font-weight: 700; }
+  .aide { color: var(--ink-soft); font-size: .92rem; text-align: center; margin-top: 18px; }
+
+  /* Déroulé du bilan */
+  .etapes { display: grid; gap: 12px; }
+  .et { display: flex; gap: 16px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--ombre); }
+  .et .n { font-family: "Bebas Neue"; font-size: 2.2rem; color: var(--blue); line-height: 1; min-width: 36px; }
+  .et b { display: block; font-size: 1.02rem; margin-bottom: 2px; }
+  .et p { color: var(--ink-soft); font-size: .95rem; }
+
+  /* Transformations */
+  .defile { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 20px 18px; margin: 0 -20px; scrollbar-width: none; }
+  .defile::-webkit-scrollbar { display: none; }
+  .tcard { scroll-snap-align: start; flex: 0 0 78%; max-width: 320px; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: var(--ombre); color: var(--ink); }
+  .tcard img { aspect-ratio: 1/1; object-fit: cover; width: 100%; }
+  .tcard div { padding: 14px 16px; font-weight: 700; }
+  .tcard small { display: block; color: var(--ink-soft); font-weight: 500; }
+  .indice { font-size: .82rem; color: rgba(255,255,255,.55); }
+
+  /* Avis */
+  .avis { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 20px 18px; margin: 0 -20px; scrollbar-width: none; }
+  .avis::-webkit-scrollbar { display: none; }
+  .avi { scroll-snap-align: start; flex: 0 0 84%; max-width: 360px; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: var(--ombre);
+         display: flex; flex-direction: column; gap: 12px; }
+  .avi .etoiles { color: #F5B301; letter-spacing: 2px; }
+  .avi p { font-size: .97rem; }
+  .avi .qui { margin-top: auto; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+  .avi .qui small { color: var(--ink-soft); font-weight: 500; font-size: .8rem; }
+
+  /* Studio */
+  .studio-photos { display: grid; grid-template-columns: 1.1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; margin-bottom: 26px; }
+  .studio-photos img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; }
+  .studio-photos img:first-child { grid-row: 1 / 3; aspect-ratio: 3/4.2; }
+  .points { display: grid; gap: 14px; }
+  .point { display: flex; gap: 14px; }
+  .point .ico { flex: 0 0 40px; height: 40px; border-radius: 12px; background: var(--blue-pale); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .point b { display: block; }
+  .point p { color: var(--ink-soft); font-size: .95rem; }
+
+  /* Équipe */
+  /* minmax(0, 1fr) : toutes les photos ont la même taille, même avec un prénom long (Christophe) */
+  .equipe { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 22px; }
+  .coach { text-align: center; font-weight: 700; font-size: .9rem; min-width: 0; overflow-wrap: anywhere; cursor: default;
+           -webkit-tap-highlight-color: transparent; }
+  .coach .photo { border-radius: 50%; margin-bottom: 8px; border: 3px solid #fff; box-shadow: var(--ombre); overflow: hidden;
+                  transition: transform .45s var(--ease), border-color .3s var(--ease), box-shadow .45s var(--ease); }
+  .coach img { width: 100%; aspect-ratio: 1/1; object-fit: cover; transition: transform .6s var(--ease); }
+  .coach:hover .photo, .coach:active .photo, .coach.touche .photo { transform: translateY(-4px) scale(1.07); border-color: var(--blue-light);
+            box-shadow: 0 18px 34px -16px rgba(0,74,173,.55); }
+  .coach:hover img, .coach:active img, .coach.touche img { transform: scale(1.08); }
+  .coach small { transition: color .3s; }
+  .coach:hover small, .coach.touche small { color: var(--blue); }
+
+  /* Apparition en douceur au défilement */
+  .apparait { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+  .apparait.vu { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .apparait { opacity: 1; transform: none; transition: none; } }
+
+  /* Cartes : léger soulèvement au survol, comme sur le site */
+  .et, .tcard, .avi { transition: opacity .7s var(--ease), transform .55s var(--ease), box-shadow .45s var(--ease); }
+  .et:hover, .tcard:hover, .avi:hover { transform: translateY(-4px); box-shadow: 0 26px 46px -22px rgba(10,18,48,.32); }
+  .coach small { display: block; color: var(--ink-soft); font-weight: 500; font-size: .75rem; }
+
+  /* Pour toi si */
+  .pour { display: grid; gap: 10px; }
+  .pour div { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 14px 16px; font-weight: 600; }
+  .pour div::before { content: "→ "; color: var(--blue-light); }
+
+  /* FAQ */
+  details { background: #fff; border: 1px solid var(--line); border-radius: 14px; margin-bottom: 10px; }
+  summary { cursor: pointer; padding: 16px 18px; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--blue); font-size: 1.3rem; line-height: 1; }
+  details[open] summary::after { content: "–"; }
+  details p { padding: 0 18px 16px; color: var(--ink-soft); }
+
+  /* Fin de page */
+  .final { text-align: center; }
+  .final h2 { margin-bottom: 18px; }
+  .final .btn { width: 100%; max-width: 380px; }
+  footer { background: var(--ink); color: rgba(255,255,255,.6); font-size: .85rem; padding: 32px 0 110px; }
+  footer img { height: 22px; width: auto; margin-bottom: 14px; }
+  footer a { color: rgba(255,255,255,.8); }
+  footer .liens { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; }
+
+  /* Barre « Réserver » fixe en bas (téléphone) */
+  .barre { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+           background: rgba(255,255,255,.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line);
+           transform: translateY(110%); transition: transform .35s var(--ease); }
+  .barre.on { transform: none; }
+  .barre .btn { width: 100%; padding: 15px; }
+
+  /* Confirmation */
+  .ok { text-align: center; padding-top: 36px; }
+  .ok .rond { width: 68px; height: 68px; border-radius: 50%; background: #DCFCE7; color: var(--vert); font-size: 34px; line-height: 68px; margin: 0 auto 12px; }
+  .ok h2 { font-size: 2.8rem; margin-bottom: 8px; }
+  .ok p { color: var(--ink-soft); margin: 8px 0; }
+  .ok .quand { color: var(--ink); font-weight: 700; font-size: 1.1rem; }
+  .ok .btn { width: 100%; margin-top: 10px; }
+  .adresse { display: block; margin: 14px auto 6px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; text-decoration: none; line-height: 1.45; }
+  .adresse span { color: var(--blue); font-weight: 700; font-size: .92rem; }
+  .audit { background: var(--blue-pale); border-radius: 16px; padding: 18px; margin: 18px 0 6px; text-align: left; }
+  .audit b { color: var(--blue); font-size: 1.05rem; }
+  .audit p { margin: 6px 0 0; font-size: .93rem; }
+
+  @media (min-width: 760px) {
+    .hero-inner { padding-top: 80px; padding-bottom: 72px; }
+    .hero .btn { width: auto; }
+    .etapes { grid-template-columns: 1fr 1fr; }
+    .reserver-grille { display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: start; }
+    .tcard { flex-basis: 300px; }
+    .avi { flex-basis: 340px; }
+    .studio-grille { display: grid; grid-template-columns: 1.1fr 1fr; gap: 44px; align-items: center; }
+    .studio-photos { margin-bottom: 0; }
+    .pour { grid-template-columns: 1fr 1fr; }
+    .barre { display: none; }
+    footer { padding-bottom: 40px; }
+  }
+  @media (max-width: 420px) {
+    .deux { grid-template-columns: 1fr; }
+    .equipe { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap nav">
+    <img src="/img/logo-one2one.png" alt="ONE2ONE">
+    <a class="btn btn-primary" href="#reserver" id="navReserver">Réserver</a>
+  </div>
+</header>
+
+<div id="landing">
+
+  <!-- 1. Héros -->
+  <section class="hero">
+    <video autoplay muted loop playsinline preload="metadata" poster="/img/site/studio-2.jpg">
+      <source src="/img/site/hero.mp4" type="video/mp4">
+    </video>
+    <div class="voile"></div>
+    <div class="wrap hero-inner">
+      <div class="recu" id="recu" hidden>✓ Ta demande est bien reçue</div>
+      <div class="eyebrow">Studio de coaching · Saint-Estève</div>
+      <h1 id="titre">Ton bilan <em>offert</em> avec un coach</h1>
+      <p class="hero-sub" id="sousTitre">1 heure au studio pour faire le point sur ton point de départ, tes objectifs et ce qui te bloque. Tu repars avec un plan clair.</p>
+      <ul class="infos">
+        <li>Offert</li><li>1 heure</li><li>Sans engagement</li><li>Saint-Estève</li>
+      </ul>
+      <a class="btn btn-primary" href="#reserver">Choisir mon créneau →</a>
+      <div class="prochain" id="prochain"></div>
+      <div class="preuve">
+        <div><b>+150</b>transformations accompagnées depuis 2023</div>
+        <div><b>5,0 <span class="etoiles">★</span></b>sur 76 avis Google</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Réservation (tout de suite : le prospect vient de remplir le formulaire Meta) -->
+  <section class="bloc" id="reserver">
+    <div class="wrap reserver-grille">
+      <div>
+        <div class="eyebrow">Réservation</div>
+        <h2>Choisis ton créneau</h2>
+        <div class="rassure"><span>100 % offert</span><span>Sans engagement</span><span>Aucun paiement</span></div>
+      </div>
+      <div>
+        <div class="carte">
+          <div class="etape">1 · Ton jour et ton heure</div>
+          <div id="chargement" class="chargement">Chargement des créneaux disponibles…</div>
+          <div class="jours" id="jours"></div>
+          <div class="heures" id="heures"></div>
+          <div class="vide" id="vide" hidden></div>
+        </div>
+
+        <form class="carte" id="formulaire" hidden novalidate>
+          <div class="etape">2 · Tes coordonnées</div>
+          <div class="choix" id="choix"></div>
+          <div class="deux">
+            <div><label for="prenom">Prénom</label><input id="prenom" autocomplete="given-name" required></div>
+            <div><label for="nom">Nom</label><input id="nom" autocomplete="family-name"></div>
+          </div>
+          <label for="telephone">Téléphone</label>
+          <input id="telephone" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" required>
+          <label for="email">Email <small>(facultatif)</small></label>
+          <input id="email" type="email" inputmode="email" autocomplete="email">
+          <input class="piege" id="site" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <button class="btn btn-primary btn-large" id="valider" type="submit">Confirmer mon bilan offert</button>
+          <div class="erreur" id="erreur" hidden></div>
+          <p class="legal">Tes coordonnées servent uniquement à organiser ton rendez-vous et à te recontacter à ce sujet.
+            <a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a></p>
+        </form>
+        <p class="aide" id="aide">Aucun créneau ne te convient ? <a id="whatsapp" target="_blank" rel="noopener">Écris-nous sur WhatsApp</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Ce qui se passe pendant le bilan -->
+  <section class="bloc blanc">
+    <div class="wrap">
+      <div class="eyebrow">Ton bilan</div>
+      <h2>Ce qu'on fait ensemble pendant 1 heure</h2>
+      <p class="intro">Un vrai temps avec un coach, pour toi. On ne programme rien avant de te connaître.</p>
+      <div class="etapes">
+        <div class="et"><div class="n">01</div><div><b>Ton point de départ</b><p>Ta situation, ton mode de vie, ton historique sportif et alimentaire.</p></div></div>
+        <div class="et"><div class="n">02</div><div><b>Tes objectifs</b><p>Perte de poids, remise en forme, performance : ce que tu veux vraiment, et pour quand.</p></div></div>
+        <div class="et"><div class="n">03</div><div><b>Ce qui te bloque</b><p>Ce qui n'a pas marché jusqu'ici, et pourquoi.</p></div></div>
+        <div class="et"><div class="n">04</div><div><b>Ton plan</b><p>Le plan le plus adapté pour toi. Tu repars avec, que tu continues avec nous ou non.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Transformations -->
+  <section class="bloc sombre">
+    <div class="wrap">
+      <div class="eyebrow">Résultats</div>
+      <h2>Ils ont commencé par un bilan</h2>
+      <p class="intro">Des clients du studio, pas des photos d'agence. Pas de retouches.</p>
+      <div class="defile">
+        <div class="tcard"><img src="/img/site/trans-aurelie.jpg" alt="Transformation d'Aurélie" loading="lazy"><div>Aurélie<small>12 mois d'accompagnement</small></div></div>
+        <div class="tcard"><img src="/img/site/trans-benoit.jpg" alt="Transformation de Benoît" loading="lazy"><div>Benoît<small>6 mois d'accompagnement</small></div></div>
+        <div class="tcard"><img src="/img/site/trans-kevin.jpg" alt="Transformation de Kevin" loading="lazy"><div>Kevin<small>4 mois d'accompagnement</small></div></div>
+        <div class="tcard"><img src="/img/site/trans-yoann.jpg" alt="Transformation de Yoann" loading="lazy"><div>Yoann<small>3 mois d'accompagnement</small></div></div>
+        <div class="tcard"><img src="/img/site/trans-vanessa.jpg" alt="Transformation de Vanessa" loading="lazy"><div>Vanessa<small>2 mois d'accompagnement</small></div></div>
+      </div>
+      <div class="indice">← Fais défiler</div>
+    </div>
+  </section>
+
+  <!-- 5. Avis Google -->
+  <section class="bloc">
+    <div class="wrap">
+      <div class="eyebrow">Témoignages</div>
+      <h2>Ce qu'ils en disent</h2>
+      <p class="intro">76 avis publiés sur Google, tous 5 étoiles.</p>
+      <div class="avis">
+        <div class="avi"><div class="etoiles">★★★★★</div><p>« Après 7 ans sans sport et quelques soucis de santé, ils m'ont permis de me remettre en selle. Une équipe au top, qui s'adapte même sur les horaires, jusqu'à commencer à 5h du matin. Résultat : 7 kg en moins et une bien meilleure forme, physique comme mentale. Je recommande sans hésiter. »</p><div class="qui">Teddy <small>Avis Google</small></div></div>
+        <div class="avi"><div class="etoiles">★★★★★</div><p>« Nous avons découvert le studio et nous sommes ravis. Dès les premières séances, de vrais progrès. Des coachs extrêmement professionnels, à l'écoute et attentifs à nos besoins. Un accompagnement personnalisé, motivant et efficace. Je recommande vivement ! »</p><div class="qui">Magali <small>Avis Google</small></div></div>
+        <div class="avi"><div class="etoiles">★★★★★</div><p>« Après avoir abandonné le sport à la maison, j'avais besoin de me reprendre en main. Les coachs sont tous très pro, sympa et à l'écoute. Inscrit depuis mi-janvier, j'ai déjà des résultats. Et le studio est très bien équipé et impeccable. »</p><div class="qui">Kévin <small>Avis Google</small></div></div>
+        <div class="avi"><div class="etoiles">★★★★★</div><p>« Coaching personnalisé vraiment au top. Beaucoup de pédagogie et de patience, des conseils adaptés aux objectifs et des réajustements si besoin. Un suivi complet et qualitatif. Je recommande grandement. »</p><div class="qui">Claudine <small>Avis Google</small></div></div>
+        <div class="avi"><div class="etoiles">★★★★★</div><p>« Un professionnalisme et un accompagnement hors du commun. On vous suit dans votre évolution, aussi bien sportive que personnelle. Inscrit depuis août 2024, je recommande sans réserve, quels que soient vos objectifs. »</p><div class="qui">Cédric <small>Avis Google</small></div></div>
+        <div class="avi"><div class="etoiles">★★★★★</div><p>« Un coaching d'excellence. Plus de 2 ans de suivi pour ma part, et toujours aussi satisfait. Au top. »</p><div class="qui">Victor <small>Avis Google</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Le studio -->
+  <section class="bloc blanc">
+    <div class="wrap studio-grille">
+      <div class="studio-photos">
+        <img src="/img/site/studio-1.jpg" alt="Le studio ONE2ONE à Saint-Estève" loading="lazy">
+        <img src="/img/site/studio-2.jpg" alt="Espace d'entraînement" loading="lazy">
+        <img src="/img/site/studio-3.jpg" alt="Équipement du studio" loading="lazy">
+      </div>
+      <div>
+        <div class="eyebrow">Le studio</div>
+        <h2>Pas une salle de sport</h2>
+        <p class="intro">Un studio privé où l'on ne s'occupe que de toi.</p>
+        <div class="points">
+          <div class="point"><div class="ico">👤</div><div><b>Un coach, un client</b><p>Ton coach est avec toi à chaque séance, et l'ajuste à ton état du jour.</p></div></div>
+          <div class="point"><div class="ico">⏱</div><div><b>Jamais d'attente</b><p>Ton créneau est réservé, ton matériel disponible. Ton heure est à toi.</p></div></div>
+          <div class="point"><div class="ico">🙌</div><div><b>Aucun regard de trop</b><p>Un cadre où on se dépasse sans se sentir jugé.</p></div></div>
+          <div class="point"><div class="ico">🥗</div><div><b>Bien plus que l'entraînement</b><p>Alimentation, habitudes, organisation : tout est suivi dans notre application.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. L'équipe -->
+  <section class="bloc">
+    <div class="wrap">
+      <div class="eyebrow">L'équipe</div>
+      <h2>Tes coachs</h2>
+      <div class="equipe">
+        <div class="coach"><div class="photo"><img src="/img/site/coach-ben-tete.jpg" alt="Benjamin" loading="lazy"></div>Benjamin<small>Fondateur</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-chris-tete.jpg" alt="Christophe" loading="lazy"></div>Christophe<small>Fondateur</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-lola-tete.jpg" alt="Lola" loading="lazy"></div>Lola<small>Coach</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-cyril-tete.jpg" alt="Cyril" loading="lazy"></div>Cyril<small>Coach</small></div>
+        <div class="coach"><div class="photo"><img src="/img/site/coach-diego-tete.jpg" alt="Diego" loading="lazy"></div>Diego<small>Coach</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. C'est pour toi si -->
+  <section class="bloc sombre">
+    <div class="wrap">
+      <div class="eyebrow">Pour qui ?</div>
+      <h2>C'est pour toi si…</h2>
+      <div class="pour">
+        <div>Tu veux perdre du poids durablement, sans régime miracle</div>
+        <div>Tu as besoin d'être encadré pour enfin tenir dans la durée</div>
+        <div>Tu reprends le sport après des années, ou après une blessure</div>
+        <div>Tu veux un plan clair plutôt que des programmes génériques</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. FAQ -->
+  <section class="bloc">
+    <div class="wrap">
+      <div class="eyebrow">Questions</div>
+      <h2>Tu te demandes peut-être…</h2>
+      <details><summary>Le bilan est vraiment gratuit ?</summary><p>Oui, totalement. Aucun paiement, aucune carte bancaire demandée. Tu repars avec ton plan, que tu continues avec nous ou non.</p></details>
+      <details><summary>Je suis obligé de m'inscrire après ?</summary><p>Non. Le bilan sert à faire le point et à voir si notre accompagnement te correspond. C'est toi qui décides.</p></details>
+      <details><summary>Je n'ai pas fait de sport depuis longtemps, c'est grave ?</summary><p>Pas du tout. Une bonne partie de nos clients démarrent après des années sans activité. Le plan part de ton niveau réel.</p></details>
+      <details><summary>Je dois prévoir une tenue de sport ?</summary><p>On te dit tout sur WhatsApp la veille de ton rendez-vous.</p></details>
+      <details><summary>Où se trouve le studio ?</summary><p>32 avenue de Torremila, 66240 Saint-Estève, à quelques minutes de Perpignan. <a href="https://maps.app.goo.gl/GYyv38WCVMhzN56c9" target="_blank" rel="noopener">Voir l'itinéraire</a></p></details>
+      <details><summary>Et si aucun créneau ne me va ?</summary><p>Écris-nous sur WhatsApp, on te trouve un moment. Les créneaux affichés couvrent les 7 prochains jours.</p></details>
+    </div>
+  </section>
+
+  <!-- 10. Dernier appel -->
+  <section class="bloc blanc final">
+    <div class="wrap">
+      <h2>Ta transformation commence par un bilan</h2>
+      <a class="btn btn-primary" href="#reserver">Choisir mon créneau →</a>
+      <div class="prochain" id="prochain2" style="color:var(--ink-soft)"></div>
+    </div>
+  </section>
+</div>
+
+<!-- Confirmation (remplace toute la page une fois réservé) -->
+<main class="wrap ok" id="confirmation" hidden>
+  <div class="rond">✓</div>
+  <h2>C'est réservé !</h2>
+  <p class="quand" id="quand"></p>
+  <a class="adresse" href="https://maps.app.goo.gl/GYyv38WCVMhzN56c9" target="_blank" rel="noopener">📍 Studio ONE2ONE<br>32 avenue de Torremila, 66240 Saint-Estève<br><span>Voir l'itinéraire ›</span></a>
+  <p>Ton bilan est noté. On te contactera sur WhatsApp la veille pour te le rappeler et te dire quoi prévoir.</p>
+  <div class="audit" id="blocAudit" hidden>
+    <b>Dernière étape : ton questionnaire</b>
+    <p>5 à 10 minutes pour nous parler de toi, de ton alimentation, de ta digestion et de ton sommeil. Ton coach s'en sert pour préparer ton bilan.</p>
+    <a class="btn btn-primary" id="lienAudit">📝 Remplir mon questionnaire</a>
+  </div>
+  <a class="btn btn-clair" id="google" target="_blank" rel="noopener">📅 Ajouter à Google Agenda</a>
+  <a class="btn btn-clair" id="ics" download="bilan-one2one.ics">📅 Ajouter à mon calendrier (iPhone, Outlook)</a>
+  <div style="height:40px"></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <img src="/img/logo-one2one.png" alt="ONE2ONE">
+    <div>Studio de coaching 100 % individuel · 32 avenue de Torremila, 66240 Saint-Estève</div>
+    <div class="liens">
+      <a href="https://www.instagram.com/one2one_le_studio/" target="_blank" rel="noopener">Instagram</a>
+      <a href="https://one2onecoaching.fr/mentions-legales.html" target="_blank" rel="noopener">Mentions légales</a>
+      <a href="/confidentialite.html" target="_blank" rel="noopener">Confidentialité</a>
+    </div>
+    <div style="margin-top:12px">© 2026 SARL ONE2ONE</div>
+  </div>
+</footer>
+
+<div class="barre" id="barre"><a class="btn btn-primary" href="#reserver">Choisir mon créneau →</a></div>
+
+<script>
+const API = 'https://ahbeturxnnyukkuytesc.supabase.co/functions/v1/reservation-bilan';
+const WHATSAPP = '33676355686';
+const params = new URLSearchParams(location.search);
+const source = params.get('src') || 'meta';
+const $ = id => document.getElementById(id);
+let creneaux = [], jourChoisi = null, debutChoisi = null;
+
+// Arrivée depuis le formulaire Meta (lien de fin du formulaire : ?src=meta&merci=1)
+if (params.get('merci') === '1') {
+  $('recu').hidden = false;
+  $('titre').innerHTML = 'Dernière étape : <em>choisis ton créneau</em>';
+  $('sousTitre').textContent = 'Ton bilan offert d\'1 heure au studio avec un coach. Réserve-le maintenant en 30 secondes, sans attendre notre appel.';
+}
+
+$('whatsapp').href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent("Bonjour, je souhaiterais réserver un bilan personnalisé offert, mais aucun créneau ne me convient.");
+
+const cleJour = d => d.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });           // 2026-11-25
+const heure = d => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+const dateLongue = d => d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' });
+
+async function charger() {
+  $('chargement').hidden = false;
+  try {
+    const r = await fetch(API);
+    const d = await r.json();
+    creneaux = (d.creneaux || []).map(x => new Date(x));
+  } catch (e) { creneaux = []; }
+  $('chargement').hidden = true;
+  afficherProchain();
+  afficherJours();
+}
+
+// « Prochain créneau libre : demain à 9:00 » (sous les boutons)
+function afficherProchain() {
+  const c = creneaux[0];
+  let t = '';
+  if (c) {
+    const demain = cleJour(new Date(Date.now() + 864e5));
+    const quand = cleJour(c) === demain ? 'demain' : dateLongue(c);
+    t = `Prochain créneau libre : <b>${quand} à ${heure(c)}</b>`;
+  }
+  $('prochain').innerHTML = t;
+  $('prochain2').innerHTML = t.replace(/<\/?b>/g, '');
+}
+
+function afficherJours() {
+  // Les 7 prochains jours (demain → J+7), même ceux sans créneau
+  const jours = [];
+  for (let i = 1; i <= 7; i++) jours.push(new Date(Date.now() + i * 864e5));
+  const parJour = {};
+  creneaux.forEach(c => { (parJour[cleJour(c)] = parJour[cleJour(c)] || []).push(c); });
+  if (!jourChoisi || !parJour[jourChoisi]) jourChoisi = jours.map(cleJour).find(k => parJour[k]) || null;
+  $('jours').innerHTML = jours.map(d => {
+    const k = cleJour(d), n = (parJour[k] || []).length;
+    return `<button type="button" class="jour ${k === jourChoisi ? 'on' : ''}" ${n ? '' : 'disabled'} onclick="choisirJour('${k}')">
+      <span>${d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short' })}</span>
+      <b>${d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric' })}</b>
+      <span>${d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', month: 'short' })}</span></button>`;
+  }).join('');
+  const liste = jourChoisi ? parJour[jourChoisi] : [];
+  $('heures').innerHTML = liste.map(c => `<button type="button" class="heure ${debutChoisi && +debutChoisi === +c ? 'on' : ''}"
+      onclick="choisirHeure('${c.toISOString()}')">${heure(c)}</button>`).join('');
+  $('vide').hidden = creneaux.length > 0;
+  $('vide').textContent = 'Plus aucun créneau libre cette semaine : écris-nous sur WhatsApp, on te trouve un moment.';
+}
+
+function choisirJour(k) { jourChoisi = k; debutChoisi = null; $('formulaire').hidden = true; afficherJours(); }
+
+function choisirHeure(iso) {
+  debutChoisi = new Date(iso);
+  afficherJours();
+  $('choix').textContent = `📅 ${dateLongue(debutChoisi)} à ${heure(debutChoisi)}`;
+  $('formulaire').hidden = false;
+  $('erreur').hidden = true;
+  try { fbq('track', 'InitiateCheckout'); } catch (e) {}
+  $('formulaire').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => $('prenom').focus({ preventScroll: true }), 400);
+}
+
+function erreur(t) { $('erreur').textContent = t; $('erreur').hidden = false; }
+
+$('formulaire').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const prenom = $('prenom').value.trim(), tel = $('telephone').value.trim(), email = $('email').value.trim();
+  if (!prenom) return erreur('Indique ton prénom.');
+  if (tel.replace(/\D/g, '').length < 9) return erreur('Indique un numéro de téléphone valide.');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return erreur("L'email ne semble pas valide.");
+  $('valider').disabled = true; $('valider').textContent = 'Réservation…'; $('erreur').hidden = true;
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ debut: debutChoisi.toISOString(), prenom, nom: $('nom').value.trim(), telephone: tel, email,
+        source, site: $('site').value }) });
+    const d = await r.json().catch(() => ({}));
+    if (d.ok) return confirmer(d.questionnaire);
+    if (d.erreur === 'pris') {
+      erreur('Oups, ce créneau vient d\'être pris. Choisis-en un autre.');
+      debutChoisi = null; await charger(); return;
+    }
+    if (d.erreur === 'deja') {
+      const le = new Date(d.rdv_le);
+      return erreur(`Tu as déjà un rendez-vous le ${dateLongue(le)} à ${heure(le)}. Pour le changer, écris-nous sur WhatsApp.`);
+    }
+    if (d.erreur === 'champs') return erreur('Vérifie ton prénom et ton téléphone.');
+    erreur('La réservation n\'a pas pu aboutir. Réessaie dans un instant ou écris-nous sur WhatsApp.');
+  } catch (e) {
+    erreur('Pas de connexion. Réessaie dans un instant.');
+  } finally {
+    $('valider').disabled = false; $('valider').textContent = 'Confirmer mon bilan offert';
+  }
+});
+
+function confirmer(questionnaire) {
+  if (questionnaire) {
+    $('lienAudit').href = '/audit.html?j=' + encodeURIComponent(questionnaire);
+    $('blocAudit').hidden = false;
+  }
+  try { fbq('track', 'Schedule'); } catch (e) {}
+  const fin = new Date(+debutChoisi + 3600e3);
+  const z = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const titre = 'Bilan ONE2ONE', lieu = 'Studio ONE2ONE, 32 avenue de Torremila, 66240 Saint-Estève';
+  const t = `${dateLongue(debutChoisi)} à ${heure(debutChoisi)}`;
+  $('quand').textContent = t.charAt(0).toUpperCase() + t.slice(1);
+  $('google').href = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(titre)
+    + '&dates=' + z(debutChoisi) + '/' + z(fin) + '&location=' + encodeURIComponent(lieu);
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ONE2ONE//Bilan//FR', 'BEGIN:VEVENT',
+    'UID:' + z(debutChoisi) + '-' + Math.random().toString(36).slice(2) + '@one2onecoaching.fr', 'DTSTAMP:' + z(new Date()),
+    'DTSTART:' + z(debutChoisi), 'DTEND:' + z(fin), 'SUMMARY:' + titre, 'LOCATION:' + lieu.replace(/,/g, '\\,'),
+    'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:' + titre, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  $('ics').href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  $('landing').hidden = true;
+  $('barre').hidden = true;
+  $('navReserver').hidden = true;
+  $('confirmation').hidden = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Barre « Choisir mon créneau » en bas du téléphone : seulement quand ni le
+// héros ni la réservation ne sont à l'écran
+(() => {
+  const visibles = new Set();
+  const obs = new IntersectionObserver(entrees => {
+    entrees.forEach(e => e.isIntersecting ? visibles.add(e.target) : visibles.delete(e.target));
+    $('barre').classList.toggle('on', visibles.size === 0);
+  });
+  obs.observe(document.querySelector('.hero'));
+  obs.observe($('reserver'));
+})();
+
+// Apparition des blocs au défilement (sans JavaScript, tout reste visible)
+(() => {
+  if (!('IntersectionObserver' in window)) return;
+  const groupes = ['.et', '.tcard', '.avi', '.studio-photos img', '.point', '.coach', '.pour div', 'details', '.bloc h2'];
+  const obs = new IntersectionObserver(entrees => entrees.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('vu'); obs.unobserve(e.target);
+    setTimeout(() => { e.target.style.transitionDelay = ''; }, 1200);   // sinon le survol attendrait aussi
+  }), { threshold: .12 });
+  groupes.forEach(sel => document.querySelectorAll('#landing ' + sel).forEach((el, i) => {
+    el.classList.add('apparait');
+    el.style.transitionDelay = (sel === '.bloc h2' ? 0 : Math.min(i % 6, 5) * 70) + 'ms';
+    obs.observe(el);
+  }));
+  // Au doigt : la photo du coach touchée grossit un instant
+  document.querySelectorAll('.coach').forEach(c => c.addEventListener('touchstart', () => {
+    document.querySelectorAll('.coach.touche').forEach(x => x.classList.remove('touche'));
+    c.classList.add('touche');
+    clearTimeout(c._t); c._t = setTimeout(() => c.classList.remove('touche'), 900);
+  }, { passive: true }));
+})();
+
+charger();
+</script>
+</body>
+</html>

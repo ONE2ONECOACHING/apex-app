@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Ton questionnaire · ONE2ONE</title>
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bleu: #004aad; --bleu-fonce: #002d80; --bleu-clair: #EBF3FF; --fond: #F4F3EF;
+    --texte: #18181B; --gris: #52525B; --gris-clair: #A1A1AA; --bord: #E4E4E7; --blanc: #fff;
+    --vert: #15803D; --rouge: #B91C1C;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte); font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  .logo { font-weight: 800; letter-spacing: .18em; color: var(--bleu); font-size: 15px; }
+  h1 { font-size: 24px; line-height: 1.25; margin: 18px 0 8px; }
+  .sous { color: var(--gris); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .progression { display: flex; gap: 6px; margin: 0 0 8px; }
+  .progression span { flex: 1; height: 6px; border-radius: 3px; background: var(--bord); }
+  .progression span.on { background: var(--bleu); }
+  .etape-nom { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--bleu); margin-bottom: 14px; }
+  .carte { background: var(--blanc); border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 16px; }
+  .q { margin-bottom: 22px; }
+  .q:last-child { margin-bottom: 0; }
+  .q > label, .q > .titre { display: block; font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 8px; }
+  .aide { display: block; color: var(--gris); font-size: 13px; font-weight: 400; margin-top: 4px; white-space: pre-line; }
+  input[type=text], input[type=number], textarea { width: 100%; font: inherit; font-size: 16px; padding: 11px 13px; border: 1.5px solid var(--bord);
+    border-radius: 10px; background: var(--blanc); color: var(--texte); }
+  textarea { min-height: 76px; resize: vertical; }
+  input:focus, textarea:focus { outline: none; border-color: var(--bleu); }
+  .echelle { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+  .echelle button { border: 1.5px solid var(--bord); background: var(--blanc); border-radius: 8px; padding: 9px 0; font: inherit; font-size: 14px;
+    font-weight: 600; cursor: pointer; color: var(--texte); }
+  .echelle button.on { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+  .bornes { display: flex; justify-content: space-between; color: var(--gris); font-size: 12px; margin-top: 4px; }
+  .choix { display: flex; flex-direction: column; gap: 6px; }
+  .choix button { text-align: left; border: 1.5px solid var(--bord); background: var(--blanc); border-radius: 10px; padding: 10px 13px; font: inherit;
+    font-size: 15px; cursor: pointer; color: var(--texte); line-height: 1.35; }
+  .choix button.on { border-color: var(--bleu); background: var(--bleu-clair); color: var(--bleu-fonce); font-weight: 600; }
+  .boutons { display: flex; gap: 10px; margin-top: 18px; }
+  .bouton { flex: 1; border: 0; border-radius: 12px; padding: 15px; font: inherit; font-size: 16px; font-weight: 700; background: var(--bleu); color: #fff; cursor: pointer; }
+  .bouton.second { flex: 0 0 auto; background: var(--blanc); color: var(--bleu); border: 1.5px solid var(--bleu); padding: 15px 18px; }
+  .bouton:disabled { opacity: .5; cursor: default; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.45; color: var(--gris); margin-top: 6px; cursor: pointer; }
+  .consent input { width: 20px; height: 20px; margin-top: 1px; flex: 0 0 auto; accent-color: var(--bleu); }
+  .consent a { color: var(--gris); }
+  .erreur { color: var(--rouge); font-size: 14px; margin-top: 12px; }
+  .info { background: var(--bleu-clair); color: var(--bleu-fonce); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.45; margin-top: 12px; }
+  .ok { text-align: center; }
+  .ok .rond { width: 64px; height: 64px; border-radius: 50%; background: #DCFCE7; color: var(--vert); font-size: 32px; line-height: 64px; margin: 8px auto 12px; }
+  .ok h2 { margin: 0 0 6px; font-size: 22px; }
+  .ok p { color: var(--gris); line-height: 1.5; margin: 6px 0; }
+  [hidden] { display: none !important; }
+  @media (max-width: 420px) { .echelle { grid-template-columns: repeat(5, 1fr); } }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="logo">ONE2ONE</div>
+
+  <section id="chargement" class="carte"><p class="sous" style="margin:0">Chargement…</p></section>
+
+  <section id="invalide" class="carte" hidden>
+    <h1 style="margin-top:0">Lien introuvable</h1>
+    <p class="sous" style="margin:0">Ce lien de questionnaire n'est pas valide. Demande à ton coach de te le renvoyer.</p>
+  </section>
+
+  <section id="questionnaire" hidden>
+    <h1 id="titre">Ton questionnaire</h1>
+    <p class="sous">Prends 5 à 10 minutes pour répondre : ton coach s'en sert pour préparer ton bilan et le rendre vraiment utile. Aucune question n'est obligatoire, mais plus tu en dis, plus le bilan est précis.</p>
+    <div class="progression" id="progression"></div>
+    <form class="carte" id="formulaire" novalidate>
+      <div class="etape-nom" id="etapeNom"></div>
+      <div id="questions"></div>
+      <div id="fin" hidden>
+        <label class="consent"><input type="checkbox" id="consent">
+          <span>J'accepte que mes réponses (dont des informations sur ma santé) soient analysées par les coachs ONE2ONE, avec l'aide d'un outil d'aide à la rédaction, pour préparer mon bilan. Elles ne servent qu'à mon accompagnement chez ONE2ONE.
+          <a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a></span></label>
+        <div class="info" id="manque" hidden></div>
+      </div>
+      <div class="boutons">
+        <button type="button" class="bouton second" id="precedent">‹</button>
+        <button type="submit" class="bouton" id="suivant">Suivant</button>
+      </div>
+      <div class="erreur" id="erreur" hidden></div>
+    </form>
+  </section>
+
+  <section id="merci" class="carte ok" hidden>
+    <div class="rond">✓</div>
+    <h2>Merci !</h2>
+    <p>Tes réponses sont bien arrivées. Ton coach les étudie pour préparer ton bilan.</p>
+    <p>À très vite au studio 💪</p>
+  </section>
+</main>
+
+<script>
+const API = 'https://ahbeturxnnyukkuytesc.supabase.co/functions/v1/audit-bilan';
+const $ = id => document.getElementById(id);
+const jeton = new URLSearchParams(location.search).get('j') || '';
+const CLE = 'apex_audit_' + jeton;
+
+// Questions du Google Form « Audit ONE2ONE 2027 » (même texte, mêmes choix)
+const FREQ = ['Jamais', 'Quelques fois', 'Souvent', 'Tout le temps'];
+const DIFF = ['Aucune', 'Légère', 'Moyenne', 'Grande', 'Extrême'];
+const SECTIONS = [
+  { nom: 'Toi', questions: [
+    { q: 'Âge', t: 'texte', clavier: 'numeric' },
+    { q: 'Taille (en cm)', t: 'texte', clavier: 'numeric' },
+    { q: 'Poids (en kg)', t: 'texte', clavier: 'decimal' },
+    { q: 'Quel est ton objectif ?', t: 'para' },
+    { q: "Pourquoi c'est important pour toi de régler ça maintenant, et pas dans 6 mois ou 1 an ?", t: 'para' },
+    { q: "Es-tu prêt(e) à t'engager dans un processus de 6 mois pour changer durablement, même si les résultats ne sont pas visibles immédiatement ?", t: 'para' },
+    { q: 'Sur une échelle de 1 à 10, à quel point es-tu prêt(e) à investir financièrement pour régler ton problème pour de bon ?', t: 'echelle' },
+    { q: 'Vis-tu en couple ? Avec des enfants ? Si oui, quel âge ?', t: 'para' },
+  ]},
+  { nom: 'Nutrition', questions: [
+    { q: 'Note tes habitudes alimentaires', t: 'echelle', min: 'Très mauvaises', max: 'Très bonnes' },
+    { q: 'Combien de temps prends-tu pour manger ? Manges-tu en pleine conscience ?', t: 'texte' },
+    { q: "Combien de litres d'eau bois-tu par jour ?", t: 'texte' },
+    { q: 'Combien de pas fais-tu par jour en moyenne ?', t: 'texte' },
+    { q: 'Ton métier est-il physique ?', t: 'texte' },
+    { q: 'Que prends-tu pour le petit déjeuner en général ?', t: 'para' },
+    { q: 'Que prends-tu en collation le matin en général ?', t: 'para' },
+    { q: 'Que prends-tu pour le repas du midi en général ?', t: 'para' },
+    { q: "Que prends-tu en collation l'après-midi en général ?", t: 'para' },
+    { q: 'Que prends-tu pour le repas du soir en général ?', t: 'para' },
+    { q: 'Prends-tu une collation après le repas du soir en général ? (si oui, quoi ?)', t: 'para' },
+    { q: 'Pourquoi manges-tu ?', t: 'choix', options: [
+      "Je mange pour me nourrir, je n'éprouve pas de plaisir particulier",
+      "Je mange pour me nourrir et j'ai besoin d'éprouver du plaisir",
+      'Je mange pour me récompenser',
+      'Je mange pour atteindre mes objectifs',
+      "Je mange pour ma santé mais j'aime aussi profiter de certains plaisirs"] },
+    { q: 'À quel moment arrêtes-tu de manger ?', t: 'choix', options: [
+      "Quand je n'ai plus faim (satiété)",
+      "Quand j'ai mal au ventre (je n'y arrive plus)",
+      "Quand il n'y a plus de nourriture à disposition (j'ai besoin de finir tout ce qu'il y a sur la table)",
+      "Quand j'ai fini mon assiette (et ça me suffit)"] },
+    { q: 'Quels sont les INDISPENSABLES à ton bien-être ?', t: 'para',
+      aide: "Exemple : le plateau de sushis et la bouteille de vin du samedi soir avec mon conjoint(e). Ça, c'est intouchable !\nExemple : une glace après le dîner en été. Ça, c'est intouchable !" },
+    { q: 'Quelles émotions déclenchent chez toi un besoin compulsif de te réfugier dans la nourriture ?', t: 'choix',
+      options: ['Colère', 'Frustration', 'Tristesse', 'Ennui', 'Fatigue', 'Joie'] },
+    { q: 'Intolérances alimentaires', t: 'para' },
+    { q: 'Informations complémentaires au sujet de la nutrition ?', t: 'para' },
+  ]},
+  { nom: 'Digestion', questions: [
+    { q: 'Note ta digestion', t: 'echelle', min: 'Très mauvaise', max: 'Très bonne' },
+    { q: 'Fréquence des selles par jour', t: 'choix', options: ['Pas tous les jours', '1 fois par jour', '2 fois par jour', '3 fois par jour', 'Plus de 3 fois par jour'] },
+    { q: 'Constipation', t: 'choix', options: FREQ },
+    { q: 'Diarrhée', t: 'choix', options: FREQ },
+    { q: 'Ballonnements après les repas', t: 'choix', options: FREQ },
+    { q: 'Crampes abdominales', t: 'choix', options: FREQ },
+    { q: 'Coup de fatigue après les repas', t: 'choix', options: FREQ },
+    { q: 'Gaz excessifs', t: 'choix', options: FREQ },
+    { q: 'Syndrome du côlon irritable', t: 'choix', options: ['Oui', 'Non', 'Je ne sais pas'] },
+    { q: "Utilisation d'antibiotiques", t: 'choix', options: ['Oui', 'Non'] },
+    { q: "Utilisation d'anti-inflammatoires", t: 'choix', options: ['Oui', 'Non'] },
+    { q: 'Informations complémentaires', t: 'para' },
+  ]},
+  { nom: 'Sommeil', questions: [
+    { q: 'Note la qualité de ton sommeil', t: 'echelle', min: 'Très mauvais', max: 'Très bon' },
+    { q: "Combien d'heures dors-tu en moyenne la nuit ?", t: 'texte' },
+    { q: 'Tes horaires de coucher / lever sont-ils réguliers ?', t: 'choix', options: ['Oui', 'Non'] },
+    { q: 'Si oui, quels sont-ils ?', t: 'para' },
+    { q: 'Si non, pourquoi ?', t: 'para' },
+    { q: "Que fais-tu avant d'aller te coucher ? (TV, lecture, sport, repas, etc.)", t: 'para' },
+    { q: "Difficultés à s'endormir", t: 'choix', options: DIFF },
+    { q: 'Difficultés à rester endormi(e)', t: 'choix', options: DIFF },
+    { q: "T'arrive-t-il de te réveiller plus fatigué(e) que quand tu t'es couché(e) ?", t: 'choix', options: ['Jamais', 'Quelques fois', 'Souvent', 'Toujours'] },
+    { q: "As-tu déjà eu recours à des médicaments pour t'aider à t'endormir ?", t: 'para' },
+    { q: 'Informations complémentaires sur ton sommeil ?', t: 'para' },
+  ]},
+];
+
+let etape = 0;
+let reponses = {};                        // « s.q » → réponse
+try { reponses = JSON.parse(localStorage.getItem(CLE) || '{}') || {}; } catch (e) { reponses = {}; }
+const garder = () => { try { localStorage.setItem(CLE, JSON.stringify(reponses)); } catch (e) {} };
+const cle = (s, i) => s + '.' + i;
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function afficher() {
+  const s = SECTIONS[etape];
+  $('progression').innerHTML = SECTIONS.map((_, i) => `<span class="${i <= etape ? 'on' : ''}"></span>`).join('');
+  $('etapeNom').textContent = `${etape + 1} / ${SECTIONS.length} · ${s.nom}`;
+  $('questions').innerHTML = s.questions.map((q, i) => {
+    const k = cle(etape, i), v = reponses[k] ?? '';
+    const aide = q.aide ? `<span class="aide">${esc(q.aide)}</span>` : '';
+    if (q.t === 'texte') return `<div class="q"><label for="q${i}">${esc(q.q)}${aide}</label>
+      <input type="text" id="q${i}" data-k="${k}" ${q.clavier ? `inputmode="${q.clavier}"` : ''} value="${esc(v)}"></div>`;
+    if (q.t === 'para') return `<div class="q"><label for="q${i}">${esc(q.q)}${aide}</label>
+      <textarea id="q${i}" data-k="${k}">${esc(v)}</textarea></div>`;
+    if (q.t === 'echelle') return `<div class="q"><div class="titre">${esc(q.q)}${aide}</div>
+      <div class="echelle">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button type="button" class="${String(v) === String(n) ? 'on' : ''}" onclick="choisir('${k}', '${n}')">${n}</button>`).join('')}</div>
+      ${q.min ? `<div class="bornes"><span>${esc(q.min)}</span><span>${esc(q.max)}</span></div>` : ''}</div>`;
+    return `<div class="q"><div class="titre">${esc(q.q)}${aide}</div><div class="choix">
+      ${q.options.map((o, j) => `<button type="button" class="${v === o ? 'on' : ''}" onclick="choisir('${k}', ${j})">${esc(o)}</button>`).join('')}</div></div>`;
+  }).join('');
+  document.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', () => { reponses[el.dataset.k] = el.value; garder(); }));
+  $('precedent').hidden = etape === 0;
+  const derniere = etape === SECTIONS.length - 1;
+  $('fin').hidden = !derniere;
+  $('suivant').textContent = derniere ? 'Envoyer mes réponses' : 'Suivant';
+  $('erreur').hidden = true;
+  $('manque').hidden = true;
+}
+
+function choisir(k, v) {
+  const [s, i] = k.split('.').map(Number);
+  const q = SECTIONS[s].questions[i];
+  const val = q.t === 'choix' ? q.options[v] : v;
+  reponses[k] = reponses[k] === val ? '' : val;      // re-cliquer = effacer
+  garder();
+  afficher();
+}
+
+$('precedent').addEventListener('click', () => { if (etape > 0) { etape--; afficher(); window.scrollTo({ top: 0 }); } });
+
+let avertiManque = false;
+$('formulaire').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if (etape < SECTIONS.length - 1) { etape++; afficher(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (!$('consent').checked) { $('erreur').textContent = 'Coche la case pour accepter l\'analyse de tes réponses.'; $('erreur').hidden = false; return; }
+  const liste = [];
+  let vides = 0;
+  SECTIONS.forEach((s, si) => s.questions.forEach((q, qi) => {
+    const r = String(reponses[cle(si, qi)] ?? '').trim();
+    if (!r) vides++;
+    liste.push({ section: s.nom, question: q.q, reponse: r });
+  }));
+  if (vides > 15 && !avertiManque) {
+    avertiManque = true;
+    $('manque').textContent = `Il reste ${vides} questions sans réponse. Tu peux revenir en arrière pour compléter, ou cliquer à nouveau sur « Envoyer » pour envoyer quand même.`;
+    $('manque').hidden = false;
+    return;
+  }
+  $('suivant').disabled = true; $('suivant').textContent = 'Envoi…'; $('erreur').hidden = true;
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jeton, reponses: liste, consentement: true }) });
+    const d = await r.json().catch(() => ({}));
+    if (d.ok || d.erreur === 'deja') {
+      try { localStorage.removeItem(CLE); } catch (e) {}
+      $('questionnaire').hidden = true; $('merci').hidden = false; window.scrollTo({ top: 0 });
+      return;
+    }
+    $('erreur').textContent = d.erreur === 'jeton' ? 'Ce lien n\'est plus valide. Demande à ton coach de te le renvoyer.'
+      : 'L\'envoi n\'a pas abouti. Réessaie dans un instant (tes réponses sont gardées).';
+    $('erreur').hidden = false;
+  } catch (e) {
+    $('erreur').textContent = 'Pas de connexion. Réessaie dans un instant (tes réponses sont gardées).';
+    $('erreur').hidden = false;
+  } finally {
+    $('suivant').disabled = false; $('suivant').textContent = 'Envoyer mes réponses';
+  }
+});
+
+(async () => {
+  try {
+    const r = await fetch(API + '?j=' + encodeURIComponent(jeton));
+    const d = await r.json();
+    $('chargement').hidden = true;
+    if (!d.ok) { $('invalide').hidden = false; return; }
+    if (d.rempli) { $('merci').hidden = false; return; }
+    if (d.prenom) $('titre').textContent = `${d.prenom}, ton questionnaire`;
+    $('questionnaire').hidden = false;
+    afficher();
+  } catch (e) {
+    $('chargement').innerHTML = '<p class="sous" style="margin:0">Pas de connexion. Recharge la page dans un instant.</p>';
+  }
+})();
+</script>
+</body>
+</html>

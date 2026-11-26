@@ -1,5 +1,5 @@
 // APEX APP — Coach : tableau de bord
-// 1. Mes coachings du jour (tous mes rendez-vous)
+// 1. Mes coachings du jour (tous mes rendez-vous) ; gérants : leads à traiter
 // 2. Bilans à traiter, 3. Bilans en attente (relance), 4. Cycles d'entraînement :
 //    uniquement les clients dont je suis le coach référent.
 
@@ -37,6 +37,8 @@ const CoachAccueilPage = {
         db.getCyclesClients(me.id).catch(() => []),
         db.getSuivisPourRetards().catch(() => []),
       ]);
+      // Gérants : leads à traiter aujourd'hui (les miens + les nouveaux pas encore pris)
+      this.leads = me.is_gerant ? await db.getLeadsDuJour(me.id).catch(() => null) : null;
       // Notes de passation en cours sur mes clients du jour (📌)
       this.notesPassation = await db.clientsAvecNotePassation(
         [...new Set(this.coachings.map(r => r.client_id).filter(Boolean))]).catch(() => new Map());
@@ -166,7 +168,15 @@ const CoachAccueilPage = {
     document.getElementById('acContent').innerHTML = `
       <div class="ac-grille">
         ${this._bloc('📅 Mes coachings du jour', aVenir.length, 'var(--gold)', coachings)}
-        ${this._bloc('📋 Bilans à traiter', this.aTraiter.length, 'var(--error)', aTraiter)}
+${this.leads ? this._bloc('🎯 Leads à traiter', this.leads.length, 'var(--error)', this.leads.length
+          ? [...this.leads].sort((a, b) => (a.responsable_id ? 1 : 0) - (b.responsable_id ? 1 : 0)
+              || new Date(CRM.echeance(a)) - new Date(CRM.echeance(b))).map(l => `
+            <div class="ac-ligne" onclick="window.location.hash='#coach-crm?lead=${l.id}'">
+              <span class="ac-nom">${escHtml(CRM.nom(l))}</span>
+              <span class="ac-meta">${l.responsable_id ? escHtml(CRM.aFaire(l)) : '<b style="color:var(--error)">Nouveau, personne ne l\'a pris</b>'}</span><span class="ac-fleche">›</span>
+            </div>`).join('')
+          : vide('Aucun lead à traiter aujourd\'hui · <a href="#coach-crm">ouvrir les leads</a>')) : ''}
+                ${this._bloc('📋 Bilans à traiter', this.aTraiter.length, 'var(--error)', aTraiter)}
         ${this._bloc('⏳ Bilans en attente', parClient.size, '#D97706', enAttente)}
         ${this._bloc('⚠️ Retards de suivi', this.retards.length, 'var(--error)', this.retards.length
           ? this.retards.map(c => `

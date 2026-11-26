@@ -6,6 +6,8 @@
 // donne une seule notification avec les deux prénoms.
 // agenda_creneaux.rappel_envoye_pour = heure de début déjà rappelée (pas de
 // doublon ; un créneau déplacé est rappelé pour sa nouvelle heure).
+// Leads (CRM) : à l'heure d'un rappel programmé (leads.rappel_le), notification
+// au gérant responsable « Rappelle Julie Martin » (leads.rappel_envoye_pour).
 // « Verify JWT » doit être désactivé (CRON_SECRET n'est pas un JWT).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -72,7 +74,36 @@ Deno.serve(async (req) => {
     } catch (_) { /* coach sans téléphone abonné : rien à faire */ }
   }
 
-  return new Response(JSON.stringify({ creneaux: aRappeler.length, notifications: envoyes }), {
+  // ── Rappels programmés avec les leads (CRM) ──────────────────────────────
+  let rappelsLeads = 0;
+  const { data: leads } = await sb
+    .from("leads")
+    .select("id, prenom, nom, telephone, responsable_id, rappel_le, rappel_envoye_pour")
+    .not("rappel_le", "is", null)
+    .not("responsable_id", "is", null)
+    .lte("rappel_le", new Date(maintenant.getTime() + 2 * 60000).toISOString())
+    .gte("rappel_le", new Date(maintenant.getTime() - 60 * 60000).toISOString());
+  for (const l of (leads || []) as any[]) {
+    if (l.rappel_envoye_pour && new Date(l.rappel_envoye_pour).getTime() === new Date(l.rappel_le).getTime()) continue;
+    const { error: majErr } = await sb.from("leads").update({ rappel_envoye_pour: l.rappel_le }).eq("id", l.id);
+    if (majErr) continue;
+    const qui = `${l.prenom || ""} ${l.nom || ""}`.trim() || "ton lead";
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CRON_SECRET}` },
+        body: JSON.stringify({
+          profileId: l.responsable_id,
+          title: `📞 Rappel à ${heure(l.rappel_le)}`,
+          body: `Rappelle ${qui}${l.telephone ? " · " + l.telephone : ""}.`,
+          url: `/#coach-crm?lead=${l.id}`,
+        }),
+      });
+      rappelsLeads++;
+    } catch (_) { /* pas de téléphone abonné */ }
+  }
+
+  return new Response(JSON.stringify({ creneaux: aRappeler.length, notifications: envoyes, rappels_leads: rappelsLeads }), {
     headers: { "Content-Type": "application/json" },
   });
 });

@@ -213,6 +213,197 @@ const db = {
     return json; // { profileId }
   },
 
+  // ── CRM : leads (gérants seulement : la base refuse les autres) ──────────
+
+  async getLeads() {
+    const lignes = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await getSupabase().from('leads').select('*')
+        .order('cree_le', { ascending: false }).range(de, de + 999);
+      if (error) throw error;
+      lignes.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    return lignes;
+  },
+
+  async creerLead(champs) {
+    const { data, error } = await getSupabase().from('leads').insert(champs).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  // ── Audits du bilan (gérants ; référent une fois client) ─────────────────
+  async getAuditsLeads() {
+    const { data, error } = await getSupabase().from('audits')
+      .select('id, lead_id, jeton, statut, rempli_le, genere_le, cree_le, erreur')
+      .order('cree_le', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getAudit(id) {
+    const { data, error } = await getSupabase().from('audits').select('*').eq('id', id).single();
+    if (error) throw error;
+    return data;
+  },
+
+  async creerLienAudit(leadId) {
+    const { data, error } = await getSupabase().from('audits').insert({ lead_id: leadId })
+      .select('id, lead_id, jeton, statut, rempli_le, genere_le, cree_le, erreur').single();
+    if (error) throw error;
+    return data;
+  },
+
+  async regenererAudit(auditId) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/audit-bilan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action: 'regenerer', audit_id: auditId }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.ok) throw new Error(json?.erreur || `Erreur serveur (${res.status})`);
+    return json;
+  },
+
+  async majLead(id, patch) {
+    const { data, error } = await getSupabase().from('leads').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Leads à traiter aujourd'hui pour un gérant (tableau de bord) : ses leads en
+  // cours dont la relance, le rappel ou le RDV tombe aujourd'hui ou avant, et
+  // les nouveaux leads que personne n'a encore pris
+  async getLeadsDuJour(gerantId) {
+    const fin = new Date(); fin.setHours(23, 59, 59, 999);
+    const { data, error } = await getSupabase().from('leads')
+      .select('id, prenom, nom, telephone, etape, relances, prochaine_le, rappel_le, rdv_le, rdv_rappele_le, responsable_id, cree_le')
+      .in('etape', ['a_contacter', 'setting', 'rdv'])
+      .or(`responsable_id.eq.${gerantId},responsable_id.is.null`);
+    if (error) throw error;
+    return (data || []).filter(l => !l.responsable_id || CRM.echeance(l) && new Date(CRM.echeance(l)) <= fin);
+  },
+
+  // ── Facturation (gérants seulement : la base refuse les autres) ──────────
+
+  async getFormules() {
+    const { data, error } = await getSupabase()
+      .from('formules').select('*').order('actif', { ascending: false }).order('nom');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Création (sans id) ou modification d'une formule du catalogue
+  async saveFormule(f) {
+    const sb = getSupabase();
+    const champs = { nom: f.nom, prix_mensuel: f.prix_mensuel, duree_mois: f.duree_mois ?? null, actif: f.actif ?? true };
+    const req = f.id ? sb.from('formules').update(champs).eq('id', f.id) : sb.from('formules').insert(champs);
+    const { data, error } = await req.select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getFacturationClient(clientId) {
+    const { data, error } = await getSupabase()
+      .from('facturation_clients').select('*').eq('client_id', clientId).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async saveFacturationClient(clientId, champs) {
+    const { data, error } = await getSupabase()
+      .from('facturation_clients').upsert({ client_id: clientId, ...champs }, { onConflict: 'client_id' })
+      .select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getFacturationsClients() {
+    const { data, error } = await getSupabase().from('facturation_clients').select('*');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Lecture du compte Stripe (Edge Function stripe-gerant, gérants seulement)
+  async stripe(action, extra = {}) {
+    const session = await getSupabase().auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('Non connecté');
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/functions/v1/stripe-gerant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json?.error) throw new Error(json?.error || json?.message || `Erreur serveur (${res.status})`);
+    return json;
+  },
+
+  // Prélèvements Stripe d'un mois (« AAAA-MM-01 »), le plus récent d'abord
+  async getPrelevements(mois) {
+    const { data, error } = await getSupabase()
+      .from('prelevements').select('*').eq('mois', mois).order('cree_le', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Relie (ou délie, cus = null) un client de l'app à son client Stripe
+  async relierStripe(clientId, cus) {
+    const { data, error } = await getSupabase()
+      .from('facturation_clients').upsert({ client_id: clientId, stripe_customer_id: cus }, { onConflict: 'client_id' })
+      .select().single();
+    if (error) {
+      if (error.code === '23505') throw new Error('ce client Stripe est déjà relié à un autre client de l\'app');
+      throw error;
+    }
+    return data;
+  },
+
+  // Clients pour le tableau de bord gérants (arrivées, départs, référents)
+  async getClientsTableau() {
+    const { data, error } = await getSupabase()
+      .from('profiles').select('id, prenom, nom, email, type_client, mode_facturation, actif, created_at, inactif_depuis, coach_referent_id')
+      .eq('role', 'client');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Tous les clients (actifs ou non, tous types), pour la facturation du mois
+  async getClientsFacturation() {
+    const { data, error } = await getSupabase()
+      .from('profiles').select('id, prenom, nom, email, type_client, mode_facturation, actif')
+      .eq('role', 'client').order('prenom');
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Coachings qui commencent dans [debut, fin[, par paquets de 1 000
+  async getCoachingsPeriode(debut, fin) {
+    const lignes = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await getSupabase()
+        .from('agenda_creneaux').select('id, client_id, coach_id, debut, fin, en_plus')
+        .eq('type', 'coaching').gte('debut', debut).lt('debut', fin)
+        .order('debut').range(de, de + 999);
+      if (error) throw error;
+      lignes.push(...(data || []));
+      if (!data || data.length < 1000) return lignes;
+    }
+  },
+
+  // Créneaux supprimés dont la séance tombait dans [debut, fin[
+  async getSuppressionsPeriode(debut, fin) {
+    const { data, error } = await getSupabase()
+      .from('agenda_suppressions').select('*')
+      .eq('type', 'coaching').gte('debut', debut).lt('debut', fin).order('debut');
+    if (error) throw error;
+    return data || [];
+  },
+
   // ── Agenda ────────────────────────────────────────────────────────────────
 
   // Créneaux qui chevauchent la période [debut, fin[ (dates ISO)

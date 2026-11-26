@@ -98,9 +98,10 @@ const PlanGenerator = {
         const approxQty = 150; // estimation grossière
         return approxQty * fp.l / 100;
       };
-      if (fatBudget < 8) {
+      fatBudget -= 10; // l'huile est déjà comptée
+      if (fatBudget < 4) {
         proteinSrc = isLunch ? 'Thon en boite'     : 'Thon en boite';
-      } else if (fatBudget < 18) {
+      } else if (fatBudget < 12) {
         proteinSrc = isLunch ? 'Poulet blanc cuit'  : 'Blanc de dinde';
       } else {
         proteinSrc = isLunch ? 'Poulet blanc cuit'  : 'Saumon';
@@ -114,9 +115,6 @@ const PlanGenerator = {
     const fs = this.FOODS[starchSrc];
     const fv = this.FOODS[vegSrc];
 
-    // Huile d'olive — seulement si le budget lipidique le permet (10g huile = 10g lipides)
-    const useOil = fatBudget >= 12;
-    if (useOil) items.push(this.item("Huile d'olive", 10, creneau));
 
     // Passe 1 — estimer les protéines apportées par le féculent et le légume
     const vegP         = 150 * fv.p / 100;
@@ -136,6 +134,9 @@ const PlanGenerator = {
     // Légume fixe 150g
     items.push(this.item(vegSrc, 150, creneau));
 
+    // Huile d'olive : 10 g midi et soir (demande de Benjamin, 23 novembre 2026)
+    items.unshift(this.item("Huile d'olive", 10, creneau));
+
     return items;
   },
 
@@ -149,37 +150,20 @@ const PlanGenerator = {
     const hasPdej  = nbRepas === 3;
     const pdejPct  = hasPdej ? 0.20 : 0;
     const snackPct = nbSnacks > 0 ? 0.15 : 0;
-    const mainPct  = 1 - pdejPct - snackPct;
-    const lunchPct = mainPct * 0.55;
-    const dinnerPct = mainPct * 0.45;
     const snackEach = nbSnacks > 0 ? (cal * snackPct) / nbSnacks : 0;
 
     const t = targets;
-    const repas = [];
-    const add = (items) => items.forEach(i => { if (i) repas.push(i); });
+    // Le petit-déjeuner et les collations sont placés d'abord ; le déjeuner et
+    // le dîner complètent ensuite ce qui manque pour tomber sur les objectifs.
+    const parts = { pdej: [], colMatin: [], colAprem: [], colSoir: [] };
+    let cible = parts.pdej;
+    const add = (items) => items.forEach(i => { if (i) cible.push(i); });
 
     // ── PRÉ-CALCUL BUDGET LIPIDIQUE ───────────────────────────────────────
     // Estimer les lipides des sources fixes (petit-déj, collations) pour
     // savoir combien il reste pour les repas principaux
-    let fixedFat = 0;
-    if (hasPdej) {
-      const scaleSale = Math.max(0.5, cal * pdejPct / 599);
-      const nbOeufs   = Math.max(1, Math.round(3 * scaleSale));
-      const avoQty    = this.round(80 * scaleSale, 10);
-      fixedFat += nbOeufs * 60 / 100 * this.FOODS['Oeuf entier'].l;    // œufs
-      fixedFat += avoQty / 100 * this.FOODS['Avocat'].l;               // avocat
-      fixedFat += this.round(60 * scaleSale, 10) / 100 * this.FOODS['Pain complet'].l; // pain
-    }
-    // Collations — amandes et snacks gras
     const amendPerSnack = snackEach > 350 ? 25 : snackEach > 250 ? 20 : 15;
-    if (colMatin)  fixedFat += amendPerSnack / 100 * this.FOODS['Amandes'].l;
-    if (colAprem)  fixedFat += amendPerSnack / 100 * this.FOODS['Amandes'].l;
-    if (colSoir)   fixedFat += amendPerSnack / 100 * this.FOODS['Amandes'].l;
 
-    const mainMealFatBudget = Math.max(0, t.lipides - fixedFat);
-    // Diviser entre déjeuner et dîner
-    const lunchFatBudget  = mainMealFatBudget * 0.50;
-    const dinnerFatBudget = mainMealFatBudget * 0.50;
 
     // ── PETIT DÉJEUNER ────────────────────────────────────────────────────
     if (hasPdej) {
@@ -219,6 +203,7 @@ const PlanGenerator = {
     const amendQtyFromBudget  = Math.min(amendPerSnack, Math.max(5, Math.round(amendBudgetPerSnack / fatPerAmande / 5) * 5));
 
     // ── COLLATION MATIN ───────────────────────────────────────────────────
+    cible = parts.colMatin;
     if (colMatin) {
       if (whey) {
         const wheyQty = this.round((t.proteines * (snackPct / nbSnacks) * 0.75) / (this.FOODS['Whey protéine'].p / 100), 5);
@@ -237,14 +222,8 @@ const PlanGenerator = {
       }
     }
 
-    // ── DÉJEUNER ──────────────────────────────────────────────────────────
-    add(this.mainMeal(
-      t.proteines * lunchPct,
-      t.glucides  * lunchPct,
-      'dejeuner', opts, true, lunchFatBudget
-    ));
-
     // ── COLLATION APRÈS-MIDI ──────────────────────────────────────────────
+    cible = parts.colAprem;
     if (colAprem) {
       if (whey) {
         const wheyQty = this.round((t.proteines * (snackPct / nbSnacks) * 0.75) / (this.FOODS['Whey protéine'].p / 100), 5);
@@ -263,14 +242,8 @@ const PlanGenerator = {
       }
     }
 
-    // ── DÎNER ─────────────────────────────────────────────────────────────
-    add(this.mainMeal(
-      t.proteines * dinnerPct,
-      t.glucides  * dinnerPct,
-      'diner', opts, false, dinnerFatBudget
-    ));
-
     // ── COLLATION SOIR ────────────────────────────────────────────────────
+    cible = parts.colSoir;
     if (colSoir) {
       const skyrQty  = Math.min(300, this.round(snackEach * 0.55 / (this.FOODS['Skyr'].cal / 100), 25));
       const mielQty  = snackEach > 300 ? 15 : 10;
@@ -286,6 +259,22 @@ const PlanGenerator = {
       if (chocoQty > 0) add([this.item('Chocolat noir 70%', chocoQty, 'collation_soir')]);
     }
 
-    return repas;
+    // ── DÉJEUNER ET DÎNER : ce qui reste ──────────────────────────────────
+    // Petit-déjeuner : on compte l'option la plus calorique (comme le total du plan)
+    const somme = (items, k) => items.reduce((x, i) => x + (i[k] || 0), 0);
+    const sale  = parts.pdej.filter(i => i.creneau === 'petit_dejeuner_sale');
+    const sucre = parts.pdej.filter(i => i.creneau === 'petit_dejeuner_sucre');
+    const pdejCompte = somme(sale, 'calories') >= somme(sucre, 'calories') ? sale : sucre;
+    const fixes = [...pdejCompte, ...parts.colMatin, ...parts.colAprem, ...parts.colSoir];
+    const resteP = Math.max(20, t.proteines - somme(fixes, 'proteines'));
+    const resteG = Math.max(20, t.glucides  - somme(fixes, 'glucides'));
+    const resteL = Math.max(0,  t.lipides   - somme(fixes, 'lipides'));
+    const partMidi = 0.55, partSoir = 0.45;
+
+    const dejeuner = this.mainMeal(resteP * partMidi, resteG * partMidi, 'dejeuner', opts, true,  resteL * 0.5);
+    const diner    = this.mainMeal(resteP * partSoir, resteG * partSoir, 'diner',    opts, false, resteL * 0.5);
+
+    return [...parts.pdej, ...parts.colMatin, ...dejeuner, ...parts.colAprem, ...diner, ...parts.colSoir]
+      .filter(Boolean);
   }
 };
