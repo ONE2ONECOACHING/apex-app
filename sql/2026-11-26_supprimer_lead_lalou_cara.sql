@@ -1,8 +1,8 @@
 -- ============================================================================
--- APEX APP — Suppression du lead de test « Lalou Cara »
+-- APEX APP — Suppression des leads de test « Lalou Cara » et « Benjamin Cara »
 -- (26 novembre 2026). À coller dans Supabase → SQL Editor → Run.
 --
--- Efface le lead « Lalou Cara » créé en testant
+-- Efface les leads « Lalou Cara » et « Benjamin Cara » créés en testant
 -- la page bilan.html (seulement des leads qui ne sont pas devenus clients),
 -- avec :
 --   - leur RDV prospect dans l'agenda ;
@@ -17,7 +17,7 @@
 --   select prenom, nom, telephone, etape, cree_le from public.leads
 --   where client_id is null
 --     and lower(trim(coalesce(prenom, '') || ' ' || coalesce(nom, '')))
---         in ('lalou cara');
+--         in ('lalou cara', 'benjamin cara');
 -- ============================================================================
 
 begin;
@@ -28,33 +28,33 @@ where type = 'prospect'
   and id in (select rdv_creneau_id from public.leads
              where client_id is null and rdv_creneau_id is not null
                and lower(trim(coalesce(prenom, '') || ' ' || coalesce(nom, '')))
-                   in ('lalou cara'));
+                   in ('lalou cara', 'benjamin cara'));
 
 -- 2. La trace de ces RDV dans les créneaux supprimés
 delete from public.agenda_suppressions
 where type = 'prospect'
-  and lower(trim(coalesce(client_nom, ''))) in ('lalou cara');
+  and lower(trim(coalesce(client_nom, ''))) in ('lalou cara', 'benjamin cara');
 
 -- 3. Les leads (questionnaires et audits partent avec)
 delete from public.leads
 where client_id is null
   and lower(trim(coalesce(prenom, '') || ' ' || coalesce(nom, '')))
-      in ('lalou cara');
+      in ('lalou cara', 'benjamin cara');
 
 commit;
 
 -- ── Vérification (lecture seule) ────────────────────────────────────────────
 -- Attendu : 0 partout.
-select 'lead de test restant' as quoi, count(*)::text as detail
+select 'leads de test restants' as quoi, count(*)::text as detail
 from public.leads
 where client_id is null
   and lower(trim(coalesce(prenom, '') || ' ' || coalesce(nom, '')))
-      in ('lalou cara')
+      in ('lalou cara', 'benjamin cara')
 union all
 select 'RDV prospect de test restants', count(*)::text
 from public.agenda_creneaux
 where type = 'prospect'
-  and lower(trim(coalesce(prospect_nom, ''))) in ('lalou cara')
+  and lower(trim(coalesce(prospect_nom, ''))) in ('lalou cara', 'benjamin cara')
 union all
 select 'audits sans lead', count(*)::text
 from public.audits a
